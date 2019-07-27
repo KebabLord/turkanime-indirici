@@ -22,8 +22,8 @@ def killPopup():
 def prompt_exit(url_):
 	print("Video bulundu!!")
 	driver.close()
-	oynat = input("indir? (Y/N)")
-	if (oynat=="y"):
+	indir = input("indir? (Y/N)")
+	if (indir=="y"):
 		cmd("wget "+url_)
 	else:
 		cmd("mpv "+url_)
