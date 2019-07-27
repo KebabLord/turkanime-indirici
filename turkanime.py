@@ -23,7 +23,6 @@ def prompt_exit(url_):
 	print("Video bulundu!!")
 	driver.close()
 	oynat = input("indir? (Y/N)")
-
 	if (oynat=="y"):
 		cmd("wget "+url_)
 	else:
@@ -50,7 +49,7 @@ for fansub in fansublar:
 	print(fansub.text)
 
 # Örnek olarak birinci fansub'a tıkladı
-fansublar[1].click()
+fansublar[0].click()
 delay(2)
 killPopup() # popup açıldıysa gebert
 
@@ -107,6 +106,23 @@ def getFembedVid():
 			return False
 		prompt(url)
 
+def getTurkanimeVid():
+	alternatifler[sites.index("TÜRKANİME")].click()
+	delay(4)
+		try:
+			iframe_1 = driver.find_element_by_css_selector(".video-icerik iframe")
+			driver.switch_to.frame(iframe_1)
+			iframe_2 = driver.find_element_by_css_selector("iframe")
+			driver.switch_to.frame(iframe_2)
+			raw = driver.find_element_by_css_selector(".jw-media").get_attribute("innerHTML")
+			url = raw[raw.index("src")+5:raw.index("></")-1]
+		except:
+			print("Videoya erişilemiyor")
+			return False
+
+
+if sites.__contains__("TÜRKANİME"):
+	getTurkanimeVid()
 if sites.__contains__("RAPIDVIDEO"):
 	alternatifler[sites.index("RAPIDVIDEO")].click()
 	delay(4)
