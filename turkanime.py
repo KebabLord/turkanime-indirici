@@ -37,9 +37,8 @@ def prompt_exit(url_):
 	exit()
 
 
-# Büyü başlıyor :3
+# Sayfayı aç
 driver.get(hedef)
-
 
 # Sayfanın yüklenmesini bekle
 while True:
@@ -86,14 +85,10 @@ def getRapidVid():
 	dpi720 = raws[9]
 	prompt(dpi480)
 
-if sites.__contains__("RAPIDVIDEO"):
-	alternatifler[sites.index("RAPIDVIDEO")].click()
-	delay(4)
-	getRapidVid()
 
 
 # Local alternatif çekici
-def fetFembedVid():
+def getFembedVid():
 		play_button = driver.find_element_by_xpath("//div[@class='panel-body']/div[@class='video-icerik']/iframe")
 
 		# Video url'sini ortaya çıkartmayı dene
@@ -105,7 +100,6 @@ def fetFembedVid():
 				delay(1)
 				play_button.click()
 				break;
-
 	#   Url 2 iframe katmaninin icinde sakli
 		try:
 			iframe_1 = driver.find_element_by_css_selector(".video-icerik iframe")
@@ -119,11 +113,21 @@ def fetFembedVid():
 			return False
 		prompt(url)
 
-for player in players_lokal:
+"""for player in players_lokal:
 	if sites.__contains__(player):
 		alternatifler[sites.index(player)].click()
 		delay(4)
 		getLokalVid()
+"""
+
+if sites.__contains__("RAPIDVIDEO"):
+	alternatifler[sites.index("RAPIDVIDEO")].click()
+	delay(4)
+	getRapidVid()
+if sites.__contains__("FEMBED"):
+	alternatifler[sites.index("FEMBED")].click()
+	delay(4)
+	getFembedVid()
 
 
 
