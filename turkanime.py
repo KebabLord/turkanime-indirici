@@ -9,12 +9,6 @@ hedef = "https://www.turkanime.tv/video/mushishi-zoku-shou-3-bolum" #örnek hede
 #hedef = input(r"url: ")
 
 
-#LOCAL VİDEO PLAYERLARIN LİSTESİ
-players_lokal= [
-	"TÜRKANİME",
-	"FEMBED"
-]
-
 #Popup kapatıcı
 def killPopup():
 	if (len(driver.window_handles)>1):
@@ -112,13 +106,6 @@ def getFembedVid():
 			print("Videoya erişilemiyor")
 			return False
 		prompt(url)
-
-"""for player in players_lokal:
-	if sites.__contains__(player):
-		alternatifler[sites.index(player)].click()
-		delay(4)
-		getLokalVid()
-"""
 
 if sites.__contains__("RAPIDVIDEO"):
 	alternatifler[sites.index("RAPIDVIDEO")].click()
