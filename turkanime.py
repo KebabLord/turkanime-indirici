@@ -8,19 +8,19 @@
 - Animelere ve bölümlerinin -videoların değil- linklerine,ulaşabileceğimiz bir sistem, şuan benim yaptığım sistem senden direk url girmeni istiyor, biraz saçma x3
 - Terminal projesi kusursuz olursa gui geliştirmek
 """
-
+import multiprocessing 
 from selenium import webdriver
 from time import sleep as delay
-from os import system as cmd
+from os import system,getpid
 
 driver = webdriver.Firefox() # sürücüyü başlat
+global hedef
 
 HARICILER = [
+		"UMPLOMP"
 		"HDVID",
-		"RAPIDVIDEO",
+		"SENDVID",
 		"STREAMANGO",
-		"USERSCLOUD",
-		"SENDVID"
 ]
 
 # Popup kapatıcı
@@ -33,20 +33,22 @@ def killPopup():
 	else:
 		return False
 
-# Url elde edildikten sonra indirici/oynatıcı
-def prompt_exit(url_):
-	print("Video bulundu!!")
+def oynat_indir(url_):
 	driver.close()
-	indir = input("indir? (Y/N)")
-	basariStatus = 0
-	if (indir=="y"):
-		basariStatus = cmd("youtube-dl -o video.mp4 "+url_)
+	if (input("indir? (Y/N): ")=="y"):
+		filename = hedef[hedef.index("video/")+6:].replace("-","_").replace("/","")+".mp4 "
+		basariStatus = system("youtube-dl -o "+filename+url_+" > ./tmp/status.tmp")
 	else:
-		basariStatus = cmd("mpv "+url_)
-	if (basariStatus != 0): # 404 alındıysa
-		print("Bu alternatifte video bulunamadı.")
+		basariStatus = system("mpv "+url_+" > ./tmp/status.tmp")
+
+
+def checkVideo(url_):
+	i = system("youtube-dl -F '"+url_+"'")
+	if not(i):
+		return True
 	else:
-		exit()
+		raise
+
 
 # Fansub listeleyici
 fansublar = []
@@ -84,102 +86,136 @@ def bekleSayfaninYuklenmesini():
 # HARİCİ ALTERNATİFLER 
 # Türkanimenin yeni sekmeye attığı harici playerlar: hdvid,rapidvideo,streamango,userscloud,sendvid
 def getExternalVidOf(NYAN):
-	print("Şuan denenen alternatif: "+NYAN)
-	alternatifler[sites.index(NYAN)].click() #alternatife tıkla
-	delay(4)
 	try:
+		print(NYAN+" alternatifine göz atılıyor")
+		alternatifler[sites.index(NYAN)].click() #alternatife tıkla
+		delay(4)
 		iframe_1 = driver.find_element_by_css_selector(".video-icerik iframe") #iframe'in içine gir
 		driver.switch_to.frame(iframe_1)
 		url = driver.find_element_by_css_selector("#link").get_attribute("href") #linki ceple
+		checkVideo(url)
 	except:
 		print("Videoya erişilemiyor")
 		return False
-	prompt_exit(url)
+	else:
+		oynat_indir(url)
+
 
 # TÜRKANİME PLAYER
-def getTurkanimeVid(): 
-	alternatifler[sites.index("TÜRKANİME")].click()
-	delay(4)
+def getTurkanimeVid():
 	try: # iki iframe katmanından oluşuyor
+		alternatifler[sites.index("TÜRKANİME")].click()
+		delay(4)
 		iframe_1 = driver.find_element_by_css_selector(".video-icerik iframe")
 		driver.switch_to.frame(iframe_1)
 		iframe_2 = driver.find_element_by_css_selector("iframe")
 		driver.switch_to.frame(iframe_2)
 		url = driver.find_element_by_css_selector(".jw-media").get_attribute("src")
+		checkVideo(url)
 	except:
 		print("Videoya erişilemiyor")
 		return False
-	prompt_exit(url)
+	else:
+		oynat_indir(url)
 
 # MAİLRU PLAYER
 def getMailVid():
-	alternatifler[sites.index("MAIL")].click()
-	delay(4)
 	try: # iki iframe katmanından oluşuyor
+		alternatifler[sites.index("MAIL")].click()
+		delay(4)
 		iframe_1 = driver.find_element_by_css_selector(".video-icerik iframe")
 		driver.switch_to.frame(iframe_1)
 		iframe_2 = driver.find_element_by_css_selector("iframe")
 		driver.switch_to.frame(iframe_2)
 		url = driver.find_element_by_css_selector(".b-video-controls__mymail-link").get_attribute("href")
+		checkVideo(url)
 	except:
 		print("Videoya erişilemiyor")
 		return False
-	prompt_exit(url)
+	else:
+		oynat_indir(url)
 
 # FEMBED PLAYER
 def getFembedVid(): #Fembed nazlıdır, videoya bir kere tıklanılması gerekiyor linki alabilmek için
-	alternatifler[sites.index("FEMBED")].click()
-	delay(4)
-	play_button = driver.find_element_by_xpath("//div[@class='panel-body']/div[@class='video-icerik']/iframe")
-	# Video url'sini ortaya çıkartmayı dene
-	while True:
-		play_button.click()
-		delay(2)
-		killed = killPopup()
-		if not(killed):
-			delay(1)
-			play_button.click()
-			break;
-	#  Url 2 iframe katmaninin icinde sakli
 	try:
+		alternatifler[sites.index("FEMBED")].click()
+		delay(4)
+		play_button = driver.find_element_by_xpath("//div[@class='panel-body']/div[@class='video-icerik']/iframe")
+		# Video url'sini ortaya çıkartmayı dene
+		while True:
+			play_button.click()
+			delay(2)
+			killed = killPopup()
+			if not(killed):
+				delay(1)
+				play_button.click()
+				break;
+		#  Url 2 iframe katmaninin icinde sakli
 		iframe_1 = driver.find_element_by_css_selector(".video-icerik iframe")
 		driver.switch_to.frame(iframe_1)
 		iframe_2 = driver.find_element_by_css_selector("iframe")
 		driver.switch_to.frame(iframe_2)
 		url = driver.find_element_by_css_selector(".jw-media").get_attribute("src")
+		checkVideo(url)
 	except:
 		print("Videoya erişilemiyor")
 		return False
-	prompt_exit(url)
+	else:
+		oynat_indir(url)
+
+def getMyviVid():
+	try:
+		alternatifler[sites.index("MYVI")].click()
+		play_button = driver.find_element_by_xpath("//div[@class='panel-body']/div[@class='video-icerik']/iframe")
+		play_button.click()
+		delay(1.2)
+		iframe_1 = driver.find_element_by_css_selector(".video-icerik iframe")
+		driver.switch_to.frame(iframe_1)
+		iframe_2 = driver.find_element_by_css_selector("iframe")
+		driver.switch_to.frame(iframe_2)
+		while True:
+			try:
+				driver.find_element_by_css_selector(".player-logo.player-logo-legacy")
+			except: # kaybolduğunda
+				break
+		delay(1)
+		play_button.click()
+		url=driver.find_element_by_css_selector(".player-logo.player-logo-legacy").get_attribute("href")
+		checkVideo(url)
+	except:
+		print("Videoya erişilemiyor")
+		return False
+	else:
+		oynat_indir(url)
+
+def tryAlternatives():
+	# 1 TÜRKANİME
+	if sites.__contains__("RAPIDVIDEO"):
+		getExternalVidOf("RAPIDVIDEO")
+	if sites.__contains__("FEMBED"):
+		getFembedVid()
+	if sites.__contains__("MAIL"):
+		getMailVid()
+	if sites.__contains__("MYVI"):
+		getMyviVid()
+	for harici in HARICILER:
+		if sites.__contains__(harici):
+			getExternalVidOf(harici)
+	if sites.__contains__("TÜRKANİME"):
+		getTurkanimeVid()
 
 
 
 ## !! MANUEL DEMO !! ##
-
-#hedef = "https://www.turkanime.tv/video/mushishi-zoku-shou-3-bolum" #örnek hedef
 hedef = input("HEDEF: ")
-driver.get(hedef) # bölüme git
-bekleSayfaninYuklenmesini()
-killPopup()
 
-delay(3)
-getFansublar() #fansubları güncelledi
-fansublar[0].click() #Örnek olarak birinci fansubu seçti
-delay(2)
-killPopup() #popup açıldıysa gebert
+driver.get(hedef)
+getFansublar()
 
-getAlternatifler() #alternatifleri güncelledi
-delay(2)
-killPopup()
-
-# Buradan sonra bütün alternatifleri denemeye başlıyor link elde edene kadar -link yoksa sıçtu-
-for harici in HARICILER: # ilk olarak uzak alternatifler
-	if sites.__contains__(harici):
-		getExternalVidOf(harici)
-#sonra iframe alternatifler
-if sites.__contains__("TÜRKANİME"):
-	getTurkanimeVid()
-if sites.__contains__("FEMBED"):
-	getFembedVid()
-if sites.__contains__("MAIL"):
-	getMailVid()
+for i in range(0,len(fansublar)):
+	fansublar[i].click()
+	delay(2.5)
+	getAlternatifler()
+	tryAlternatives()
+	driver.refresh()
+	delay(1)
