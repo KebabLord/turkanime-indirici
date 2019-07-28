@@ -1,12 +1,11 @@
-# Türkanime Video Player/Downloader 1.0.0
+# Türkanime Video Player/Downloader 2.0.0
 
 # GEREKSİNİMLER - geckodriver, python-selenium, mpv, youtube-dl 
 
 # YAPILACAKLAR LİSTESİ
 """
-- Openload alternatifi ve videoların çalışıp çalışmadığını denetleyen daha iyi bir sistem ekleyeceğim
-- Animelere ve bölümlerinin -videoların değil- linklerine,ulaşabileceğimiz bir sistem, şuan benim yaptığım sistem senden direk url girmeni istiyor, biraz saçma x3
-- Terminal projesi kusursuz olursa gui geliştirmek
+- Openload alternatifi eklenicek
+- Arama ve bölüm listesi sistemi
 """
 import multiprocessing 
 from selenium import webdriver
