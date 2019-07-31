@@ -18,7 +18,7 @@ options = Options()
 options.add_argument('--headless')
 
 if name=="nt":
-    driver = webdriver.Firefox(options=options,executable_path=r'c:\Users\yyahy\Desktop\geckodriver.exe')
+    driver = webdriver.Firefox(options=options,executable_path=r'geckodriver.exe')
     #driver = webdriver.PhantomJS('phantomjs.exe')
     ytdl_prefix=""
     mpv_prefix=""
@@ -50,9 +50,9 @@ def oynat_indir(url_):
     driver.close()
     if (input("indir? (Y/N): ")=="y"):
         filename = hedef[hedef.index("video/")+6:].replace("-","_").replace("/","")+".mp4 "
-        basariStatus = system(ytdl_prefix+"youtube-dl -o "+filename+url_+" > ./tmp/status.tmp")
+        basariStatus = system(ytdl_prefix+"youtube-dl -o "+filename+url_+" > ./log")
     else:
-        basariStatus = system(mpv_prefix+"mpv "+url_+" > ./tmp/status.tmp")
+        basariStatus = system(mpv_prefix+"mpv "+url_+" > ./log")
     exit()
 
 def checkVideo(url_):
@@ -75,25 +75,24 @@ def updateFansublar(n):
     killPopup()
 
 # Video player listeleyici (fansub seçildikten sonra)
-global sites
-sites = []
+alternatifler = sites = []
 def updateAlternatifler(n):
     killPopup()
-    global alternatifler
+    global alternatifler,sites
     delay(1.5)
     if n:print("\n\nMEVCUT KAYNAKLAR:")
-    while True:
+    alternatifler = driver.find_elements_by_xpath("//div[@class='panel-body']/div[@class='btn-group']/button")
+    """while True:
         alternatifler = driver.find_elements_by_xpath("//div[@class='panel-body']/div[@class='btn-group']/button")
         if alternatifler:
             break
         delay(1)
-        print("retry")
+        print("retry")"""
     sites.clear()
-
     #! "alternatifler" listesinde butonların html kodları ; "sites" listesinde butonların isimleri var
     for alternatif in alternatifler:
         sites.append(alternatif.text)
-    if n:print("  >"+alternatif.text)
+        if n:print("  >"+alternatif.text)
     killPopup()
 
 def bekleSayfaninYuklenmesini():
@@ -110,14 +109,14 @@ def bekleSayfaninYuklenmesini():
 # Türkanimenin yeni sekmeye attığı harici playerlar: hdvid,rapidvideo,streamango,userscloud,sendvid
 def getExternalVidOf(NYAN):
     try:
-        updateAlternatifler(1)
+        updateAlternatifler(0)
         print("\n\n"+NYAN+" alternatifine göz atılıyor")
         alternatifler[sites.index(NYAN)].click() #alternatife tıkla
         delay(5)
-        while True:
+        """while True:
             if driver.find_elements_by_css_selector(".video-icerik iframe"):
                 break
-            delay(1)
+            delay(1)"""
         iframe_1 = driver.find_element_by_css_selector(".video-icerik iframe") #iframe'in içine gir
         driver.switch_to.frame(iframe_1)
         url = driver.find_element_by_css_selector("#link").get_attribute("href") #linki ceple
@@ -127,13 +126,15 @@ def getExternalVidOf(NYAN):
             return False
     else:
         oynat_indir(url)
+    finally:
+    	driver.switch_to.default_content()
 
 
 # TÜRKANİME PLAYER
 def getTurkanimeVid():
     try: # iki iframe katmanından oluşuyor
-        updateAlternatifler(1)
-		print("\n\nTürkanime alternatifine göz atılıyor")
+        updateAlternatifler(0)
+        print("\n\nTürkanime alternatifine göz atılıyor")
         alternatifler[sites.index("TÜRKANİME")].click()
         delay(4)
         iframe_1 = driver.find_element_by_css_selector(".video-icerik iframe")
@@ -147,12 +148,14 @@ def getTurkanimeVid():
         return False
     else:
         oynat_indir(url)
+    finally:
+    	driver.switch_to.default_content()
 
 # MAİLRU PLAYER
 def getMailVid():
     try: # iki iframe katmanından oluşuyor
-        updateAlternatifler(1)
-		print("\n\nMailru alternatifine göz atılıyor")
+        updateAlternatifler(0)
+        print("\n\nMailru alternatifine göz atılıyor")
         alternatifler[sites.index("MAIL")].click()
         delay(4)
         iframe_1 = driver.find_element_by_css_selector(".video-icerik iframe")
@@ -166,12 +169,14 @@ def getMailVid():
         return False
     else:
         oynat_indir(url)
+    finally:
+    	driver.switch_to.default_content()
 
 # FEMBED PLAYER
 def getFembedVid(): #Fembed nazlıdır, videoya bir kere tıklanılması gerekiyor linki alabilmek için
     try:
-        updateAlternatifler(1)
-		print("\n\nFembed alternatifine göz atılıyor")
+        updateAlternatifler(0)
+        print("\n\nFembed alternatifine göz atılıyor")
         alternatifler[sites.index("FEMBED")].click()
         delay(4)
         play_button = driver.find_element_by_xpath("//div[@class='panel-body']/div[@class='video-icerik']/iframe")
@@ -196,15 +201,17 @@ def getFembedVid(): #Fembed nazlıdır, videoya bir kere tıklanılması gerekiy
         return False
     else:
         oynat_indir(url)
+    finally:
+    	driver.switch_to.default_content()
 
 def getMyviVid():
     try:
-        updateAlternatifler(1)
-		print("\n\nMyvi alternatifine göz atılıyor")
+        updateAlternatifler(0)
+        print("\n\nMyvi alternatifine göz atılıyor")
         alternatifler[sites.index("MYVI")].click()
         play_button = driver.find_element_by_xpath("//div[@class='panel-body']/div[@class='video-icerik']/iframe")
         play_button.click()
-        delay(1.2)
+        delay(4.3)
         iframe_1 = driver.find_element_by_css_selector(".video-icerik iframe")
         driver.switch_to.frame(iframe_1)
         iframe_2 = driver.find_element_by_css_selector("iframe")
@@ -223,6 +230,8 @@ def getMyviVid():
         return False
     else:
         oynat_indir(url)
+    finally:
+    	driver.switch_to.default_content()
 
 def deneAlternatifler():
     if sites.__contains__("RAPIDVIDEO"): #1
