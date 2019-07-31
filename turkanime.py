@@ -12,8 +12,12 @@ from selenium import webdriver
 from selenium.webdriver.firefox.options import Options
 from time import sleep as delay
 from os import system,getpid,name
+from sys import path
 
+path.insert(0, './api_arama')
+from search_api import * # SevenOps'un arama yapma apisi
 
+ta = TurkAnime()
 options = Options()
 options.add_argument('--headless')
 
@@ -48,10 +52,11 @@ def killPopup():
 
 def oynat_indir(url_):
     driver.close()
-    if (input("indir? (Y/N): ")=="y"):
+    if (input("\nindir? (Y/N): ")=="y"):
         filename = hedef[hedef.index("video/")+6:].replace("-","_").replace("/","")+".mp4 "
         basariStatus = system(ytdl_prefix+"youtube-dl -o "+filename+url_+" > ./log")
     else:
+        #print(mpv_prefix+"mpv "+url_+" > ./log")
         basariStatus = system(mpv_prefix+"mpv "+url_+" > ./log")
     exit()
 
@@ -127,7 +132,7 @@ def getExternalVidOf(NYAN):
     else:
         oynat_indir(url)
     finally:
-    	driver.switch_to.default_content()
+        driver.switch_to.default_content()
 
 
 # TÜRKANİME PLAYER
@@ -149,7 +154,7 @@ def getTurkanimeVid():
     else:
         oynat_indir(url)
     finally:
-    	driver.switch_to.default_content()
+        driver.switch_to.default_content()
 
 # MAİLRU PLAYER
 def getMailVid():
@@ -170,7 +175,7 @@ def getMailVid():
     else:
         oynat_indir(url)
     finally:
-    	driver.switch_to.default_content()
+        driver.switch_to.default_content()
 
 # FEMBED PLAYER
 def getFembedVid(): #Fembed nazlıdır, videoya bir kere tıklanılması gerekiyor linki alabilmek için
@@ -202,13 +207,14 @@ def getFembedVid(): #Fembed nazlıdır, videoya bir kere tıklanılması gerekiy
     else:
         oynat_indir(url)
     finally:
-    	driver.switch_to.default_content()
+        driver.switch_to.default_content()
 
 def getMyviVid():
     try:
         updateAlternatifler(0)
         print("\n\nMyvi alternatifine göz atılıyor")
         alternatifler[sites.index("MYVI")].click()
+        delay(3.5)
         play_button = driver.find_element_by_xpath("//div[@class='panel-body']/div[@class='video-icerik']/iframe")
         play_button.click()
         delay(4.3)
@@ -231,7 +237,7 @@ def getMyviVid():
     else:
         oynat_indir(url)
     finally:
-    	driver.switch_to.default_content()
+        driver.switch_to.default_content()
 
 def deneAlternatifler():
     if sites.__contains__("RAPIDVIDEO"): #1
@@ -251,9 +257,25 @@ def deneAlternatifler():
 
 
 ## !! MANUEL DEMO !! ##
-hedef = input("HEDEF: ")
+while True:
+    results = ta.anime_ara(input("Animeyi ara: "))
+    if not(results):
+        print("Bulunamadı.\n")
+        continue
+    break
+for result in results:
+    i = str(results.index(result)+1)
+    if (len(str(i))==1): space="  "
+    else:                space=" "
+    print(space+i+") "+result[0])
+anime = results[int(input("\nAnimeyi seçin: "))-1][1]
+bolumler = ta.bolumler(anime)
+bolum = int(input(str(len(bolumler))+" bölüm mevcut, seçiminiz: "))-1
+print(bolumler[bolum][0]+". bölümüne göz atılıyor.\n")
+hedef = "https://turkanime.tv/video/"+bolumler[bolum][1]
 
-driver.get(hedef)
+try:driver.get(hedef)
+except:print(">connection timed out\nTürkanime sunucuları bugünde mükemmel çalışıyor :3")
 updateFansublar(1)
 
 for i in range(0,len(fansublar)):
