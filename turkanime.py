@@ -72,7 +72,7 @@ def checkVideo(url_):
 fansublar = []
 def updateFansublar(n):
     global fansublar
-    fansublar = driver.find_elements_by_xpath("//div[@class='panel-body']/div/button")
+    fansublar = driver.find_elements_by_xpath("//div[@class='panel-body']/div[contains(@class, 'btn-group') and contains(@class, 'pull-right')]/button")
     if n:
         print("\nMEVCUT FANSUBLAR:")
         for fansub in fansublar:
@@ -215,21 +215,30 @@ def getMyviVid():
         print("\n\nMyvi alternatifine göz atılıyor")
         alternatifler[sites.index("MYVI")].click()
         delay(3.5)
-        play_button = driver.find_element_by_xpath("//div[@class='panel-body']/div[@class='video-icerik']/iframe")
-        play_button.click()
-        delay(4.3)
         iframe_1 = driver.find_element_by_css_selector(".video-icerik iframe")
         driver.switch_to.frame(iframe_1)
-        iframe_2 = driver.find_element_by_css_selector("iframe")
+        iframe_2 = driver.find_element_by_tag_name("iframe")
         driver.switch_to.frame(iframe_2)
-        while True:
-            try:
-                driver.find_element_by_css_selector(".player-logo.player-logo-legacy")
-            except: # kaybolduğunda
-                break
-        delay(1)
-        play_button.click()
-        url=driver.find_element_by_css_selector(".player-logo.player-logo-legacy").get_attribute("href")
+        url = driver.find_elements_by_tag_name("link")[0].get_attribute("href")
+        checkVideo(url)
+    except:
+        print("Videoya erişilemiyor")
+        return False
+    else:
+        oynat_indir(url)
+    finally:
+        driver.switch_to.default_content()
+
+def getVKvid():
+    try: # iki iframe katmanından oluşuyor
+        updateAlternatifler(0)
+        print("\n\nVk alternatifine göz atılıyor")
+        alternatifler[sites.index("VK")].click()
+        delay(4)
+        iframe_1 = driver.find_element_by_css_selector(".video-icerik iframe")
+        driver.switch_to.frame(iframe_1)
+        url = driver.find_element_by_tag_name("iframe").get_attribute("src")
+        url = url[url.index("?")+1:]
         checkVideo(url)
     except:
         print("Videoya erişilemiyor")
@@ -248,6 +257,8 @@ def deneAlternatifler():
         getMailVid()
     if sites.__contains__("MYVI"): #3
         getMyviVid()
+    if sites.__contains__("VK"):
+    	getVKvid()
     for harici in HARICILER: #4,5,6,7 (satir 19)
         if sites.__contains__(harici):
             getExternalVidOf(harici)
