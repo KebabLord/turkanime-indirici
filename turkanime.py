@@ -1,13 +1,13 @@
 # Türkanime Video Player/Downloader 2.5.0
 
-# GEREKSİNİMLER - geckodriver, python-selenium, mpv, youtube-dl 
+# GEREKSİNİMLER - geckodriver, python-selenium, mpv, youtube-dl
 
-# YAPILACAKLAR LİSTESİ    
+# YAPILACAKLAR LİSTESİ
 """
 - Openload alternatifi eklenicek
-- Arama ve bölüm listesi sistemi entegre edilecek
+- Cli geliştirilecek
 """
-import multiprocessing 
+import multiprocessing
 from selenium import webdriver
 from selenium.webdriver.firefox.options import Options
 from time import sleep as delay
@@ -72,7 +72,7 @@ def checkVideo(url_):
 fansublar = []
 def updateFansublar(n):
     global fansublar
-    fansublar = driver.find_elements_by_xpath("//div[@class='panel-body']/div[contains(@class, 'btn-group') and contains(@class, 'pull-right')]/button")
+    fansublar = driver.find_elements_by_xpath("//div[@class='panel-body']/div[@class='pull-right']/button")
     if n:
         print("\nMEVCUT FANSUBLAR:")
         for fansub in fansublar:
