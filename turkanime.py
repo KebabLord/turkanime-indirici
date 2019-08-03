@@ -66,14 +66,13 @@ def killPopup():
 
 aksiyon = ""
 def oynat_indir(url_):
-    driver.close()
+    driver.get("about:blank")
     if aksiyon.__contains__('indir'):
         filename = hedef[hedef.index("video/")+6:].replace("-","_").replace("/","")+".mp4 "
         basariStatus = system(ytdl_prefix+"youtube-dl -o "+filename+url_+" "+ytdl_infix+"> ./log")
     else:
         #print(mpv_prefix+"mpv "+url_+" > ./log")
         basariStatus = system(mpv_prefix+"mpv "+url_+" "+mpv_infix+"> ./log")
-    exit()
 
 
 def res_choices(n):
@@ -101,7 +100,7 @@ def checkVideo(url_):
         resolutions.clear()
         for i in range(0,int(len(data)/3)):
             resolutions.append(data[i*3:i*3+3])
-        if len([i[2] for i in resolutions]):
+        if len([i[2] for i in resolutions])>1:
             global mpv_infix,ytdl_infix
             cevap = prompt(res_s)['res']
             format_code = next(i[0] for i in resolutions if i[2]==cevap)
@@ -174,10 +173,14 @@ def getExternalVidOf(NYAN):
     iframe_1 = driver.find_element_by_css_selector(".video-icerik iframe") #iframe'in içine gir
     driver.switch_to.frame(iframe_1)
     url = driver.find_element_by_css_selector("#link").get_attribute("href") #linki ceple
-    checkVideo(url)
-
-    oynat_indir(url)
     driver.switch_to.default_content()
+    if not(checkVideo(url)):
+        print("Videoya erişilemiyor",end='\r')
+        return False
+    else:
+        oynat_indir(url)
+        return True
+    
 
 
 # TÜRKANİME PLAYER
@@ -192,14 +195,14 @@ def getTurkanimeVid():
         iframe_2 = driver.find_element_by_css_selector("iframe")
         driver.switch_to.frame(iframe_2)
         url = driver.find_element_by_css_selector(".jw-media").get_attribute("src")
-        checkVideo(url)
+        driver.switch_to.default_content()
+        if not(checkVideo(url)): raise
     except:
-        print("Videoya erişilemiyor")
+        print("Videoya erişilemiyor",end='\r')
         return False
     else:
         oynat_indir(url)
-    finally:
-        driver.switch_to.default_content()
+        return True
 
 # MAİLRU PLAYER
 def getMailVid():
@@ -213,14 +216,14 @@ def getMailVid():
         iframe_2 = driver.find_element_by_css_selector("iframe")
         driver.switch_to.frame(iframe_2)
         url = driver.find_element_by_css_selector(".b-video-controls__mymail-link").get_attribute("href")
-        checkVideo(url)
+        driver.switch_to.default_content()
+        if not(checkVideo(url)): raise
     except:
-        print("Videoya erişilemiyor")
+        print("Videoya erişilemiyor",end='\r')
         return False
     else:
         oynat_indir(url)
-    finally:
-        driver.switch_to.default_content()
+        return True
 
 # FEMBED PLAYER
 def getFembedVid(): #Fembed nazlıdır, videoya bir kere tıklanılması gerekiyor linki alabilmek için
@@ -245,14 +248,14 @@ def getFembedVid(): #Fembed nazlıdır, videoya bir kere tıklanılması gerekiy
         iframe_2 = driver.find_element_by_css_selector("iframe")
         driver.switch_to.frame(iframe_2)
         url = driver.find_element_by_css_selector(".jw-media").get_attribute("src")
-        checkVideo(url)
+        driver.switch_to.default_content()
+        if not(checkVideo(url)): raise
     except:
-        print("Videoya erişilemiyor")
+        print("Videoya erişilemiyor",end='\r')
         return False
     else:
         oynat_indir(url)
-    finally:
-        driver.switch_to.default_content()
+        return True
 
 def getMyviVid():
     try:
@@ -265,14 +268,14 @@ def getMyviVid():
         iframe_2 = driver.find_element_by_tag_name("iframe")
         driver.switch_to.frame(iframe_2)
         url = driver.find_elements_by_tag_name("link")[0].get_attribute("href")
-        checkVideo(url)
+        driver.switch_to.default_content()
+        if not(checkVideo(url)): raise
     except:
-        print("Videoya erişilemiyor")
+        print("Videoya erişilemiyor",end='\r')
         return False
     else:
         oynat_indir(url)
-    finally:
-        driver.switch_to.default_content()
+        return True        
 
 def getVKvid():
     updateAlternatifler(0)
@@ -283,12 +286,34 @@ def getVKvid():
     driver.switch_to.frame(iframe_1)
     url = driver.find_element_by_tag_name("iframe").get_attribute("src")
     url = url[url.index("?")+1:]
+    driver.switch_to.default_content()
     if not(checkVideo(url)):
         print("Videoya erişilemedi",end="\r")
-        driver.switch_to.default_content()
         return False
     else:
         oynat_indir(url)
+        return True
+
+def getGPLUSvid():
+    try: # iki iframe katmanından oluşuyor
+        updateAlternatifler(0)
+        print("\n\nGPLUS alternatifine göz atılıyor",end="\r")
+        alternatifler[sites.index("GPLUS")].click()
+        sleep(4)
+        iframe_1 = driver.find_element_by_css_selector(".video-icerik iframe")
+        driver.switch_to.frame(iframe_1)
+        iframe_2 = driver.find_element_by_css_selector("iframe")
+        driver.switch_to.frame(iframe_2)
+        url = driver.find_element_by_css_selector(".jw-media").get_attribute("src")
+        driver.switch_to.default_content()
+        checkVideo(url)
+    except:
+        print("Videoya erişilemiyor",end='\r')
+        return False
+    else:
+        oynat_indir(url)
+        return True
+
 """
 def deneAlternatifler():
     if sites.__contains__("RAPIDVIDEO"): #1
@@ -318,51 +343,22 @@ def deneAlternatifler(nyan):
         err = getVKvid()
     if nyan=="TÜRKANİME": #8
         err = getTurkanimeVid()
+    if nyan=="GPLUS":
+        err = getGPLUSvid()
     else:
         err = getExternalVidOf(nyan)
     return err
 
 
-## !! MANUEL DEMO !! ##
-"""
-while True:
-    results = ta.anime_ara(input("Animeyi ara: "))
-    if not(results):
-        print("Bulunamadı.\n")
-        continue
-    break
-for result in results:
-    i = str(results.index(result)+1)
-    if (len(str(i))==1): space="  "
-    else:                space=" "
-    print(space+i+") "+result[0])
-anime = results[int(input("\nAnimeyi seçin: "))-1][1]
-bolumler = ta.bolumler(anime)
-bolum = int(input(str(len(bolumler))+" bölüm mevcut, seçiminiz: "))-1
-print(bolumler[bolum][0]+". bölümüne göz atılıyor.\n")
-hedef = "https://turkanime.tv/video/"+bolumler[bolum][1]
-
-try:driver.get(hedef)
-except:print(">connection timed out\nTürkanime sunucuları bugünde mükemmel çalışıyor :3")
-updateFansublar(1)
-
-for i in range(0,len(fansublar)):
-    fansublar[i].click()
-    sleep(1)
-    killPopup()
-    updateAlternatifler(1)
-    sleep(3)
-    deneAlternatifler()
-    driver.refresh()
-    sleep(1)
-    updateFansublar(0)
-"""
 
 tum_sonuclar = []
 def sonuclar(answers):
     global tum_sonuclar,aksiyon
     aksiyon = answers['aksiyon']
     tum_sonuclar = ta.anime_ara(answers['arama'])
+    if not(tum_sonuclar):
+        a = input("Sonuç bulunamadı, animenin tam adını girin: ")
+        tum_sonuclar=[[a,a.replace(' ','-').replace('I','i').replace(':','').replace('!','')]]
     sonux = []
     for i in tum_sonuclar:
         sonux.append(i[0])
@@ -449,10 +445,11 @@ kaynak_s = [
 
 
 for hedef in hedefler:
+    flag = False
     print(hedef[0]+'.bölüme göz atılıyor..',end='\r')
     driver.get(hedef[1])
     sleep(1.5)
-    while True:
+    while (True and not(flag)):
         updateFansublar(0)
         funsub = prompt(fansub_s)['fansub']
         if funsub=="Geri dön": break
@@ -460,14 +457,17 @@ for hedef in hedefler:
         btn.click()
         while True:
             updateAlternatifler(0)
-            print("1337")
             kaynax = prompt(kaynak_s)['kaynak']
             if kaynax=="Geri dön": break
             alternatifler[sites.index(kaynax)].click
             print("Video hazırlanıyor..",end="\r")
             err = deneAlternatifler(kaynax)
-            if not(err): continue
+            #print("err "+str(err)) #debug
+            if not(err): continue # Eğer error aldıysak kullanıcıya farklı bi alternatif için şans ver
+            flag = True
             break
+    if hedef != hedefler[-1]:
+        print("Sıradaki bölüme geçiliyor..",end='\r')
 
 """
     updateAlternatifler(0)
