@@ -89,7 +89,7 @@ def oynat_indir(url_):
         #print(ytdl_prefix+"youtube-dl -o "+filename+" '"+url_+"'' "+ytdl_infix)#+"> ./log")#DEBUG
         for i in range(0,4):
             basariStatus = system(ytdl_prefix+"youtube-dl -o "+filename+" '"+url_+"' "+ytdl_infix)#+"> ./log")
-            if not(basariStatus):print("SUCCESS");return True
+            if not(basariStatus):print("\nBaşarılı!");return True
     else:
         #print(mpv_prefix+"mpv "+url_+" > ./log")
         basariStatus = system(mpv_prefix+"mpv '"+url_+"' "+mpv_infix)#+"> ./log")
@@ -514,7 +514,7 @@ for hedef in hedefler:
         updateFansublar() # İlk olarak kaliteli alternatifleri dener
         #print("deneniyor 1")#DEBUG
         for fansub in fansublar:
-            print(fansub)
+            #print(fansub)#DEBUG
             fansub[1].click()
             sleep(2.5)
             updateAlternatifler()
