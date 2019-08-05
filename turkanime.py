@@ -525,7 +525,7 @@ for hedef in hedefler:
         if err:continue
         updateFansublar() # Ardından 2. derece alternatifleri dener
         for fansub in fansublar:
-            print(fansub)
+            #print(fansub)
             fansub[1].click()
             sleep(2.5)
             updateAlternatifler()
