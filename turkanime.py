@@ -24,7 +24,7 @@ from search_api import * # SevenOps'un arama yapma apisi
 
 ta = TurkAnime()
 options = Options()
-#options.add_argument('--headless')
+options.add_argument('--headless')
 
 def at_exit():
     print("Program kapatılıyor..",end='\r')
