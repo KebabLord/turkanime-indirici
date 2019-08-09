@@ -50,7 +50,7 @@ else:
     ytdl_prefix=""
     mpv_prefix=""
 
-ytdl_infix = mpv_infix = ""
+ytdl_suffix = mpv_suffix = ""
 
 ppprint(" ")
 
@@ -65,13 +65,16 @@ HARICILER = [ # Türkanimenin yeni sekmede açtığı playerlar
 ]
 
 desteklenen_alternatifler = [ # Bütün desteklenen playerlar
+    "SIBNET",
     "RAPIDVIDEO",
     "FEMBED",
+    "OPENLOAD",
     "MAIL",
     "VK",
     "GPLUS",
     "MYVI",
-    "TÜRKANİME"
+    "TÜRKANİME",
+    "ODNOKLASSNIKI"
 ] + HARICILER
 
 def klasor():
@@ -93,6 +96,12 @@ def killPopup():
 aksiyon = ""
 def oynat_indir(url_):
     driver.get("about:blank")
+    global ytdl_suffix,mpv_suffix
+    if 'sibnet' in url_:
+        ytdl_suffix += ' --config-location sibnet.conf'
+        mpv_suffix += ' --ytdl-raw-options=config-location="sibnet.conf"'
+    else:
+        ytdl_suffix = mpv_suffix = ""
     if aksiyon.__contains__('indir'):
         #print(hedef)#DEBUG
         turkanime_link = hedef[1]
@@ -102,13 +111,13 @@ def oynat_indir(url_):
             url_ = "'"+url_+"'"
         else:
             url_ = '"'+url_+'"'
-        #print(ytdl_prefix+"youtube-dl -o "+filename+" '"+url_+"'' "+ytdl_infix)#+"> ./log")#DEBUG
+        #print(ytdl_prefix+"youtube-dl -o "+filename+" '"+url_+"'' "+ytdl_suffix)#+"> ./log")#DEBUG
         for i in range(0,4):
-            basariStatus = system(ytdl_prefix+'youtube-dl -o '+klasor()+filename+' '+url_+' '+ytdl_infix)#+"> ./log")
+            basariStatus = system(ytdl_prefix+'youtube-dl -o '+klasor()+filename+' '+url_+' '+ytdl_suffix)#+"> ./log")
             if not(basariStatus):print("\nBaşarılı!");return True
     else:
         #print(mpv_prefix+"mpv "+url_+" > ./log")
-        basariStatus = system(mpv_prefix+'mpv '+url_+' '+mpv_infix)#+"> ./log")
+        basariStatus = system(mpv_prefix+'mpv '+url_+' '+mpv_suffix)#+"> ./log")
 
 
 """def res_choices(n):
@@ -126,8 +135,11 @@ res_s = [
 resolutions = []
 def checkVideo(url_):
     ppprint('Video yaşıyor mu kontrol ediliyor..')
-    global resolutions
-    i = popen('youtube-dl -F "'+url_+'"')
+    global resolutions,ytdl_suffix
+    if 'sibnet' in url_:
+            ytdl_suffix += ' --config-location sibnet.conf'
+    else:ytdl_suffix = ""
+    i = popen('youtube-dl -F "'+url_+'"'+ytdl_suffix)
     data = i.read();
     status = i.close()
     if status==None:
@@ -138,7 +150,7 @@ def checkVideo(url_):
         for i in range(0,int(len(data)/3)):
             resolutions.append(data[i*3:i*3+3])
         if (len([i[2] for i in resolutions])>1) and (aksiyon.__contains__('izle')):
-            global mpv_infix,ytdl_infix
+            global mpv_suffix
             cevap = prompt([{
             'type': 'list',
             'name': 'res',
@@ -147,9 +159,9 @@ def checkVideo(url_):
             }
             ])['res']
             format_code = next(i[0] for i in resolutions if i[2]==cevap)
-            ytdl_infix += "-f "+str(format_code)
-            mpv_infix += "--ytdl-format "+str(format_code)+" "
-        ppprint('Videonun aktif olduğu doğrulandı.')
+            ytdl_suffix += "-f "+str(format_code)
+            mpv_suffix += "--ytdl-format "+str(format_code)+" "
+        print('Videonun aktif olduğu doğrulandı.')
         return True
     else:
         return False
@@ -185,7 +197,7 @@ def updateAlternatifler():
     #! "alternatifler" listesinde butonların html kodları ; "sites" listesinde butonların isimleri var
     for alternatif in alternatifler:
         if not(desteklenen_alternatifler.__contains__(alternatif.text)):
-            sites.append({'name':alternatif.text,'disabled':'Henüz desteklenmiyor'})
+            sites.append({'name':alternatif.text,'disabled':'!'})
             continue
         sites.append(alternatif.text)
         #if n:print("  >"+alternatif.text)
@@ -301,6 +313,41 @@ def getFembedVid(): #Fembed nazlıdır, videoya bir kere tıklanılması gerekiy
     oynat_indir(url)
     return True
 
+def getOLOADVid():
+    updateAlternatifler()
+    ppprint("Openload alternatifine göz atılıyor")
+    alternatifler[sites.index("OPENLOAD")].click()
+    sleep(3)
+    driver.find_element_by_xpath("//div[@class='panel-body']/div[@class='video-icerik']/iframe").click()
+    driver.switch_to.window(driver.window_handles[1])
+    i = 0
+    while i<7:
+        sleep(1)
+        try:
+            driver.find_element_by_tag_name('body').click()
+            sleep(2)
+            while (len(driver.window_handles)>2):
+                driver.switch_to.window(driver.window_handles[2])
+                driver.close()
+            driver.switch_to.window(driver.window_handles[1])
+            sleep(2.3)    
+            url = driver.find_elements_by_tag_name('video')[0].get_attribute('src')
+            if not(url):
+                raise
+        except:
+            i+=1
+            continue
+        else:
+            driver.close()
+            driver.switch_to.window(driver.window_handles[0])
+            ppprint("Video'yu yakalama başarılı!")
+            oynat_indir(url)
+            return True            
+    driver.close()
+    driver.switch_to.window(driver.window_handles[0])
+    ppprint("Bu kaynağa erişilemedi")
+    return False
+
 def getMyviVid():
     try:
         updateAlternatifler()
@@ -360,6 +407,45 @@ def getGPLUSvid():
         oynat_indir(url)
         return True
 
+def getOKRUvid():
+    try: # iki iframe katmanından oluşuyor
+        updateAlternatifler()
+        ppprint("OKRU alternatifine göz atılıyor")
+        alternatifler[sites.index("ODNOKLASSNIKI")].click()
+        sleep(4)
+        iframe_1 = driver.find_element_by_css_selector(".video-icerik iframe")
+        driver.switch_to.frame(iframe_1)
+        url = driver.find_element_by_xpath('//object/param[@name="flashvars"]').get_attribute('value')
+        url = "http://www.ok.ru/videoembed/"+url[url.index('mid%3D')+6:url.index('&locale=tr')]
+        driver.switch_to.default_content()
+        if not(checkVideo(url)): raise
+    except:
+        ppprint("Bu kaynağa erişilemedi")
+        return False
+    else:
+        oynat_indir(url)
+        return True
+
+def getSIBNETvid():
+    try: # iki iframe katmanından oluşuyor
+        updateAlternatifler()
+        ppprint("SIBNET alternatifine göz atılıyor")
+        alternatifler[sites.index("SIBNET")].click()
+        sleep(4)
+        iframe_1 = driver.find_element_by_css_selector(".video-icerik iframe")
+        driver.switch_to.frame(iframe_1)
+        iframe_2 = driver.find_element_by_css_selector("iframe")
+        driver.switch_to.frame(iframe_2)
+        url = driver.find_elements_by_tag_name('meta')[7].get_attribute('content')
+        driver.switch_to.default_content()
+        if not(checkVideo(url)): raise
+    except:
+        ppprint("Bu kaynağa erişilemedi")
+        return False
+    else:
+        oynat_indir(url)
+        return True
+
 """
 def deneAlternatifler():
     if sites.__contains__("RAPIDVIDEO"): #1
@@ -393,6 +479,12 @@ def deneAlternatif(nyan):
         err = getTurkanimeVid()
     elif nyan=="GPLUS":
         err = getGPLUSvid()
+    elif nyan=="ODNOKLASSNIKI":
+        err = getOKRUvid()
+    elif nyan=="OPENLOAD":
+        err = getOLOADVid()
+    elif nyan=="SIBNET":
+        err = getSIBNETvid()
     else:
         err = getExternalVidOf(nyan)
     return err
@@ -400,13 +492,19 @@ def deneAlternatif(nyan):
 def deneAlternatifler(n):
     err = False
     if n==1:
-        if sites.__contains__("RAPIDVIDEO"): #1
+        if sites.__contains__("SIBNET"): #1
+            err = getSIBNETvid()
+            if err:return err
+        if sites.__contains__("RAPIDVIDEO"): #2
             err = getExternalVidOf("RAPIDVIDEO")
             if err:return err
-        if sites.__contains__("FEMBED"):
+        if sites.__contains__("FEMBED"): #3
             err = getFembedVid()
             if err:return err
-        if sites.__contains__("MAIL"): #2
+        if sites.__contains__("OPENLOAD"): #4
+            err = getOLOADVid()
+            if err:return err
+        if sites.__contains__("MAIL"): #5
             err = getMailVid()
             if err:return err
     else:
@@ -425,6 +523,9 @@ def deneAlternatifler(n):
                 if err:return err
         if sites.__contains__("TÜRKANİME"): #8
             err = getTurkanimeVid()
+            if err:return err
+        if sites.__contains__("ODNOKLASSNIKI"): #8
+            err = getOKRUvid()
             if err:return err
     return err
 
