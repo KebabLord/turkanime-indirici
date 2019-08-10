@@ -1,13 +1,9 @@
+# -*- coding: utf-8 -*-
+#
 # Türkanime Video Player/Downloader v3
 # https://github.com/Kebablord/turkanime-downloader
 # GEREKSİNİMLER - geckodriver, python-selenium, mpv, youtube-dl,PyInquirer, httpx
 #
-"""  YAPILACAKLAR LİSTESİ
-- Openload,odnoklassiniki eklenecek
-- Cli teması değiştirilecek
-"""
-#
-# -*- coding: utf-8 -*-
 from __future__ import print_function, unicode_literals
 from time import sleep
 from PyInquirer import style_from_dict, Token, prompt, Separator
