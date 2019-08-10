@@ -98,18 +98,17 @@ def oynat_indir(url_):
         mpv_suffix += ' --ytdl-raw-options=config-location="sibnet.conf"'
     else:
         ytdl_suffix = mpv_suffix = ""
+    if (';' in url_) or ('&' in url_):
+        url_ = "'"+url_+"'"
+    else:
+        url_ = '"'+url_+'"'
     if aksiyon.__contains__('indir'):
         #print(hedef)#DEBUG
         turkanime_link = hedef[1]
         filename = turkanime_link[turkanime_link.index("video/")+6:].replace("-","_").replace("/","")+".mp4"
-
-        if (';' in url_) or ('&' in url_):
-            url_ = "'"+url_+"'"
-        else:
-            url_ = '"'+url_+'"'
         #print(ytdl_prefix+"youtube-dl -o "+filename+" '"+url_+"'' "+ytdl_suffix)#+"> ./log")#DEBUG
         for i in range(0,4):
-            basariStatus = system(ytdl_prefix+'youtube-dl -o '+klasor()+filename+' '+url_+' '+ytdl_suffix)#+"> ./log")
+            basariStatus = system(ytdl_prefix+'youtube-dl --no-warnings -o '+klasor()+filename+' '+url_+' '+ytdl_suffix)#+"> ./log")
             if not(basariStatus):print("\nBaşarılı!");return True
     else:
         #print(mpv_prefix+"mpv "+url_+" > ./log")
@@ -135,7 +134,7 @@ def checkVideo(url_):
     if 'sibnet' in url_:
             ytdl_suffix += ' --config-location sibnet.conf'
     else:ytdl_suffix = ""
-    i = popen('youtube-dl -F "'+url_+'"'+ytdl_suffix)
+    i = popen('youtube-dl --no-warnings -F "'+url_+'"'+ytdl_suffix)
     data = i.read();
     status = i.close()
     if status==None:
@@ -373,7 +372,7 @@ def getVKvid():
         iframe_1 = driver.find_element_by_css_selector(".video-icerik iframe")
         driver.switch_to.frame(iframe_1)
         url = driver.find_element_by_tag_name("iframe").get_attribute("src")
-        url = url[url.index("?")+1:]
+        #url = url[url.index("?")+1:]
         driver.switch_to.default_content()
         if not(checkVideo(url)): raise
     except:
