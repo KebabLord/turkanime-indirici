@@ -2,7 +2,7 @@
 #
 # Türkanime Video Player/Downloader v3
 # https://github.com/Kebablord/turkanime-downloader
-# GEREKSİNİMLER - geckodriver, python-selenium, mpv, youtube-dl,PyInquirer, httpx
+# EK GEREKSİNİMLER - geckodriver, mpv, youtube-dl
 #
 from __future__ import print_function, unicode_literals
 from time import sleep
@@ -18,7 +18,7 @@ from atexit import register as register
 dizin.insert(0, './api_arama')
 from search_api import * # SevenOps'un arama yapma apisi
 
-print('TürkAnimu İndirici v3')
+print('TürkAnimu İndirici - github/Kebablord')
 
 ta = TurkAnime()
 options = Options()
@@ -48,10 +48,8 @@ else:
 
 ytdl_suffix = mpv_suffix = ""
 
-ppprint(" ")
+ppprint(" ") # Satırı temizle
 
-
-global hedef
 
 HARICILER = [ # Türkanimenin yeni sekmede açtığı playerlar
         "UMPLOMP"
@@ -90,6 +88,7 @@ def killPopup():
 
 
 aksiyon = ""
+global hedef
 def oynat_indir(url_):
     driver.get("about:blank")
     global ytdl_suffix,mpv_suffix
@@ -144,6 +143,7 @@ def checkVideo(url_):
         resolutions.clear()
         for i in range(0,int(len(data)/3)):
             resolutions.append(data[i*3:i*3+3])
+        print('Videonun aktif olduğu doğrulandı.')
         if (len([i[2] for i in resolutions])>1) and (aksiyon.__contains__('izle')):
             global mpv_suffix
             cevap = prompt([{
@@ -156,7 +156,6 @@ def checkVideo(url_):
             format_code = next(i[0] for i in resolutions if i[2]==cevap)
             ytdl_suffix += "-f "+str(format_code)
             mpv_suffix += "--ytdl-format "+str(format_code)+" "
-        print('Videonun aktif olduğu doğrulandı.')
         return True
     else:
         return False
@@ -371,8 +370,9 @@ def getVKvid():
         sleep(6)
         iframe_1 = driver.find_element_by_css_selector(".video-icerik iframe")
         driver.switch_to.frame(iframe_1)
-        url = driver.find_element_by_tag_name("iframe").get_attribute("src")
-        #url = url[url.index("?")+1:]
+        iframe_2 = driver.find_element_by_tag_name("iframe")
+        driver.switch_to.frame(iframe_2)
+        url = driver.find_element_by_css_selector('.videoplayer_btn_vk').get_attribute('href')
         driver.switch_to.default_content()
         if not(checkVideo(url)): raise
     except:
