@@ -4,6 +4,7 @@ Türkanime için terminal video oynatıcı ve indirici. İtinayla her bölümü 
  - Animu izleyebilir
  - Çözünürlük seçebilir
  - Uygulama içinden arama yapabilir
+ - İzlerken animeyi kaydedebilir
  
 #### Desteklenen kaynaklar:
 ```Sibnet,Odnoklassinki,Openload,Umplomp,Hdvid,Sendvid,Streamango,Fembed,RapidShare,Mailru,VK,Gplus,Myvi,Türkanime Player```
