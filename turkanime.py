@@ -146,11 +146,12 @@ def oynat_indir(url_):
     filename = turkanime_link[turkanime_link.index("video/")+6:].replace("-","_").replace("/","")+".mp4"
 
     if 'mpv_mod' in globals() and mpv_mod:
-        mpv_suffix += '--record-file='+path.join(klasor(),filename)
+        mpv_suffix += ' --record-file='+path.join(klasor(),filename)
 
     if aksiyon.__contains__('indir'):
         for i in range(1,4):
             basariStatus = system('youtube-dl --no-warnings -o '+path.join(klasor(),filename)+' '+url_+' '+ytdl_suffix)#+"> ./log")
+            #print('youtube-dl --no-warnings -o '+path.join(klasor(),filename)+' '+url_+' '+ytdl_suffix)#DEBUGx
             if not(basariStatus):
                 print("\nİŞLEM BAŞARILI!\n")
                 driver.get("about:blank")
@@ -158,7 +159,7 @@ def oynat_indir(url_):
             print("[durum] "+str(i)+".deneme")
         print("Farklı bir alternatife geçiliyor");return False
     else:
-        #print(mpv_prefix+'mpv '+url_+' '+mpv_suffix)
+        #print('mpv '+url_+' '+mpv_suffix)#debugx
         basariStatus = system('mpv '+url_+' '+mpv_suffix)#+"> ./log")
         if not(basariStatus):
             driver.get("about:blank")
@@ -619,7 +620,7 @@ while True:
 #                global debug
                 oto_dizin = diropenbox()
                 print('Başarılı.')
-                kaydet(0,'oto_dizin','"'+oto_dizin+'"')
+                kaydet(0,'oto_dizin','"r"'+oto_dizin+'""')
             elif opsiyon is ayarlar_li[1]:
                 cevap = prompt([{
                 'type': 'list',
@@ -637,7 +638,24 @@ while True:
                 break
     
     elif aksiyon.__contains__('Anime'):
-        anime_c = prompt(anime_s)
+        anime_c = prompt([
+        {
+        'type': 'input',
+        'name': 'arama',
+        'message': 'Animeyi ara',
+        },
+        {
+        'type': 'list',
+        'name': 'isim',
+        'message': 'Animeyi seç',
+        'choices': sonuclar,
+        },
+        {
+        'type': 'checkbox',
+        'message': 'Bölümleri seç',
+        'name': 'bolum',
+        'choices': bolumler
+        }])
         hedefler = []
         prefix_hedefler = 'https://turkanime.tv/video/'
         for i in tum_bolumler:
