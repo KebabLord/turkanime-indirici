@@ -1,5 +1,5 @@
+#!/usr/bin/python3
 # -*- coding: utf-8 -*-
-#
 # Türkanime Video Player/Downloader v3
 # https://github.com/Kebablord/turkanime-downloader
 # EK GEREKSİNİMLER - geckodriver, mpv, youtube-dl
@@ -15,7 +15,12 @@ from os import system,getpid,name,popen,mkdir,path
 from sys import path as dizin
 from atexit import register as register
 
-dizin.insert(0, './api_arama')
+DIR=path.realpath(__file__)
+DIR="/".join(DIR.split("/")[0:-1])
+DIR=path.join(DIR,'api_arama')
+#print("Api'nin konumu: "+DIR)#DEBUG
+
+dizin.insert(0,DIR)
 from search_api import * # SevenOps'un arama yapma apisi
 
 print('TürkAnimu İndirici - github/Kebablord')
@@ -620,7 +625,7 @@ while True:
 #                global debug
                 oto_dizin = diropenbox()
                 print('Başarılı.')
-                kaydet(0,'oto_dizin','"r"'+oto_dizin+'""')
+                kaydet(0,'oto_dizin','r"'+oto_dizin+'"')
             elif opsiyon is ayarlar_li[1]:
                 cevap = prompt([{
                 'type': 'list',
