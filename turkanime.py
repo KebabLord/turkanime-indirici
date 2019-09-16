@@ -199,6 +199,8 @@ def checkVideo(url_):
 # Fansub listeleyici
 fansublar = []
 def updateFansublar():
+    sleep(4)
+    ppprint('Fansublar güncelleniyor...')
     driver.switch_to.default_content()
     global fansublar
     fansublar.clear()
@@ -539,9 +541,14 @@ def deneAlternatifler(n):
 tum_sonuclar = []
 def sonuclar(answers):
     global tum_sonuclar
-    tum_sonuclar = ta.anime_ara(answers['arama'])
+    while True:
+        try:
+            tum_sonuclar = ta.anime_ara(answers['arama'])
+            break
+        except:
+        	pass
     while not(tum_sonuclar):
-            tum_sonuclar = ta.anime_ara(input("Sonuç bulunamadı, tekrar deneyin: "))
+            tum_sonuclar = ta.anime_ara(input("Sonuç yok, tekrar deneyin. Menü için ctrl-c "))
     if len(tum_sonuclar)==1:
         tum_sonuclar[0][0]=tum_sonuclar[0][1].replace('-',' ').capitalize()
     sonux = []
