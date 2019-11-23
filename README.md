@@ -17,3 +17,7 @@ https://github.com/KebabLord/turkanime-downloader/releases/tag/v3
  
  ### İzleme
  ![indirme.gif](ss_izle.gif)
+
+### Yapılacaklar:
+>Timeout hatası çözülecek
+>Domain güncellemesinden beridir kod stabil çalışmıyor, düzeltilecek

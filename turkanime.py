@@ -669,7 +669,7 @@ while True:
         'choices': bolumler
         }])
         hedefler = []
-        prefix_hedefler = 'https://turkanime.tv/video/'
+        prefix_hedefler = 'https://turkanime.net/video/'
         for i in tum_bolumler:
             if anime_c['bolum'].__contains__(i[0]):
                 hedefler.append([i[0],prefix_hedefler+i[1]])
