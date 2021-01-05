@@ -266,7 +266,7 @@ def getExternalVidOf(NYAN):
     
 
 
-# TÜRKANİME PLAYER
+# TÜRKANİME
 def getTurkanimeVid():
     try: # iki iframe katmanından oluşuyor
         updateAlternatifler()
@@ -287,7 +287,7 @@ def getTurkanimeVid():
         if oynat_indir(url): return True
         else: return False
 
-# MAİLRU PLAYER
+# MAİLRU
 def getMailVid():
     try: # iki iframe katmanından oluşuyor
         updateAlternatifler()
@@ -308,7 +308,7 @@ def getMailVid():
         if oynat_indir(url): return True
         else: return False
 
-# FEMBED PLAYER
+# FEMBED
 def getFembedVid(): #Fembed nazlıdır, videoya bir kere tıklanılması gerekiyor linki alabilmek için
     try:
         updateAlternatifler()
@@ -339,6 +339,7 @@ def getFembedVid(): #Fembed nazlıdır, videoya bir kere tıklanılması gerekiy
     if oynat_indir(url): return True
     else: return False
 
+# ODNOKLASSINKI
 def getOLOADVid():
     updateAlternatifler()
     ppprint("Openload alternatifine göz atılıyor")
@@ -374,6 +375,7 @@ def getOLOADVid():
     print("OpenLoad alternatifindeki video silinmiş veya arızalı.")
     return False
 
+# MYVI
 def getMyviVid():
     try:
         updateAlternatifler()
@@ -394,6 +396,7 @@ def getMyviVid():
         if oynat_indir(url): return True
         else: return False    
 
+# VK
 def getVKvid():
     try:
         updateAlternatifler()
@@ -414,6 +417,7 @@ def getVKvid():
         if oynat_indir(url): return True
         else: return False
 
+# Google+
 def getGPLUSvid():
     try: # iki iframe katmanından oluşuyor
         updateAlternatifler()
@@ -434,6 +438,7 @@ def getGPLUSvid():
         if oynat_indir(url): return True
         else: return False
 
+# OK.ru
 def getOKRUvid():
     try: # iki iframe katmanından oluşuyor
         updateAlternatifler()
@@ -453,6 +458,7 @@ def getOKRUvid():
         if oynat_indir(url): return True
         else: return False
 
+# SIBNET
 def getSIBNETvid():
     try: # iki iframe katmanından oluşuyor
         updateAlternatifler()
@@ -622,7 +628,6 @@ while True:
                 'choices': ayarlar_li
                 }])['_']
             if opsiyon is ayarlar_li[0]:
-#                global debug
                 oto_dizin = diropenbox()
                 print('Başarılı.')
                 kaydet(0,'oto_dizin','r"'+oto_dizin+'"')
