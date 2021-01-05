@@ -540,16 +540,10 @@ def deneAlternatifler(n):
 tum_sonuclar = []
 def sonuclar(answers):
     global tum_sonuclar
-    while True:
-        try:
-            tum_sonuclar = ta.anime_ara(answers['arama'])
-            break
-        except:
-        	pass
+    tum_sonuclar = ta.anime_ara(answers['arama'])
     while not(tum_sonuclar):
+            print("fail")
             tum_sonuclar = ta.anime_ara(input("Sonuç yok, tekrar deneyin. Menü için ctrl-c "))
-    if len(tum_sonuclar)==1:
-        tum_sonuclar[0][0]=tum_sonuclar[0][1].replace('-',' ').capitalize()
     sonux = []
     for i in tum_sonuclar:
         sonux.append(i[0])

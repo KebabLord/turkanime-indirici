@@ -3,6 +3,11 @@ class TurkAnime():
         self.driver=driver
     def anime_ara(self, ara):
         self.driver.get(f"https://www.turkanime.net/arama?arama={ara}")
+        if "/anime/" in self.driver.current_url:
+            liste = [[self.driver.title, self.driver.current_url.split("anime/")[1]]]
+            self.driver.get("about:blank")
+            return liste
+
         liste = []
         for i in self.driver.find_elements_by_css_selector(".panel-title a"):
             liste.append([i.text,i.get_attribute("href").split("anime/")[1]])
