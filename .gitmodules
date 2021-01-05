@@ -1,4 +1,0 @@
-[submodule "api_arama"]
-	path = api_arama
-	url = https://github.com/Sevenops/TurkAnime-Downloader.git
-	branch = api

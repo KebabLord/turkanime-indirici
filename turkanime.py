@@ -17,15 +17,13 @@ from atexit import register as register
 
 DIR=path.realpath(__file__)
 DIR="/".join(DIR.split("/")[0:-1])
-DIR=path.join(DIR,'api_arama')
-#print("Api'nin konumu: "+DIR)#DEBUG
+DIR=path.join(DIR,'api')
 
 dizin.insert(0,DIR)
-from search_api import * # SevenOps'un arama yapma apisi
+from search_api import *
 
 print('TürkAnimu İndirici - github/Kebablord')
 
-ta = TurkAnime()
 options = Options()
 options.add_argument('--headless')
 
@@ -42,13 +40,14 @@ ppprint("Sürücü başlatılıyor...")
 
 if name is 'nt': # WINDOWS
     driver = webdriver.Firefox(options=options,executable_path=r'geckodriver.exe')
-    #driver = webdriver.PhantomJS('phantomjs.exe')
 else:            # LINUX
-    driver = webdriver.Firefox(options=options)
-    #driver = webdriver.PhantomJS()
+    profile = webdriver.FirefoxProfile()
+    profile.set_preference("network.proxy.type", 0)
+    driver = webdriver.Firefox(profile,options=options)
 
 #ytdl_suffix = mpv_suffix = ""
 ppprint(" ")
+ta = TurkAnime(driver)
 
 
 HARICILER = [ # Türkanimenin yeni sekmede açtığı playerlar
