@@ -54,6 +54,10 @@ print('TürkAnimu İndirici - github/Kebablord')
 options = Options()
 options.add_argument('--headless')
 
+profile = webdriver.FirefoxProfile()
+profile.set_preference("network.proxy.type", 0)
+profile.set_preference("permissions.default.image", 2)
+
 def ppprint(string): ## Statik yazı printleme fonksiyonu
     print(" "*54,end='\r')
     print(string,end='\r')
@@ -66,11 +70,9 @@ register(at_exit)
 ppprint("Sürücü başlatılıyor...")
 
 if name == 'nt': # WINDOWS
-    driver = webdriver.Firefox(options=options,executable_path=r'geckodriver.exe')
+    driver = webdriver.Firefox(profile, options=options, executable_path=r'geckodriver.exe')
 else:            # LINUX
-    profile = webdriver.FirefoxProfile()
-    profile.set_preference("network.proxy.type", 0)
-    driver = webdriver.Firefox(profile,options=options)
+    driver = webdriver.Firefox(profile, options=options)
 
 #ytdl_suffix = mpv_suffix = ""
 ppprint(" ")
