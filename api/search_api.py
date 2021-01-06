@@ -17,7 +17,8 @@ class TurkAnime():
         self.driver.get("https://www.turkanime.net/anime/{}".format(anime))
         liste = []
         for i in self.driver.find_elements_by_css_selector(".bolumAdi"):
-            sub_url = i.find_element_by_xpath("..").get_attribute("href")
-            sub_url = sub_url.split("video/")[1]
-            liste.append([i.text,sub_url])
+            sub_element = i.find_element_by_xpath("..")
+            sub_url = sub_element.get_attribute("href").split("video/")[1]
+            sub_text = sub_element.get_attribute("innerText")
+            liste.append([sub_text,sub_url])
         return liste
