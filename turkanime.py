@@ -4,6 +4,14 @@
 # https://github.com/Kebablord/turkanime-downloader
 # EK GEREKSİNİMLER - geckodriver, mpv, youtube-dl
 #
+#   1->Macos üzerinde brew paket yöneticisini yükleyin.
+#      2->brew install geckodriver
+#        3->brew install mpv
+#           4->brew install youtube-dl
+#               5-> pip install easygui selenium PyInquirer PyInquirer-fork
+#
+#
+#
 from __future__ import print_function, unicode_literals
 from time import sleep
 from PyInquirer import style_from_dict, Token, prompt, Separator
@@ -11,9 +19,10 @@ from examples import custom_style_2
 import multiprocessing
 from selenium import webdriver
 from selenium.webdriver.firefox.options import Options
-from os import system,getpid,name,popen,mkdir,path
+from os import system,getpid,name,popen,mkdir,path,read
 from sys import path as dizin
 from atexit import register as register
+
 
 DIR=path.realpath(__file__)
 DIR="/".join(DIR.split("/")[0:-1])
@@ -22,6 +31,24 @@ DIR=path.join(DIR,'api')
 dizin.insert(0,DIR)
 from search_api import *
 
+#Konsolu açılışta ve kapanışta sistem farketmeksizin temizlemek için.
+def Clear_Console():
+    if name == "win32":
+        stream = system('cls')
+    else:
+        stream = popen('clear')
+        output = stream.read()
+        print(output)
+
+def crossCommand(command):
+    if name == "win32":
+        return system(command);
+    else:
+        return  popen(command);
+
+
+
+Clear_Console();
 print('TürkAnimu İndirici - github/Kebablord')
 
 options = Options()
@@ -38,7 +65,7 @@ register(at_exit)
 
 ppprint("Sürücü başlatılıyor...")
 
-if name is 'nt': # WINDOWS
+if name == 'nt': # WINDOWS
     driver = webdriver.Firefox(options=options,executable_path=r'geckodriver.exe')
 else:            # LINUX
     profile = webdriver.FirefoxProfile()
@@ -239,7 +266,7 @@ def bekleSayfaninYuklenmesini():
             break
 
 
-# HARİCİ ALTERNATİFLER 
+# HARİCİ ALTERNATİFLER
 # Türkanimenin yeni sekmeye attığı harici playerlar: hdvid,rapidvideo,streamango,userscloud,sendvid
 def getExternalVidOf(NYAN):
     try:
@@ -263,7 +290,7 @@ def getExternalVidOf(NYAN):
         #print("EXTERNAL IS SUCC")#DEBUG
         if oynat_indir(url): return True
         else: return False
-    
+
 
 
 # TÜRKANİME
@@ -357,7 +384,7 @@ def getOLOADVid():
                 driver.switch_to.window(driver.window_handles[2])
                 driver.close()
             driver.switch_to.window(driver.window_handles[1])
-            sleep(2.3)    
+            sleep(2.3)
             url = driver.find_elements_by_tag_name('video')[0].get_attribute('src')
             if not(url):
                 raise
@@ -394,7 +421,7 @@ def getMyviVid():
         return False
     else:
         if oynat_indir(url): return True
-        else: return False    
+        else: return False
 
 # VK
 def getVKvid():
@@ -610,7 +637,7 @@ while True:
                     lines[n] = 'global '+m+';'+m+'='+v+'\n'
                     f.writelines(lines)
             else:
-                with open('ayarlar.conf','r') as f: 
+                with open('ayarlar.conf','r') as f:
                     lines=f.readlines()
                     lines[n] = 'global '+m+';'+m+'='+v+'\n'
                 with open('ayarlar.conf','w') as f:
@@ -646,7 +673,7 @@ while True:
                 kaydet(2,'mpv_mod',str(mpv_mod))
             else:
                 break
-    
+
     elif aksiyon.__contains__('Anime'):
         anime_c = prompt([
         {
@@ -672,7 +699,7 @@ while True:
             if anime_c['bolum'].__contains__(i[0]):
                 hedefler.append([i[0],prefix_hedefler+i[1]])
         ppprint(" ")
-        
+
         for hedef in hedefler:
             flag = False
             ppprint(hedef[0]+'.bölüme göz atılıyor..')
@@ -733,8 +760,15 @@ while True:
             if hedef != hedefler[-1]:
                 ppprint("Sıradaki bölüme geçiliyor..")
 
-    elif aksiyon is 'Yardım':
-        from webbrowser import open as tex
-        print("Yardım sayfası açılıyor..")
-        tex("klavuz.html")
-    elif aksiyon is 'Kapat':break
+    elif aksiyon == 'Yardım':
+        from sys import platform
+        if platform == 'darwin':
+            crossCommand('open klavuz.html')
+        else:
+            from webbrowser import open as tex
+            print("Yardım sayfası açılıyor..")
+            tex('klavuz.html')
+
+    elif aksiyon == 'Kapat':
+        Clear_Console();
+        break
