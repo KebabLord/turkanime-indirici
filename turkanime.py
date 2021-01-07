@@ -659,7 +659,8 @@ while True:
             if opsiyon is ayarlar_li[0]:
                 oto_dizin = diropenbox()
                 print('Başarılı.')
-                kaydet(0,'oto_dizin','r"'+oto_dizin+'"')
+                if type(oto_dizin)==str:
+                    kaydet(0,'oto_dizin','r"'+oto_dizin+'"')
             elif opsiyon is ayarlar_li[1]:
                 cevap = prompt([{
                 'type': 'list',
