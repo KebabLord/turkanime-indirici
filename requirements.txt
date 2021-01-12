@@ -1,0 +1,3 @@
+PyInquirer
+selenium
+youtube-dl
