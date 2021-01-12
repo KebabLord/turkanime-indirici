@@ -7,7 +7,7 @@ Türkanime için terminal video oynatıcı ve indirici. İtinayla her bölümü 
  - Bir yandan izlerken bir yandan animeyi kaydedebilir
  
 #### Desteklenen kaynaklar:
-```Sibnet,Odnoklassinki,Openload,Umplomp,Hdvid,Sendvid,Streamango,Fembed,RapidShare,Mailru,VK,Gplus,Myvi,Türkanime Player```
+```Sibnet, Odnoklassinki, Openload, Umplomp, Hdvid, Sendvid, Streamango, Fembed, RapidShare, Mail.ru, VK, Google+, Myvi, Türkanime Player```
 
 #### İndirme bölümü:
 https://github.com/KebabLord/turkanime-downloader/releases/tag/v3
@@ -23,4 +23,6 @@ Bu projeyi aslında selenium'u tam anlamıyla kavramak için geliştirmiştim. S
 
 ### Yapılacaklar:
  -  ~~Domain güncellemesinden beridir kod stabil çalışmıyor, düzeltilecek.~~
- -  Kod çorba gibi, basitleştirilecek.
+ -  ~~Kod çorba gibi, basitleştirilecek.~~
+ - Navigasyon  ve indirme algoritması http talepleriyle sağlanacak.
+ - Zaman bloğu olarak sleep'den kurtulanacak, elementin yüklenmesi beklenecek. 
