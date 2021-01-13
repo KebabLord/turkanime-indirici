@@ -25,4 +25,4 @@ Bu projeyi aslında selenium'u tam anlamıyla kavramak için geliştirmiştim. S
  -  ~~Domain güncellemesinden beridir kod stabil çalışmıyor, düzeltilecek.~~
  -  ~~Kod çorba gibi, basitleştirilecek.~~
  - Navigasyon  ve indirme algoritması http talepleriyle sağlanacak.
- - Zaman bloğu olarak sleep'den kurtulanacak, elementin yüklenmesi beklenecek. 
+ - Zaman bloğu olarak sleep'den kurtulunacak, elementin yüklenmesi beklenecek. 
