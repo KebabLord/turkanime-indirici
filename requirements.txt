@@ -1,3 +1,5 @@
 PyInquirer
 selenium
 youtube-dl
+bs4
+easygui

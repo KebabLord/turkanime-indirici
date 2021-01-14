@@ -1,5 +1,5 @@
-from .anime import animeSorgula,animeIndir,animeOynat
+from .anime import AnimeSorgula,Anime
 
-def cleanPrint(string):
+def clean_print(string):
     print('\033[2K\033[1G',end="\r")
     print(string,end='\r')

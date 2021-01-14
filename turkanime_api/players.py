@@ -1,4 +1,5 @@
 import re
+from sys import exit as kapat
 import subprocess as sp
 from bs4 import BeautifulSoup as bs4
 
@@ -17,7 +18,7 @@ desteklenen_players = [
     "ODNOKLASSNIKI"
 ]
 
-def checkVideo(url):
+def check_video(url):
     """ Video yaşıyor mu kontrol eder """
     test = sp.Popen(f"youtube-dl --no-warnings -F '{url}'",stdout=sp.PIPE,shell=True)
     stdout = test.communicate()[0].decode()
@@ -26,7 +27,7 @@ def checkVideo(url):
         return True
     return False
 
-def urlGetir(driver):
+def url_getir(driver):
     """ Ajax sorgularıyla tüm player url'lerini (title,url) formatında listeler
         Ardından desteklenen_player'da belirtilen hiyerarşiye göre sırayla desteklenen
         ve çalışan bir alternatif bulana dek bu listedeki playerları itere eder.
@@ -52,9 +53,8 @@ def urlGetir(driver):
         "html.parser"
         )
 
-    p = soup.find("div", {"id": "videodetay"}).findAll("div",class_="btn-group")[1]
-
-    videos = [ (i.text, i.get("onclick").split("'")[1]) for i in p.findAll("button") if "btn-danger" not in str(i) ]
+    parent = soup.find("div", {"id": "videodetay"}).findAll("div",class_="btn-group")[1]
+    videos = [ (i.text, i.get("onclick").split("'")[1]) for i in parent.findAll("button") if "btn-danger" not in str(i) ]
 
     for player in desteklenen_players:
         for uri in [ u for t,u in videos if player in t ]:
@@ -70,13 +70,13 @@ def urlGetir(driver):
             else:
                 if "Sayfayı yenileyip tekrar deneyiniz..." in iframe_src:
                     print("Site Bakımda.")
-                    exit()
+                    kapat()
 
             var_iframe = re.findall(r'{"ct".*?}',iframe_src)[0]
             var_sifre = re.findall(r"pass.*?\'(.*)?\'",iframe_src)[0]
 
             # Türkanimenin iframe şifreleme algoritması.
-            URL = "https:"+driver.execute_script(f"var iframe='{var_iframe}';var pass='{var_sifre}';"+r"""
+            url = "https:"+driver.execute_script(f"var iframe='{var_iframe}';var pass='{var_sifre}';"+r"""
             var CryptoJSAesJson = {
                 stringify: function (cipherParams) {
                     var j = {ct: cipherParams.ciphertext.toString(CryptoJS.enc.Base64)};
@@ -96,5 +96,5 @@ def urlGetir(driver):
             return JSON.parse(CryptoJS.AES.decrypt(iframe, pass, {format: CryptoJSAesJson}).toString(CryptoJS.enc.Utf8));
             """)
 
-            if checkVideo(URL):
-                return URL
+            if check_video(url):
+                return url
