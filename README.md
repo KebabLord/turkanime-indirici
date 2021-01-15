@@ -19,7 +19,7 @@ https://github.com/KebabLord/turkanime-downloader/releases/tag/v3
  ![indirme.gif](ss_izle.gif)
 
 ### Yapılacaklar:
- -  ~~Domain güncellemesinden beridir kod stabil çalışmıyor, düzeltilecek.~~
- -  ~~Kod çorba gibi, basitleştirilecek.~~
+ - ~~Domain güncellemesinden beridir kod stabil çalışmıyor, düzeltilecek.~~
+ - ~~Kod çorba gibi, basitleştirilecek.~~
  - ~~Navigasyon  ve indirme algoritması http talepleriyle sağlanacak.~~
- - Zaman bloğu olarak sleep'den kurtulunacak, elementin yüklenmesi beklenecek. 
+ - ~~Zaman bloğu olarak sleep'den kurtulunacak, elementin yüklenmesi beklenecek.~~

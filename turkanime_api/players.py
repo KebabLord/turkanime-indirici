@@ -1,6 +1,8 @@
 import re
 from sys import exit as kapat
 import subprocess as sp
+from time import time
+from selenium.common.exceptions import NoSuchElementException
 from bs4 import BeautifulSoup as bs4
 
 desteklenen_players = [
@@ -17,6 +19,21 @@ desteklenen_players = [
     "SENDVID",
     "ODNOKLASSNIKI"
 ]
+
+def elementi_bekle(selector,_driver):
+    """ Element yüklenene dek bekler, ayrıyetten 10 saniye boyunca
+        yanıt alamazsa, timeout hatası verip programı kapatır.
+    """
+    start=round(time())
+    while round(time())-start<10:
+        try:
+            _driver.find_element_by_css_selector(selector)
+        except NoSuchElementException:
+            continue
+        break
+    else:
+        print("TürkAnimeye ulaşılamıyor.")
+        kapat()
 
 def check_video(url):
     """ Video yaşıyor mu kontrol eder """
@@ -41,6 +58,7 @@ def url_getir(driver):
             - Her bir player'ın iframe sayfasındaki gerçek url'yi decryptleyip test et
     """
     print("\033[2K\033[1GVideo url'si çözülüyor..",end="\r")
+    elementi_bekle("button.btn.btn-sm",driver)
     try:
         bolum_hash = re.findall(
                 r"rik\('(.*)&f",
