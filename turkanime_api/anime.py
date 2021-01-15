@@ -1,5 +1,4 @@
 from os import system,path,mkdir
-from time import sleep
 from configparser import ConfigParser
 from bs4 import BeautifulSoup as bs4
 
@@ -77,7 +76,6 @@ class Anime():
         for bolum in self.bolumler:
             print("\033[2K\033[1GBölüm getiriliyor..",end="\r")
             self.driver.get(f"https://turkanime.net/video/{bolum}")
-            sleep(3)
             print(f"\033[2K\033[1G\n{self.driver.title} indiriliyor:")
             url = url_getir(self.driver)
             suffix="--referer https://video.sibnet.ru/" if "sibnet" in url else ""
