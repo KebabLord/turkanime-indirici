@@ -39,22 +39,26 @@ while True:
         }])['islem']
 
     if "Anime" in islem:
-        # Anime'yi ara ve bölüm seç
-        secilen_bolumler = prompt([{
-            'type': 'input',
-            'name': 'anahtar_kelime',
-            'message': 'Animeyi ara',
-            },{
-            'type': 'list',
-            'name': 'anime_ismi',
-            'message': 'Animeyi seç',
-            'choices': sorgu.listele,
-            },{
-            'type': "checkbox" if "indir" in islem else "list",
-            'message': 'Bölüm seç',
-            'name': 'anime_bolum',
-            'choices': sorgu.listele
-        }])["anime_bolum"]
+        try:
+            # Anime'yi ara ve bölüm seç
+            secilen_bolumler = prompt([{
+                'type': 'input',
+                'name': 'anahtar_kelime',
+                'message': 'Animeyi ara',
+                },{
+                'type': 'list',
+                'name': 'anime_ismi',
+                'message': 'Animeyi seç',
+                'choices': sorgu.listele,
+                },{
+                'type': "checkbox" if "indir" in islem else "list",
+                'message': 'Bölüm seç',
+                'name': 'anime_bolum',
+                'choices': sorgu.listele
+            }])["anime_bolum"]
+        except IndexError:
+            print("Sonuç bulunamadı.")
+            continue
 
         anime = Anime(driver,sorgu.seri,secilen_bolumler)
 
