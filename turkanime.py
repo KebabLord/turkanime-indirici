@@ -61,7 +61,7 @@ while True:
         if islem=="Anime izle":
             anime.oynat()
         else:
-            anime.oynat()
+            anime.indir()
 
     elif "Ayarlar" in islem:
         parser = ConfigParser()

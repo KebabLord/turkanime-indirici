@@ -1,6 +1,7 @@
 from os import system,path,mkdir
 from time import sleep
 from configparser import ConfigParser
+from bs4 import BeautifulSoup as bs4
 
 from .players import url_getir
 
@@ -10,43 +11,51 @@ class AnimeSorgula():
         self.seri=None
 
     def anime_ara(self, aranan_anime):
-        """ Animeyi arayıp geriye (title,url) formatında sonuçları döndürür. """
+        """ Animeyi arayıp sonuçları {title,slug,code} formatında döndürür. """
+        print("\033[2K\033[1GTürkanimeye bağlanılıyor..",end="\r")
         self.driver.get(f"https://www.turkanime.net/arama?arama={aranan_anime}")
+        liste = []
         if "/anime/" in self.driver.current_url:
-            liste = [[self.driver.title, self.driver.current_url.split("anime/")[1]]]
-            self.driver.get("about:blank")
+            liste.append({
+                "title" : self.driver.title,
+                "slug"  : self.driver.current_url.split("anime/")[1],
+                "code"  : self.driver.find_element_by_css_selector(".imaj img").get_attribute("data-src").split("serilerb/")[1][:-4]
+            })
             return liste
 
-        liste = []
-        for i in self.driver.find_elements_by_css_selector(".panel-title a"):
-            liste.append( (i.text, i.get_attribute("href").split("anime/")[1]) )
-            #         Anime Title, Anime Url
+        for card in self.driver.find_elements_by_css_selector(".panel.panel-visible"):
+            liste.append({
+                "title" : card.find_element_by_class_name("panel-ust-ic").text,
+                "slug"  : card.find_element_by_tag_name("a").get_attribute("href").split("anime/")[1],
+                "code"  : card.find_element_by_tag_name("img").get_attribute("data-src").split("seriler/")[1][:-4]
+            })
         return liste
 
-    def get_bolumler(self, anime_ismi):
+    def get_bolumler(self, anime_code):
         """ Animenin bölümlerini (bölüm,title) formatında döndürür. """
-        self.seri=anime_ismi
-        self.driver.get("https://www.turkanime.net/anime/{}".format(anime_ismi))
-        sleep(3)
+        print("\033[2K\033[1GBölümler yükleniyor..",end="\r")
+        raw = self.driver.execute_script(f"return $.get('https://www.turkanime.net/ajax/bolumler&animeId={anime_code}')")
+        soup = bs4(raw,"html.parser")
+        soup.findAll("a",{"title":"İzlediklerime Ekle"})
 
-        liste = []
-        for i in self.driver.find_elements_by_css_selector(".bolumAdi"):
-            parent = i.find_element_by_xpath("..")
-            url = parent.get_attribute("href").split("video/")[1]
-            title = parent.get_attribute("innerText")
-            liste.append( (title,url) )
-            #        Bölüm Title, Bölüm Url
-        return liste
+        bolumler = []
+        for bolum in soup.findAll("span",{"class":"bolumAdi"}):
+            bolumler.append(
+                (bolum.text, bolum.findParent().get("href").split("video/")[1])
+            )
+        return bolumler
 
     def listele(self,answers):
         """ PyInquirer İçin Seçenek Listele """
+        # Bölümler
         if 'anime_ismi' in answers:
-            results = self.get_bolumler(answers["anime_ismi"])
-        else:
-            results = self.anime_ara(answers["anahtar_kelime"])
+            results = self.get_bolumler(answers["anime_ismi"][1])
+            self.seri=answers["anime_ismi"][0]
+            return [{"name":title,"value":slug} for title,slug in results]
 
-        bolumler=[{"name":name,"value":url} for name,url in results]
-        return bolumler
+        # Anime arama sonuçları
+        results = self.anime_ara(answers["anahtar_kelime"])
+        return [{"name":i["title"],"value":(i["slug"],i["code"])} for i in results]
 
 
 class Anime():
@@ -66,9 +75,10 @@ class Anime():
             mkdir(f"{dlfolder}/{self.seri}")
 
         for bolum in self.bolumler:
+            print("\033[2K\033[1GBölüm getiriliyor..",end="\r")
             self.driver.get(f"https://turkanime.net/video/{bolum}")
-            sleep(5)
-            print(f"\n{self.driver.title} indiriliyor.")
+            sleep(3)
+            print(f"\033[2K\033[1G\n{self.driver.title} indiriliyor:")
             url = url_getir(self.driver)
             suffix="--referer https://video.sibnet.ru/" if "sibnet" in url else ""
             system(f"youtube-dl --no-warnings -o '{dlfolder}/{self.seri}/{bolum}.%(ext)s' '{url}' {suffix}")
@@ -82,6 +92,7 @@ class Anime():
         parser.read("./config.ini")
 
         suffix ="--referrer https://video.sibnet.ru/ " if  "sibnet" in url else ""
+        suffix+= "--msg-level=display-tags=no:cplayer=error "
         suffix+=f"--record-file=./Kayıtlar/{self.bolumler} " if parser.getboolean("TurkAnime","izlerken kaydet") else ""
 
         system(f"mpv '{url}' {suffix} ")
