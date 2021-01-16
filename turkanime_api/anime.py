@@ -89,9 +89,9 @@ class Anime():
         parser = ConfigParser()
         parser.read(path.join(".","config.ini"))
 
-        suffix ="--referrer https://video.sibnet.ru/ " if  "sibnet" in url else ""
-        suffix+= "--msg-level=display-tags=no:cplayer=error "
-        suffix+="--record-file={} ".format(path.join(".","Kayıtlar",self.bolumler)) if parser.getboolean("TurkAnime","izlerken kaydet") else ""
+        suffix ="--referrer=https://video.sibnet.ru/ " if  "sibnet" in url else ""
+        suffix+= "--msg-level=display-tags=no "
+        suffix+="--stream-record={}.mp4 ".format(path.join(".","Kayıtlar",self.bolumler)) if parser.getboolean("TurkAnime","izlerken kaydet") else ""
 
         system(f'mpv "{url}" {suffix} ')
         return True
