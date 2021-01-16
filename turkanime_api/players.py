@@ -37,14 +37,14 @@ def elementi_bekle(selector,_driver):
 
 def check_video(url):
     """ Video yaşıyor mu kontrol eder """
-    print("\033[2K\033[1GVideo yaşıyor mu kontrol ediliyor..",end="\r")
-    test = sp.Popen(f"youtube-dl --no-warnings -F '{url}'",stdout=sp.PIPE,shell=True)
+    print(" "*50+"\rVideo yaşıyor mu kontrol ediliyor..",end="\r")
+    test = sp.Popen(f'youtube-dl --no-warnings -F "{url}"',stdout=sp.PIPE,shell=True)
     stdout = test.communicate()[0].decode()
     stdexit   = test.returncode
     if stdexit == 0 and "php" not in stdout:
-        print("\033[2K\033[1GVideo aktif, başlatılıyor..",end="\r")
+        print(" "*50+"\rVideo aktif, başlatılıyor..",end="\r")
         return True
-    print("\033[2K\033[1GPlayerdaki video silinmiş, sıradakine geçiliyor",end="\r")
+    print(" "*50+"\rPlayerdaki video silinmiş, sıradakine geçiliyor",end="\r")
     return False
 
 def url_getir(driver):
@@ -57,7 +57,7 @@ def url_getir(driver):
             - Bölüm hash'ini kullanarak tüm playerları getir
             - Her bir player'ın iframe sayfasındaki gerçek url'yi decryptleyip test et
     """
-    print("\033[2K\033[1GVideo url'si çözülüyor..",end="\r")
+    print(" "*50+"\rVideo url'si çözülüyor..",end="\r")
     elementi_bekle("button.btn.btn-sm",driver)
     try:
         bolum_hash = re.findall(
