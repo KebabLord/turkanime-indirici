@@ -11,7 +11,7 @@ class AnimeSorgula():
 
     def anime_ara(self, aranan_anime):
         """ Animeyi arayıp sonuçları {title,slug,code} formatında döndürür. """
-        print("\033[2K\033[1GTürkanimeye bağlanılıyor..",end="\r")
+        print(" "*50+"\rTürkanimeye bağlanılıyor..",end="\r")
         self.driver.get(f"https://www.turkanime.net/arama?arama={aranan_anime}")
         liste = []
         if "/anime/" in self.driver.current_url:
@@ -32,7 +32,7 @@ class AnimeSorgula():
 
     def get_bolumler(self, anime_code):
         """ Animenin bölümlerini (bölüm,title) formatında döndürür. """
-        print("\033[2K\033[1GBölümler yükleniyor..",end="\r")
+        print(" "*50+"\rBölümler yükleniyor..",end="\r")
         raw = self.driver.execute_script(f"return $.get('https://www.turkanime.net/ajax/bolumler&animeId={anime_code}')")
         soup = bs4(raw,"html.parser")
         soup.findAll("a",{"title":"İzlediklerime Ekle"})
@@ -74,12 +74,12 @@ class Anime():
             mkdir(f"{dlfolder}/{self.seri}")
 
         for bolum in self.bolumler:
-            print("\033[2K\033[1GBölüm getiriliyor..",end="\r")
+            print(" "*50+"\rBölüm getiriliyor..",end="\r")
             self.driver.get(f"https://turkanime.net/video/{bolum}")
-            print(f"\033[2K\033[1G\n{self.driver.title} indiriliyor:")
+            print(" "*50+f"\r\n{self.driver.title} indiriliyor:")
             url = url_getir(self.driver)
             suffix="--referer https://video.sibnet.ru/" if "sibnet" in url else ""
-            system(f"youtube-dl --no-warnings -o '{dlfolder}/{self.seri}/{bolum}.%(ext)s' '{url}' {suffix}")
+            system(f'youtube-dl --no-warnings -o "{dlfolder}/{self.seri}/{bolum}.%(ext)s" "{url}" {suffix}')
         return True
 
     def oynat(self):
@@ -93,5 +93,5 @@ class Anime():
         suffix+= "--msg-level=display-tags=no:cplayer=error "
         suffix+=f"--record-file=./Kayıtlar/{self.bolumler} " if parser.getboolean("TurkAnime","izlerken kaydet") else ""
 
-        system(f"mpv '{url}' {suffix} ")
+        system(f'mpv "{url}" {suffix} ')
         return True
