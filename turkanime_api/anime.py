@@ -67,11 +67,11 @@ class Anime():
 
     def indir(self):
         parser = ConfigParser()
-        parser.read("./config.ini")
+        parser.read(path.join(".","config.ini"))
         dlfolder = parser.get("TurkAnime","indirilenler")
 
-        if not path.isdir(f"{dlfolder}/{self.seri}"):
-            mkdir(f"{dlfolder}/{self.seri}")
+        if not path.isdir(path.join(dlfolder,self.seri)):
+            mkdir(path.join(dlfolder,self.seri))
 
         for bolum in self.bolumler:
             print(" "*50+"\rBölüm getiriliyor..",end="\r")
@@ -79,7 +79,7 @@ class Anime():
             print(" "*50+f"\r\n{self.driver.title} indiriliyor:")
             url = url_getir(self.driver)
             suffix="--referer https://video.sibnet.ru/" if "sibnet" in url else ""
-            system(f'youtube-dl --no-warnings -o "{dlfolder}/{self.seri}/{bolum}.%(ext)s" "{url}" {suffix}')
+            system(f'youtube-dl --no-warnings -o "{path.join(dlfolder,self.seri,bolum)}.%(ext)s" "{url}" {suffix}')
         return True
 
     def oynat(self):
@@ -87,11 +87,11 @@ class Anime():
         url = url_getir(self.driver)
 
         parser = ConfigParser()
-        parser.read("./config.ini")
+        parser.read(path.join(".","config.ini"))
 
         suffix ="--referrer https://video.sibnet.ru/ " if  "sibnet" in url else ""
         suffix+= "--msg-level=display-tags=no:cplayer=error "
-        suffix+=f"--record-file=./Kayıtlar/{self.bolumler} " if parser.getboolean("TurkAnime","izlerken kaydet") else ""
+        suffix+="--record-file={} ".format(path.join(".","Kayıtlar",self.bolumler)) if parser.getboolean("TurkAnime","izlerken kaydet") else ""
 
         system(f'mpv "{url}" {suffix} ')
         return True
