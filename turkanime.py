@@ -4,18 +4,19 @@ from configparser import ConfigParser
 from PyInquirer import prompt
 from selenium import webdriver
 from selenium.webdriver.firefox.options import Options
-from turkanime_api import AnimeSorgula,Anime,clean_print
+from turkanime_api import AnimeSorgula,Anime,gereksinim_kontrol
 
 print('TürkAnimu İndirici - github/Kebablord')
+gereksinim_kontrol()
 
 def at_exit(): # Program kapatıldığında
-    clean_print("Program kapatılıyor..")
+    print(" "*50+"\rProgram kapatılıyor..",end="\r")
     driver.quit()
 register(at_exit)
 
 options = Options()
 options.add_argument('--headless')
-clean_print("Sürücü başlatılıyor...")
+print(" "*50+"\rSürücü başlatılıyor...",end="\r")
 profile = webdriver.FirefoxProfile()
 profile.set_preference('permissions.default.image', 2)
 profile.set_preference("network.proxy.type", 0)

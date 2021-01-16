@@ -30,25 +30,33 @@
         <div>
             <h1 id="kullanım">Kurulum</h1></div>
         <div>
-            <b>Windows ve Linux</b><br>
-                <a href="https://github.com/mozilla/geckodriver/releases">Geckodriver</a>'ın  son sürümünü indirip program dizinine atın ya da sistem path'ine ekleyin. Ardından gerekli paketleri kurun: <code>pip3 install -r requiremenets.txt</code> ve good to go.
+            <b>Windows</b><br>
+                <a href="https://sourceforge.net/projects/mpv-player-windows/files/">Mpv</a> ve <a href="https://github.com/mozilla/geckodriver/releases">Geckodriver</a>'ın son sürümünü indirip program dizinine atın ya da bulundukları dizini
+                sistem PATH'ına ekleyin. Ardından gerekli paketleri kurun: <code>py -m pip install -r requirements.txt</code> yada <code>pip3 install -r requiremenets.txt</code>. Uygulama bir de youtube-dl'e ihtiyaç duyuyor,
+                <a href="http://ytdl-org.github.io/youtube-dl/download.html">youtube-dl</a>'i indirebilir
+                yada indirmenize gerek kalmadan python dizinindeki scripts klasörünü sistem PATH'ınıza cmd'de şu şekilde ekleyebilirsiniz: <code>set PATH=%PATH%;C:\PYTHON'UN_DİZİNİ\Scripts</code> 
 
-                <br><br><b>MacOS</b><br>
-                Brew paket yöneticisini yükledikten sonra <code>brew install geckodriver mpv</code> komutuyla gerekli uygulamaları kurun. Ardından <code>pip3 install -r  requirements.txt</code> ile gerekli paketleri kurun.
+            <br><br><b>MacOS</b><br>
+            Brew paket yöneticisini yükledikten sonra <code>brew install geckodriver mpv</code> komutuyla gerekli uygulamaları kurun. Ardından <code>pip3 install -r  requirements.txt</code> ile gerekli paketleri kurun.
+
+            <br><br><b>Linux</b><br>
+            Paket yöneticinizle veya github sayfalarından mpv ve geckodriver'ı kurduktan sonra gerekli paketleri <code>pip3 install -r requirements.txt</code> ile kurun.
         </div>
+
 
         <div>
             <h3 id="i̇zlerken-kaydetme-modu">İzlerken kaydetme modu</h3>
         </div>
         <div>
-            <p>Mpv’nin deneysel bir modülüdür. Ayarlardan aktifleştirip devre dışı bırakabilirsiniz.</p>
+            Mpv’nin deneysel bir modülüdür. Ayarlardan aktifleştirip devre dışı bırakabilirsiniz.
         </div>
         <div>
             <h3 id="problemler">Problemler</h3></div>
         <div>
             <p>
                 Programı ilk açışınızda gecikmeler yaşayabilirsiniz. Ara sıra arama yaptığınızda zaman aşımı hatası alabilirsiniz, bu sitenin o sırada yavaş veya bakımda olmasından kaynaklanır. Bunlar dışında programa ilişkin yaşadığınız probleme en hızlı dönüşü github’da
-                issue ticket’ı açarsanız sağlayabilirim. Haricen, bana ulaşmak için <a href="https://kebablord.github.io/gpg.html">tıklayın</a></p>
+                issue ticket’ı açarsanız sağlayabilirim. Haricen, bana ulaşmak için <a href="https://kebablord.github.io/gpg.html">tıklayın</a>
+            </p>
         </div>
     </div>
 </body>
