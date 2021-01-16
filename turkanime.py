@@ -22,9 +22,9 @@ profile.set_preference('permissions.default.image', 2)
 profile.set_preference("network.proxy.type", 0)
 
 if name == 'nt': # WINDOWS
-    driver = webdriver.Firefox(profile, options=options, executable_path=r'geckodriver.exe')
+    driver = webdriver.Firefox(profile, options=options,service_log_path='NUL', executable_path=r'geckodriver.exe')
 else:            # LINUX
-    driver = webdriver.Firefox(profile, options=options)
+    driver = webdriver.Firefox(profile, options=options, service_log_path='/dev/null')
 
 sorgu = AnimeSorgula(driver)
 while True:
@@ -87,7 +87,7 @@ while True:
                 parser.set('TurkAnime','indirilenler',diropenbox())
             elif opsiyon == f'İzlerken kaydet: {isAutosave}':
                 parser.set('TurkAnime','izlerken kaydet',str(not isAutosave))
-                if path.isdir(path.join(".","Kayıtlar")):
+                if not path.isdir(path.join(".","Kayıtlar")):
                     mkdir(path.join(".","Kayıtlar"))
             else:
                 break
