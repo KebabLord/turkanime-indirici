@@ -71,7 +71,7 @@ while True:
     elif "Ayarlar" in islem:
         parser = ConfigParser()
         while True:
-            parser.read("./config.ini")
+            parser.read(path.join(".","config.ini"))
             isAutosave   = parser.getboolean("TurkAnime","izlerken kaydet")
             dlFolder     = parser.get("TurkAnime","indirilenler")
             opsiyon = prompt([{
@@ -86,9 +86,9 @@ while True:
                 from easygui import diropenbox
                 parser.set('TurkAnime','indirilenler',diropenbox())
             elif opsiyon == f'İzlerken kaydet: {isAutosave}':
-                parser.set('TurkAnime','izlerken kaydet',str(not isAutosave ))
-                if path.isdir('./Kayıtlar'):
-                    mkdir("./Kayıtlar")
+                parser.set('TurkAnime','izlerken kaydet',str(not isAutosave))
+                if path.isdir(path.join(".","Kayıtlar")):
+                    mkdir(path.join(".","Kayıtlar"))
             else:
                 break
 
