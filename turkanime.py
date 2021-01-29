@@ -18,13 +18,17 @@ options = Options()
 options.add_argument('--headless')
 print(" "*50+"\rSürücü başlatılıyor...",end="\r")
 profile = webdriver.FirefoxProfile()
+profile.set_preference("dom.webdriver.enabled", False)
+profile.set_preference('useAutomationExtension', False)
 profile.set_preference('permissions.default.image', 2)
 profile.set_preference("network.proxy.type", 0)
+profile.update_preferences()
+desired = webdriver.DesiredCapabilities.FIREFOX
 
 if name == 'nt': # WINDOWS
-    driver = webdriver.Firefox(profile, options=options,service_log_path='NUL', executable_path=r'geckodriver.exe')
+    driver = webdriver.Firefox(profile, options=options,service_log_path='NUL', executable_path=r'geckodriver.exe', desired_capabilities=desired)
 else:            # LINUX
-    driver = webdriver.Firefox(profile, options=options, service_log_path='/dev/null')
+    driver = webdriver.Firefox(profile, options=options, service_log_path='/dev/null',desired_capabilities=desired)
 
 sorgu = AnimeSorgula(driver)
 while True:

@@ -21,3 +21,5 @@ Türkanime için terminal video oynatıcı ve indirici. İtinayla her bölümü 
  - ~~Kod çorba gibi, basitleştirilecek.~~
  - ~~Navigasyon  ve indirme algoritması http talepleriyle sağlanacak.~~
  - ~~Zaman bloğu olarak sleep'den kurtulunacak, elementin yüklenmesi beklenecek.~~
+ - Prompt kütüphanesi olarak berbat durumda olan PyInquirer'den Questionary'e geçilecek
+ - Arama sonuçları da http talepleriyle getirilecek
