@@ -2,7 +2,7 @@ from os import system,path,mkdir
 from configparser import ConfigParser
 from bs4 import BeautifulSoup as bs4
 
-from .players import url_getir
+from .players import url_getir,elementi_bekle
 
 class AnimeSorgula():
     def __init__(self,driver=None):
@@ -13,6 +13,8 @@ class AnimeSorgula():
         """ Animeyi arayıp sonuçları {title,slug,code} formatında döndürür. """
         print(" "*50+"\rTürkanimeye bağlanılıyor..",end="\r")
         self.driver.get(f"https://www.turkanime.net/arama?arama={aranan_anime}")
+        elementi_bekle(".panel-ust",self.driver)
+
         liste = []
         if "/anime/" in self.driver.current_url:
             liste.append({
@@ -22,6 +24,7 @@ class AnimeSorgula():
             })
             return liste
 
+        elementi_bekle(".panel-ust-ic",self.driver)
         for card in self.driver.find_elements_by_css_selector(".panel.panel-visible"):
             liste.append({
                 "title" : card.find_element_by_class_name("panel-ust-ic").text,
