@@ -11,7 +11,7 @@ jobs:
       with:
         args: |
           pip install --upgrade pyOpenSSL;
-          pip install selenium bs4 PyInquirer easygui;
+          pip install -r requirements.txt;
           pylint -E **/*.py &&
           pylint turkanime_api/ --fail-under 8.2 &&
           pylint turkanime.py --fail-under 9.2
