@@ -2,62 +2,49 @@ from os import system,path,mkdir
 from configparser import ConfigParser
 from bs4 import BeautifulSoup as bs4
 
-from .players import url_getir,elementi_bekle
+from .players import url_getir
 
 class AnimeSorgula():
     def __init__(self,driver=None):
         self.driver=driver
-        self.seri=None
+        self.anime_ismi=None
+        self.tamliste=None
 
-    def anime_ara(self, aranan_anime):
-        """ Animeyi arayıp sonuçları {title,slug,code} formatında döndürür. """
-        print(" "*50+"\rTürkanimeye bağlanılıyor..",end="\r")
-        self.driver.get(f"https://www.turkanime.net/arama?arama={aranan_anime}")
-        elementi_bekle(".panel-ust",self.driver)
+    def get_seriler(self):
+        """ Sitedeki tüm animeleri [{name:*,value:*}..] formatında döndürür. """
+        if self.tamliste:
+            return self.tamliste.keys()
 
-        liste = []
-        if "/anime/" in self.driver.current_url:
-            liste.append({
-                "title" : self.driver.title,
-                "slug"  : self.driver.current_url.split("anime/")[1],
-                "code"  : self.driver.find_element_by_css_selector(".imaj img").get_attribute("data-src").split("serilerb/")[1][:-4]
-            })
-            return liste
+        soup = bs4(
+                self.driver.execute_script("return $.get('https://www.turkanime.net/ajax/tamliste')"),
+            "html.parser"
+        )
 
-        elementi_bekle(".panel-ust-ic",self.driver)
-        for card in self.driver.find_elements_by_css_selector(".panel.panel-visible"):
-            liste.append({
-                "title" : card.find_element_by_class_name("panel-ust-ic").text,
-                "slug"  : card.find_element_by_tag_name("a").get_attribute("href").split("anime/")[1],
-                "code"  : card.find_element_by_tag_name("img").get_attribute("data-src").split("seriler/")[1][:-4]
-            })
-        return liste
+        raw_series, self.tamliste = soup.findAll('span',{"class":'animeAdi'}) , {}
 
-    def get_bolumler(self, anime_code):
-        """ Animenin bölümlerini (bölüm,title) formatında döndürür. """
+        for seri in raw_series:
+            self.tamliste[seri.text] = seri.findParent().get('href').split('anime/')[1]
+        return [seri.text for seri in raw_series]
+
+    def get_bolumler(self, isim):
+        """ Animenin bölümlerini {bölüm,title} formatında döndürür. """
         print(" "*50+"\rBölümler yükleniyor..",end="\r")
+        anime_slug=self.tamliste[isim]
+        raw = self.driver.execute_script(f"return $.get('/anime/{anime_slug}')")
+        soup = bs4(raw,"html.parser")
+        self.anime_ismi = soup.title.text
+        anime_code = soup.find('meta',{'name':'twitter:image'}).get('content').split('lerb/')[1][:-4]
+
         raw = self.driver.execute_script(f"return $.get('https://www.turkanime.net/ajax/bolumler&animeId={anime_code}')")
         soup = bs4(raw,"html.parser")
-        soup.findAll("a",{"title":"İzlediklerime Ekle"})
 
         bolumler = []
         for bolum in soup.findAll("span",{"class":"bolumAdi"}):
-            bolumler.append(
-                (bolum.text, bolum.findParent().get("href").split("video/")[1])
-            )
+            bolumler.append({
+                'name':bolum.text,
+                'value':bolum.findParent().get("href").split("video/")[1]
+            })
         return bolumler
-
-    def listele(self,answers):
-        """ PyInquirer İçin Seçenek Listele """
-        # Bölümler
-        if 'anime_ismi' in answers:
-            results = self.get_bolumler(answers["anime_ismi"][1])
-            self.seri=answers["anime_ismi"][0]
-            return [{"name":title,"value":slug} for title,slug in results]
-
-        # Anime arama sonuçları
-        results = self.anime_ara(answers["anahtar_kelime"])
-        return [{"name":i["title"],"value":(i["slug"],i["code"])} for i in results]
 
 
 class Anime():
