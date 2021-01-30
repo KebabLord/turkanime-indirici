@@ -1,40 +1,19 @@
-from os import name,path,mkdir
+""" TürkAnimu Downloader v5.2 """
+from os import path,mkdir
 from atexit import register
 from configparser import ConfigParser
-from time import sleep
 import questionary
-from selenium import webdriver
-from selenium.webdriver.firefox.options import Options
-from turkanime_api import AnimeSorgula,Anime,gereksinim_kontrol
+
+from turkanime_api import AnimeSorgula,Anime,gereksinim_kontrol,elementi_bekle,webdriver_hazirla
 
 print('TürkAnimu İndirici - github/Kebablord')
 gereksinim_kontrol()
-
-def at_exit(): # Program kapatıldığında
-    print(" "*50+"\rProgram kapatılıyor..",end="\r")
-    driver.quit()
-register(at_exit)
-
-print(" "*50+"\rSürücü başlatılıyor...",end="\r")
-
-options = Options()
-options.add_argument('--headless')
-profile = webdriver.FirefoxProfile()
-profile.set_preference("dom.webdriver.enabled", False)
-profile.set_preference('useAutomationExtension', False)
-profile.set_preference('permissions.default.image', 2)
-profile.set_preference("network.proxy.type", 0)
-profile.update_preferences()
-desired = webdriver.DesiredCapabilities.FIREFOX
-if name == 'nt':
-    driver = webdriver.Firefox(profile, options=options,service_log_path='NUL', executable_path=r'geckodriver.exe', desired_capabilities=desired)
-else:
-    driver = webdriver.Firefox(profile, options=options, service_log_path='/dev/null',desired_capabilities=desired)
-
+driver = webdriver_hazirla()
+register(lambda: (print("Program kapatılıyor..",end="\r") or driver.quit()))
 driver.get("https://turkanime.net/kullanici/anonim")
-sleep(7)
-
+elementi_bekle(".navbar-nav",driver)
 sorgu = AnimeSorgula(driver)
+
 while True:
     islem = questionary.select(
         "İşlemi seç",
