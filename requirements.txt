@@ -3,3 +3,4 @@ selenium
 youtube-dl
 bs4
 easygui
+autocomplete
