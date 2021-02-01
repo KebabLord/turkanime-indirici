@@ -1,5 +1,5 @@
 # TürkAnimu-Cli
-[![GitHub all releases](https://img.shields.io/github/downloads/kebablord/turkanime-indirici/total?style=flat-square)](https://github.com/KebabLord/turkanime-indirici/releases/tag/v5.0.2)  [![GitHub release (latest by date)](https://img.shields.io/github/v/release/kebablord/turkanime-indirici?style=flat-square)](https://github.com/KebabLord/turkanime-indirici/releases)  [![GitHub Workflow Status](https://img.shields.io/github/workflow/status/kebablord/turkanime-indirici/Hata%20kontrol%C3%BC%20ve%20lint?style=flat-square)](https://github.com/KebabLord/turkanime-indirici/actions)
+[![GitHub all releases](https://img.shields.io/github/downloads/kebablord/turkanime-indirici/total?style=flat-square)](https://github.com/KebabLord/turkanime-indirici/releases/latest)  [![GitHub release (latest by date)](https://img.shields.io/github/v/release/kebablord/turkanime-indirici?style=flat-square)](https://github.com/kebablord/turkanime-indirici/releases/latest/download/turkanimu.exe)  [![GitHub Workflow Status](https://img.shields.io/github/workflow/status/kebablord/turkanime-indirici/Hata%20kontrol%C3%BC%20ve%20lint?style=flat-square)](https://github.com/KebabLord/turkanime-indirici/actions)
 
 Türkanime için terminal video oynatıcı ve indirici. İtinayla her bölümü indirir & oynatır.
  - Yığın bölüm indirebilir
