@@ -2,6 +2,7 @@ from os import system,path,mkdir
 from configparser import ConfigParser
 from bs4 import BeautifulSoup as bs4
 from rich.progress import Progress, BarColumn, SpinnerColumn
+from rich import print as rprint
 
 from .players import url_getir
 
@@ -68,24 +69,18 @@ class Anime():
         if not path.isdir(path.join(dlfolder,self.seri)):
             mkdir(path.join(dlfolder,self.seri))
 
-        for bolum in self.bolumler:
-            print(" "*50+"\rBölüm getiriliyor..",end="\r")
-            self.driver.get(f"https://turkanime.net/video/{bolum}")
-            print(" "*50+f"\r\n{self.driver.title} indiriliyor:")
-            url = url_getir(self.driver)
+        for i,bolum in enumerate(self.bolumler):
+            print(" "*50+f"\r\n{i+1}. bölüm indiriliyor:")
+            url = url_getir(bolum,self.driver)
             suffix="--referer https://video.sibnet.ru/" if "sibnet" in url else ""
             system(f'youtube-dl --no-warnings -o "{path.join(dlfolder,self.seri,bolum)}.%(ext)s" "{url}" {suffix}')
         return True
 
     def oynat(self):
-        with Progress(SpinnerColumn(), '[progress.description]{task.description}', BarColumn(bar_width=40)) as progress:
-            task = progress.add_task("[cyan]Sayfa yükleniyor..", start=False)
-            self.driver.get(f"https://turkanime.net/video/{self.bolumler}")
-            progress.update(task,visible=False)
-        url = url_getir(self.driver)
+        url = url_getir(self.bolumler,self.driver)
 
         if not url:
-            print("Çalışan bir video bulunamadı.")
+            rprint("[red]Bu bölüme ait çalışan bir player bulunamadı.[/red]")
             return False
 
         parser = ConfigParser()
