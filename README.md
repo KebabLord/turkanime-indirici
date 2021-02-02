@@ -10,11 +10,12 @@ Türkanime için terminal video oynatıcı ve indirici. İtinayla her bölümü 
 #### Desteklenen kaynaklar:
 ```Sibnet, Odnoklassinki, Sendvid, Mail.ru, VK, Google+, Myvi, GoogleDrive, Yandisk, Vidmoly, Yourupload, Dailymotion```
 
- ### İndirme ekranı
- ![indirme.gif](ss_indir.gif)
- 
  ### İzleme ekranı
  ![indirme.gif](ss_izle.gif)
+
+ ### İndirme ekranı
+ ![indirme.gif](ss_indir.gif)
+
 
 ### Yapılacaklar:
  - ~~Domain güncellemesinden beridir kod stabil çalışmıyor, düzeltilecek.~~
