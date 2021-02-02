@@ -45,10 +45,9 @@ def check_video(url):
     stdexit   = test.returncode
     if stdexit == 0 and "php" not in stdout:
         return True
-#    print("Playerdaki video silinmiş, sıradakine geçiliyor",end="\r")
     return False
 
-def url_getir(driver):
+def url_getir(bolum,driver):
     """ Ajax sorgularıyla tüm player url'lerini (title,url) formatında listeler
         Ardından desteklenen_player'da belirtilen hiyerarşiye göre sırayla desteklenen
         ve çalışan bir alternatif bulana dek bu listedeki playerları itere eder.
@@ -60,17 +59,15 @@ def url_getir(driver):
     """
     with Progress(SpinnerColumn(), '[progress.description]{task.description}', BarColumn(bar_width=40)) as progress:
         task = progress.add_task("[cyan]Video url'si çözülüyor..", start=False)
-        elementi_bekle("button.btn.btn-sm",driver)
+
         try:
             bolum_hash = re.findall(
-                    r"rik\('(.*)&f",
-                    driver.find_element_by_css_selector("button.btn.btn-sm").get_attribute("onclick")
+                    "videosec&b=(.*?)&",
+                    driver.execute_script(f'return $.get("/video/{bolum}")')
                 )[0]
-        except TypeError: # Yalnızca bir fansub olduğunda hash'i playerlardan al
-            bolum_hash = re.findall(
-                    r"rik\('(.*)&f",
-                    driver.find_elements_by_css_selector("button.btn.btn-sm")[2].get_attribute("onclick")
-                )[0]
+        except IndexError:
+            progress.update(task,visible=False)
+            return False
 
         soup = bs4(
             driver.execute_script(f"return $.get('ajax/videosec&b={bolum_hash}')"),
@@ -126,4 +123,5 @@ def url_getir(driver):
                     progress.update(task,visible=False)
                     rprint("[green]Video aktif, başlatılıyor![/green]")
                     return url
+        progress.update(task,visible=False)
         return False
