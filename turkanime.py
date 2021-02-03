@@ -48,7 +48,6 @@ while True:
                 style=prompt_tema
             ).ask()
 
-            # Anime'yi ara ve bölüm seç
             secilen_bolumler = prompt({
                 'type': "checkbox" if "indir" in islem else "select",
                 'message': 'Bölüm seç',
