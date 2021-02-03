@@ -23,8 +23,8 @@ desteklenen_players = [
 ]
 
 def elementi_bekle(selector,_driver):
-    """ Element yüklenene dek bekler, ayrıyetten 10 saniye boyunca
-        yanıt alamazsa, timeout hatası verip programı kapatır.
+    """ Element yüklenene dek bekler. Eğer 10 saniye
+        boyunca yanıt alamazsa error verir.
     """
     start=round(time())
     while round(time())-start<10:
@@ -53,9 +53,9 @@ def url_getir(bolum,driver):
         ve çalışan bir alternatif bulana dek bu listedeki playerları itere eder.
 
         Prosedür:
-            - Herhangi bir fansub butonundan bölümün hash kodunu çek
+            - Talep edilen bölümün hash kodunu çek
             - Bölüm hash'ini kullanarak tüm playerları getir
-            - Her bir player'ın iframe sayfasındaki gerçek url'yi decryptleyip test et
+            - Her bir player'ın iframe sayfasındaki gerçek url'yi decryptle
     """
     with Progress(SpinnerColumn(), '[progress.description]{task.description}', BarColumn(bar_width=40)) as progress:
         task = progress.add_task("[cyan]Video url'si çözülüyor..", start=False)
@@ -97,7 +97,7 @@ def url_getir(bolum,driver):
                 var_iframe = re.findall(r'{"ct".*?}',iframe_src)[0]
                 var_sifre = re.findall(r"pass.*?\'(.*)?\'",iframe_src)[0]
 
-                # Türkanimenin iframe şifreleme algoritması.
+                # Türkanimenin iframe şifreleme kodu.
                 url = "https:"+driver.execute_script(f"var iframe='{var_iframe}';var pass='{var_sifre}';"+r"""
                 var CryptoJSAesJson = {
                     stringify: function (cipherParams) {

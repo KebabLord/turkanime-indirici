@@ -21,7 +21,7 @@ class AnimeSorgula():
                 return self.tamliste.keys()
 
             soup = bs4(
-                    self.driver.execute_script("return $.get('https://www.turkanime.net/ajax/tamliste')"),
+                self.driver.execute_script("return $.get('https://www.turkanime.net/ajax/tamliste')"),
                 "html.parser"
             )
             raw_series, self.tamliste = soup.findAll('span',{"class":'animeAdi'}) , {}
@@ -54,7 +54,7 @@ class AnimeSorgula():
 
 
 class Anime():
-    """ İstenilen bölümü izle, yada bölümleri indir. """
+    """ İstenilen bölümü veya bölümleri oynat ya da indir. """
 
     def __init__(self,driver,seri,bolumler):
         self.driver = driver
