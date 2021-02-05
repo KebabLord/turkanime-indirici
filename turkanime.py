@@ -83,7 +83,9 @@ while True:
                 ).ask()
             if opsiyon == 'İndirilenler klasörünü seç':
                 from easygui import diropenbox
-                parser.set('TurkAnime','indirilenler',diropenbox())
+                indirilenler_dizin=diropenbox()
+                if indirilenler_dizin:
+                    parser.set('TurkAnime','indirilenler',indirilenler_dizin)
             elif opsiyon == f'İzlerken kaydet: {isAutosave}':
                 parser.set('TurkAnime','izlerken kaydet',str(not isAutosave))
                 if not path.isdir(path.join(".","Kayıtlar")):

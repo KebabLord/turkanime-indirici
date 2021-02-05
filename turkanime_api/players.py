@@ -60,33 +60,40 @@ def url_getir(bolum,driver):
     with Progress(SpinnerColumn(), '[progress.description]{task.description}', BarColumn(bar_width=40)) as progress:
         task = progress.add_task("[cyan]Video url'si çözülüyor..", start=False)
 
-        try:
-            bolum_hash = re.findall(
-                    "videosec&b=(.*?)&",
-                    driver.execute_script(f'return $.get("/video/{bolum}")')
-                )[0]
-        except IndexError:
-            progress.update(task,visible=False)
-            return False
+        bolum_src = driver.execute_script(f'return $.get("/video/{bolum}")')
+        videos = []
+        regex = re.search("videosec&b=(.*?)&", bolum_src)
 
-        soup = bs4(
-            driver.execute_script(f"return $.get('ajax/videosec&b={bolum_hash}')"),
-            "html.parser"
-            )
+        if regex:
+            bolum_hash = regex.group()
+            soup = bs4(
+                driver.execute_script(f"return $.get('ajax/videosec&b={bolum_hash}')"),
+                "html.parser"
+                )
+            parent = soup.find("div", {"id": "videodetay"}).findAll("div",class_="btn-group")[1]
 
-        parent = soup.find("div", {"id": "videodetay"}).findAll("div",class_="btn-group")[1]
-        videos = [ (i.text, i.get("onclick").split("'")[1]) for i in parent.findAll("button") if "btn-danger" not in str(i) ]
+            for i in parent.findAll("button"):
+                if "btn-danger" not in str(i):
+                    #              (PLAYER, URI)
+                    videos.append( (i.text, i.get("onclick").split("'")[1]) )
+
+        # Tek fansub varsa otomatik yüklenen videoyu da listeye ekle
+        for i in re.findall('iframe src=\\"(.*?)\\\".*?span> (.*?)</button>',bolum_src):
+            videos.append(i[::-1])
 
         for player in desteklenen_players:
             for uri in [ u for t,u in videos if player in t ]:
                 progress.update(task, description=f"[cyan]{player.title()} url'si getiriliyor..")
                 try:
-                    iframe_src = driver.execute_script("return $.get('{}')".format(
-                            re.findall(
-                                r"(\/\/www.turkanime.net\/iframe\/.*)\" width",
-                                driver.execute_script(f"return $.get('{uri}')")
-                            )[0]
-                        ))
+                    if "iframe" in uri:
+                        iframe_url= uri
+                    else:
+                        iframe_url= re.findall(
+                            r"(\/\/www.turkanime.net\/iframe\/.*)\" width",
+                            driver.execute_script(f"return $.get('{uri}')")
+                        )[0]
+
+                    iframe_src = driver.execute_script(f"return $.get('{iframe_url}')")
                 except IndexError:
                     continue
                 else:
