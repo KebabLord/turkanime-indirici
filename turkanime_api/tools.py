@@ -2,8 +2,10 @@ from sys import exit as kapat
 import subprocess as sp
 from os import name
 from prompt_toolkit import styles
+from configparser import ConfigParser
 from selenium import webdriver
 from selenium.webdriver.firefox.options import Options
+from selenium.common.exceptions import SessionNotCreatedException
 
 def gereksinim_kontrol():
     """ Gereksinimlerin erişilebilir olup olmadığını kontrol eder """
@@ -24,8 +26,12 @@ def gereksinim_kontrol():
 
 def webdriver_hazirla():
     """ Selenium webdriver'ı hazırla """
+    parser = ConfigParser()
+    parser.read("./config.ini")
     options = Options()
     options.add_argument('--headless')
+    if parser.has_option("TurkAnime","firefox konumu"):
+        options.binary_location = parser.get("TurkAnime","firefox konumu")
     profile = webdriver.FirefoxProfile()
     profile.set_preference("dom.webdriver.enabled", False)
     profile.set_preference('useAutomationExtension', False)
@@ -34,14 +40,27 @@ def webdriver_hazirla():
     profile.update_preferences()
     desired = webdriver.DesiredCapabilities.FIREFOX
     if name == 'nt':
-        return webdriver.Firefox(
-            profile, options=options,service_log_path='NUL',
-            executable_path=r'geckodriver.exe', desired_capabilities=desired
-        )
+        try:
+            return webdriver.Firefox(
+                profile, options=options,service_log_path='NUL',
+                executable_path=r'geckodriver.exe', desired_capabilities=desired
+            )
+        except SessionNotCreatedException:
+            input("Program Firefox'un kurulu olduğu dizini tespit edemedi "+
+                  "Manuel olarak girmek için yönlendirileceksiniz.\n"+
+                  "(Devam etmek için entera basın)")
+            from easygui import fileopenbox
+            indirilenler_dizin=fileopenbox("/")
+            if indirilenler_dizin:
+                parser.set("TurkAnime","firefox konumu",indirilenler_dizin)
+                with open("./config.ini","w") as f:
+                    parser.write(f)
+                input("Programı yeniden başlatmalısınız. (Devam etmek için entera basın)")
+            kapat()
     return webdriver.Firefox(
         profile, options=options,
         service_log_path='/dev/null',desired_capabilities=desired
-    )
+        )
 
 prompt_tema = styles.Style([
     ('qmark', 'fg:#5F819D bold'),
