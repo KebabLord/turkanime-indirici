@@ -35,9 +35,9 @@ class AnimeSorgula():
         with Progress(SpinnerColumn(), '[progress.description]{task.description}', BarColumn(bar_width=40)) as progress:
             task = progress.add_task("[cyan]Bölümler getiriliyor..", start=False)
             anime_slug=self.tamliste[isim]
+            self.anime_ismi = anime_slug
             raw = self.driver.execute_script(f"return $.get('/anime/{anime_slug}')")
             soup = bs4(raw,"html.parser")
-            self.anime_ismi = soup.title.text
             anime_code = soup.find('meta',{'name':'twitter:image'}).get('content').split('lerb/')[1][:-4]
 
             raw = self.driver.execute_script(f"return $.get('https://www.turkanime.net/ajax/bolumler&animeId={anime_code}')")
