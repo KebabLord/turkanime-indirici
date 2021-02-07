@@ -5,7 +5,9 @@ from time import time
 from selenium.common.exceptions import NoSuchElementException
 from rich.progress import Progress, BarColumn, SpinnerColumn
 from rich import print as rprint
+from questionary import select
 from bs4 import BeautifulSoup as bs4
+from .tools import prompt_tema
 
 desteklenen_players = [
     "SIBNET",
@@ -47,7 +49,22 @@ def check_video(url):
         return True
     return False
 
-def url_getir(bolum,driver):
+def fansub_sec(src):
+    """ Fansubları parselar, hash kodunu çeker ve kullanıcıdan seçim yapmasını ister """
+    fansub_bar = re.search(".*birden fazla grup",src)
+    if not fansub_bar:
+        return ""
+    fansublar = re.findall("(&f=.*?)\'.*?</span> (.*?)</a>",fansub_bar.group())
+
+    secilen_sub = select(
+        "Fansub seçiniz",
+        [{"name":i[1],"value":i[0]} for i in fansublar],
+        style=prompt_tema,
+        instruction=" "
+    ).ask()
+    return secilen_sub if secilen_sub else ""
+
+def url_getir(bolum,driver,manualsub=False):
     """ Ajax sorgularıyla tüm player url'lerini (title,url) formatında listeler
         Ardından desteklenen_player'da belirtilen hiyerarşiye göre sırayla desteklenen
         ve çalışan bir alternatif bulana dek bu listedeki playerları itere eder.
@@ -57,17 +74,21 @@ def url_getir(bolum,driver):
             - Bölüm hash'ini kullanarak tüm playerları getir
             - Her bir player'ın iframe sayfasındaki gerçek url'yi decryptle
     """
+    with Progress(SpinnerColumn(), '[progress.description]{task.description}', BarColumn(bar_width=40), transient=True) as progress:
+        task = progress.add_task("[cyan]Bölüm sayfası getiriliyor..", start=False)
+        bolum_src = driver.execute_script(f'return $.get("/video/{bolum}")')
+
+    fansub_hash = fansub_sec(bolum_src) if manualsub else ""
     with Progress(SpinnerColumn(), '[progress.description]{task.description}', BarColumn(bar_width=40)) as progress:
         task = progress.add_task("[cyan]Video url'si çözülüyor..", start=False)
 
-        bolum_src = driver.execute_script(f'return $.get("/video/{bolum}")')
         videos = []
         regex = re.search("videosec&b=(.*?)&", bolum_src)
 
         if regex:
             bolum_hash = regex.group()
             soup = bs4(
-                driver.execute_script(f"return $.get('ajax/videosec&b={bolum_hash}')"),
+                driver.execute_script(f"return $.get('ajax/videosec&b={bolum_hash}{fansub_hash}')"),
                 "html.parser"
                 )
             parent = soup.find("div", {"id": "videodetay"}).findAll("div",class_="btn-group")[1]

@@ -72,20 +72,26 @@ while True:
         while True:
             parser.read(path.join(".","config.ini"))
             isAutosave   = parser.getboolean("TurkAnime","izlerken kaydet")
+            isAutosub    = parser.getboolean("TurkAnime","manuel fansub")
             dlFolder     = parser.get("TurkAnime","indirilenler")
             opsiyon = select(
                 'İşlemi seç',
                 ['İndirilenler klasörünü seç',
                 f'İzlerken kaydet: {isAutosave}',
+                f'Manuel fansub seç: {isAutosub}',
                 'Geri dön'],
                 style=prompt_tema,
-                instruction=" ",
+                instruction=" "
                 ).ask()
             if opsiyon == 'İndirilenler klasörünü seç':
                 from easygui import diropenbox
                 indirilenler_dizin=diropenbox()
                 if indirilenler_dizin:
                     parser.set('TurkAnime','indirilenler',indirilenler_dizin)
+
+            elif opsiyon == f'Manuel fansub seç: {isAutosub}':
+                parser.set('TurkAnime','manuel fansub',str(not isAutosub))
+
             elif opsiyon == f'İzlerken kaydet: {isAutosave}':
                 parser.set('TurkAnime','izlerken kaydet',str(not isAutosave))
                 if not path.isdir(path.join(".","Kayıtlar")):
