@@ -85,13 +85,10 @@ def url_getir(bolum,driver):
             for uri in [ u for t,u in videos if player in t ]:
                 progress.update(task, description=f"[cyan]{player.title()} url'si getiriliyor..")
                 try:
-                    if "iframe" in uri:
-                        iframe_url= uri
-                    else:
-                        iframe_url= re.findall(
-                            r"(\/\/www.turkanime.net\/iframe\/.*)\" width",
-                            driver.execute_script(f"return $.get('{uri}')")
-                        )[0]
+                    iframe_url= re.findall(
+                        r"(\/\/www.turkanime.net\/iframe\/.*)\" width",
+                        driver.execute_script(f"return $.get('{uri}')")
+                    )[0] if "iframe" not in uri else uri
 
                     iframe_src = driver.execute_script(f"return $.get('{iframe_url}')")
                 except IndexError:
