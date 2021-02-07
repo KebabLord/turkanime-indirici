@@ -60,35 +60,34 @@ class Anime():
         self.driver = driver
         self.seri = seri
         self.bolumler = bolumler
+        self.parser = ConfigParser()
+        self.parser.read(path.join(".","config.ini"))
+        self.otosub = self.parser.getboolean("TurkAnime","manuel fansub")
 
     def indir(self):
-        parser = ConfigParser()
-        parser.read(path.join(".","config.ini"))
-        dlfolder = parser.get("TurkAnime","indirilenler")
+        dlfolder = self.parser.get("TurkAnime","indirilenler")
 
         if not path.isdir(path.join(dlfolder,self.seri)):
             mkdir(path.join(dlfolder,self.seri))
 
         for i,bolum in enumerate(self.bolumler):
             print(" "*50+f"\r\n{i+1}. bölüm indiriliyor:")
-            url = url_getir(bolum,self.driver)
+            otosub = bool(len(self.bolumler)==1 and self.otosub)
+            url = url_getir(bolum,self.driver,manualsub=otosub)
             suffix="--referer https://video.sibnet.ru/" if "sibnet" in url else ""
             system(f'youtube-dl --no-warnings -o "{path.join(dlfolder,self.seri,bolum)}.%(ext)s" "{url}" {suffix}')
         return True
 
     def oynat(self):
-        url = url_getir(self.bolumler,self.driver)
+        url = url_getir(self.bolumler,self.driver,manualsub=self.otosub)
 
         if not url:
             rprint("[red]Bu bölüme ait çalışan bir player bulunamadı.[/red]")
             return False
 
-        parser = ConfigParser()
-        parser.read(path.join(".","config.ini"))
-
         suffix ="--referrer=https://video.sibnet.ru/ " if  "sibnet" in url else ""
         suffix+= "--msg-level=display-tags=no "
-        suffix+="--stream-record={}.mp4 ".format(path.join(".","Kayıtlar",self.bolumler)) if parser.getboolean("TurkAnime","izlerken kaydet") else ""
+        suffix+="--stream-record={}.mp4 ".format(path.join(".","Kayıtlar",self.bolumler)) if self.parser.getboolean("TurkAnime","izlerken kaydet") else ""
 
         system(f'mpv "{url}" {suffix} ')
         return True
