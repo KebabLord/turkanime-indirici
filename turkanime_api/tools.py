@@ -24,7 +24,7 @@ def gereksinim_kontrol():
             "Lütfen klavuzdaki kurulum talimatlarını uygulayın.")
         kapat(1)
 
-def webdriver_hazirla():
+def webdriver_hazirla(progress):
     """ Selenium webdriver'ı hazırla """
     parser = ConfigParser()
     parser.read("./config.ini")
@@ -46,8 +46,9 @@ def webdriver_hazirla():
                 executable_path=r'geckodriver.exe', desired_capabilities=desired
             )
         except SessionNotCreatedException:
+            progress.stop()
             input("Program Firefox'un kurulu olduğu dizini tespit edemedi "+
-                  "Manuel olarak girmek için yönlendirileceksiniz.\n"+
+                  "Manuel olarak firefox.exe'yi seçmek için yönlendirileceksiniz.\n"+
                   "(Devam etmek için entera basın)")
             from easygui import fileopenbox
             indirilenler_dizin=fileopenbox("/")

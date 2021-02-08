@@ -24,4 +24,4 @@ Türkanime için terminal video oynatıcı ve indirici. İtinayla her bölümü 
  - ~~Zaman bloğu olarak sleep'den kurtulunacak, elementin yüklenmesi beklenecek.~~
  - ~~Prompt kütüphanesi olarak berbat durumda olan PyInquirer'den Questionary'e geçilecek.~~
  - ~~Arama sonuçları da http talepleriyle getirilecek.~~
- - Fansub seçme özelliği tekrar eklenecek
+ - ~~Fansub seçme özelliği tekrar eklenecek.~~

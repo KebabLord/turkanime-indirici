@@ -1,4 +1,4 @@
-""" TürkAnimu Downloader v5.3 """
+""" TürkAnimu Downloader v6 """
 from os import path,mkdir
 from sys import exit as kapat
 from atexit import register
@@ -14,7 +14,7 @@ from turkanime_api import elementi_bekle,webdriver_hazirla,prompt_tema
 with Progress(SpinnerColumn(), '[progress.description]{task.description}', BarColumn(bar_width=40)) as progress:
     task = progress.add_task("[cyan]Sürücü başlatılıyor..", start=False)
     gereksinim_kontrol()
-    driver = webdriver_hazirla()
+    driver = webdriver_hazirla(progress)
     register(lambda: (print("Program kapatılıyor..",end="\r") or driver.quit()))
 
     progress.update(task, description="[cyan]TürkAnime'ye bağlanılıyor..")
