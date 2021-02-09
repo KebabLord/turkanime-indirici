@@ -5,7 +5,9 @@ Türkanime için terminal video oynatıcı ve indirici. İtinayla her bölümü 
  - Yığın bölüm indirebilir
  - Animu izleyebilir
  - Uygulama içinden arama yapabilir
+ - Fansub seçtirebilir
  - Bir yandan izlerken bir yandan animeyi kaydedebilir
+ - İndirmelere kaldığı yerden devam edebilir
  
 #### Desteklenen kaynaklar:
 ```Sibnet, Odnoklassinki, Sendvid, Mail.ru, VK, Google+, Myvi, GoogleDrive, Yandisk, Vidmoly, Yourupload, Dailymotion```
