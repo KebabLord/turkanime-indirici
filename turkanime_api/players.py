@@ -107,7 +107,7 @@ def url_getir(bolum,driver,manualsub=False):
                 progress.update(task, description=f"[cyan]{player.title()} url'si getiriliyor..")
                 try:
                     iframe_url= re.findall(
-                        r"(\/\/www.turkanime.net\/iframe\/.*)\" width",
+                        r"(\/\/www.turkanime.co\/iframe\/.*)\" width",
                         driver.execute_script(f"return $.get('{uri}')")
                     )[0] if "iframe" not in uri else uri
 
