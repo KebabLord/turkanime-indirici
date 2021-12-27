@@ -21,7 +21,7 @@ class AnimeSorgula():
                 return self.tamliste.keys()
 
             soup = bs4(
-                self.driver.execute_script("return $.get('https://www.turkanime.co/ajax/tamliste')"),
+                self.driver.execute_script("return $.get('/ajax/tamliste')"),
                 "html.parser"
             )
             raw_series, self.tamliste = soup.findAll('span',{"class":'animeAdi'}) , {}
@@ -40,7 +40,7 @@ class AnimeSorgula():
             soup = bs4(raw,"html.parser")
             anime_code = soup.find('meta',{'name':'twitter:image'}).get('content').split('lerb/')[1][:-4]
 
-            raw = self.driver.execute_script(f"return $.get('https://www.turkanime.co/ajax/bolumler&animeId={anime_code}')")
+            raw = self.driver.execute_script(f"return $.get('/ajax/bolumler&animeId={anime_code}')")
             soup = bs4(raw,"html.parser")
 
             bolumler = []
