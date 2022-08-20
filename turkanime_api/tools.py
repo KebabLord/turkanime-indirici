@@ -24,7 +24,7 @@ def gereksinim_kontrol():
             "Lütfen klavuzdaki kurulum talimatlarını uygulayın.")
         kapat(1)
 
-def webdriver_hazirla(progress):
+def webdriver_hazirla(progress=None):
     """ Selenium webdriver'ı hazırla """
     parser = ConfigParser()
     parser.read("./config.ini")
@@ -46,7 +46,8 @@ def webdriver_hazirla(progress):
                 executable_path=r'geckodriver.exe', desired_capabilities=desired
             )
         except SessionNotCreatedException:
-            progress.stop()
+            if progress:
+                progress.stop()
             input("Program Firefox'un kurulu olduğu dizini tespit edemedi "+
                   "Manuel olarak firefox.exe'yi seçmek için yönlendirileceksiniz.\n"+
                   "(Devam etmek için entera basın)")

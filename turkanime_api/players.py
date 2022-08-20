@@ -1,8 +1,10 @@
+from os import path
 import re
-from sys import exit as kapat
 import subprocess as sp
 from time import time
-from selenium.common.exceptions import NoSuchElementException
+import base64
+from configparser import ConfigParser
+from selenium.common.exceptions import NoSuchElementException,JavascriptException
 from rich.progress import Progress, BarColumn, SpinnerColumn
 from rich import print as rprint
 from questionary import select
@@ -64,17 +66,81 @@ def fansub_sec(src):
     ).ask()
     return secilen_sub if secilen_sub else ""
 
+def decrypt_cipher(driver,cipher,password):
+    """Prosedür:
+        - Talep edilen bölümün hash kodunu çek
+        - Bölüm hash'ini kullanarak tüm playerları getir
+        - Her bir player'ın embed sayfasındaki gerçek url'yi decryptle
+    """
+    try:
+        return "https:"+driver.execute_script(r"""
+            var CryptoJSAesJson = {
+                stringify: function (cipherParams) {
+                    var j = {ct: cipherParams.ciphertext.toString(CryptoJS.enc.Base64)};
+                    if (cipherParams.iv) j.iv = cipherParams.iv.toString();
+                    if (cipherParams.salt) j.s = cipherParams.salt.toString();
+                    return JSON.stringify(j).replace(/\s/g, '');
+                },
+                parse: function (jsonStr) {
+                    console.log(jsonStr);
+                    var j = JSON.parse(jsonStr);
+                    var cipherParams = CryptoJS.lib.CipherParams.create({ciphertext: CryptoJS.enc.Base64.parse(j.ct)});
+                    if (j.iv) cipherParams.iv = CryptoJS.enc.Hex.parse(j.iv);
+                    if (j.s) cipherParams.salt = CryptoJS.enc.Hex.parse(j.s);
+                    return cipherParams;
+                }
+            };
+            return JSON.parse(CryptoJS.AES.decrypt('%s', '%s', {format: CryptoJSAesJson}).toString(CryptoJS.enc.Utf8));
+            """ % (cipher,password))
+    except JavascriptException:
+        return False
+
+def refresh_key(driver):
+    """
+    - Embed endpoint'inin header'ındaki 2. javascripti parse et
+    - Bu javascript içinde regexle importlanan 2 javascripti de bul
+    - JS dosyalarının aralarından 'decrypt' ifadesi geçeni seç
+    - obfuscate listdeki en uzun item bizim keyimiz
+    """
+    try:
+        fetch = lambda x: driver.execute_script(f"return $.get('{x}')")
+        js1 = fetch(
+                re.findall(
+                    "/embed/js/embeds\..*?\.js",
+                    fetch("/embed/#/url/"))[1]
+            )
+
+        js1_imports = re.findall("[a-z0-9]{16}",js1)
+
+        j2 = fetch(f'/embed/js/embeds.{js1_imports[0]}.js')
+        if "'decrypt'" not in j2:
+            j2 = fetch(f'/embed/js/embeds.{js1_imports[1]}.js')
+
+        obfuscate_list = re.search(
+                'function a\\d_0x[\\w]{1,4}\\(\\){var _0x\\w{3,8}=\\[(.*?)\\];',j2
+            ).group(1)
+
+        return max( # Bu listedeki en uzun eleman aradığımız şifre.
+            obfuscate_list.split("','"),
+            key=lambda i:len( re.sub(r"\\x\d\d","?",i))
+        )
+    except IndexError:
+        return False
+
 def url_getir(bolum,driver,manualsub=False):
     """ Ajax sorgularıyla tüm player url'lerini (title,url) formatında listeler
         Ardından desteklenen_player'da belirtilen hiyerarşiye göre sırayla desteklenen
         ve çalışan bir alternatif bulana dek bu listedeki playerları itere eder.
-
-        Prosedür:
-            - Talep edilen bölümün hash kodunu çek
-            - Bölüm hash'ini kullanarak tüm playerları getir
-            - Her bir player'ın iframe sayfasındaki gerçek url'yi decryptle
     """
-    with Progress(SpinnerColumn(), '[progress.description]{task.description}', BarColumn(bar_width=40), transient=True) as progress:
+    parser, url = ConfigParser(), False
+    parser.read(path.join(".","config.ini"))
+    key = base64.b64decode(
+            parser.get("TurkAnime","key")
+        ).decode() if parser.has_option("TurkAnime","key") else False
+
+    with Progress(
+        SpinnerColumn(),'[progress.description]{task.description}',
+        BarColumn(bar_width=40),transient=True) as progress:
         task = progress.add_task("[cyan]Bölüm sayfası getiriliyor..", start=False)
         bolum_src = driver.execute_script(f'return $.get("/video/{bolum}")')
 
@@ -106,42 +172,26 @@ def url_getir(bolum,driver,manualsub=False):
             for uri in [ u for t,u in videos if player in t ]:
                 progress.update(task, description=f"[cyan]{player.title()} url'si getiriliyor..")
                 try:
-                    iframe_url= re.findall(
-                        r"(\/\/www.turkanime.*\/iframe\/.*)\" width",
+                    cipher = base64.b64decode(re.search(
+                        r"\/embed\/#\/url\/(.*?)\?status",
                         driver.execute_script(f"return $.get('{uri}')")
-                    )[0] if "iframe" not in uri else uri
-
-                    iframe_src = driver.execute_script(f"return $.get('{iframe_url}')")
+                    )[1]).decode()
                 except IndexError:
                     continue
-                else:
-                    if "Sayfayı yenileyip tekrar deneyiniz..." in iframe_src:
-                        rprint("[red]Site Bakımda.[/red]")
-                        kapat()
 
-                var_iframe = re.findall(r'{"ct".*?}',iframe_src)[0]
-                var_sifre = re.findall(r"pass.*?\'(.*)?\'",iframe_src)[0]
-
-                # Türkanimenin iframe şifreleme kodu.
-                url = "https:"+driver.execute_script(f"var iframe='{var_iframe}';var pass='{var_sifre}';"+r"""
-                var CryptoJSAesJson = {
-                    stringify: function (cipherParams) {
-                        var j = {ct: cipherParams.ciphertext.toString(CryptoJS.enc.Base64)};
-                        if (cipherParams.iv) j.iv = cipherParams.iv.toString();
-                        if (cipherParams.salt) j.s = cipherParams.salt.toString();
-                        return JSON.stringify(j).replace(/\s/g, '');
-                    },
-                    parse: function (jsonStr) {
-                        console.log(jsonStr);
-                        var j = JSON.parse(jsonStr);
-                        var cipherParams = CryptoJS.lib.CipherParams.create({ciphertext: CryptoJS.enc.Base64.parse(j.ct)});
-                        if (j.iv) cipherParams.iv = CryptoJS.enc.Hex.parse(j.iv);
-                        if (j.s) cipherParams.salt = CryptoJS.enc.Hex.parse(j.s);
-                        return cipherParams;
-                    }
-                };
-                return JSON.parse(CryptoJS.AES.decrypt(iframe, pass, {format: CryptoJSAesJson}).toString(CryptoJS.enc.Utf8));
-                """)
+                if key:
+                    url = decrypt_cipher(driver,cipher,key)
+                elif not url:
+                    key = refresh_key(driver)
+                    url = decrypt_cipher(driver,cipher,key)
+                    parser.set(
+                                'TurkAnime','key',
+                                base64.b64encode(bytes(key,"utf_8")).decode()
+                            )
+                    with open("./config.ini","w") as f:
+                        parser.write(f)
+                if not key or not url:
+                    continue
 
                 progress.update(task, description="[cyan]Video yaşıyor mu kontrol ediliyor..")
                 if check_video(url):
