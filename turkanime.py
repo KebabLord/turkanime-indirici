@@ -1,5 +1,5 @@
 """ TürkAnimu Downloader v7 """
-from os import path,mkdir
+from os import path,mkdir,name,environ
 from sys import exit as kapat
 from time import sleep
 from atexit import register
@@ -10,6 +10,10 @@ from questionary import select,autocomplete,checkbox
 
 from turkanime_api import AnimeSorgula,Anime,DosyaManager,gereksinim_kontrol
 from turkanime_api import elementi_bekle,webdriver_hazirla,prompt_tema,clear
+
+dosya = DosyaManager()
+sep = ";" if name=="nt" else ":"
+environ["PATH"] +=  sep + dosya.ROOT + sep
 
 with Progress(SpinnerColumn(), '[progress.description]{task.description}', BarColumn(bar_width=40)) as progress:
     task = progress.add_task("[cyan]Sürücü başlatılıyor..", start=False)
@@ -63,7 +67,7 @@ while True:
         while True:
             if "izle" in islem:
                 sorgu.mark_bolumler(seri_slug,bolumler,islem="izlendi")
-                previous = sorgu.son_bolum if previous == None else previous
+                previous = sorgu.son_bolum if previous is None else previous
                 clear()
                 secilen = select(
                     message='Bölüm seç',
@@ -75,7 +79,7 @@ while True:
                     previous = set_prev(secilen)
             else:
                 sorgu.mark_bolumler(seri_slug,bolumler,islem="indirildi")
-                previous = sorgu.son_bolum if previous == None else previous
+                previous = sorgu.son_bolum if previous is None else previous
                 clear()
                 secilen = checkbox(
                     message = "Bölüm seç",
@@ -142,3 +146,11 @@ while True:
 
     elif "Kapat" in islem:
         break
+
+
+""" Poetry script'leri modül gibi çalışmaya zorladığından
+    limitasyonu aşmak için kirli bir çözüm.
+"""
+run = lambda: None
+if __name__=="__main__":
+    run()
