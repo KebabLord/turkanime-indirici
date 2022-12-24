@@ -1,0 +1,43 @@
+[tool.poetry]
+name = "turkanime-cli"
+version = "7.0.4"
+description = "Türkanime video oynatıcı ve indirici"
+authors = ["Junicchi <junicchi@waifu.club>"]
+readme = "README.md"
+license = "CC-BY-NC-ND-4.0"
+repository = "https://github.com/kebablord/turkanime-indirici"
+keywords = ["turkanime","turk","anime","downloader"]
+
+classifiers = [
+    "Environment :: Console",
+    "Programming Language :: Python :: 3.6",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9"
+]
+
+packages = [
+  { include = "turkanime_api" }
+]
+
+[tool.poetry.dependencies]
+python = ">=3.6,<4"
+youtube_dl = ">=2021.0.0"
+questionary = "*"
+selenium = ">=3.141.0"
+bs4 = ">=0.0.1"
+easygui = ">=0.98.2"
+rich = ">=9.5.1"
+requests = "*"
+py7zr = "*"
+
+[tool.poetry.dev-dependencies]
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.scripts]
+# Publish sırasında buraya kopyalanmalı
+# ./turkanime.py -> turkanime_api/cli/turkanime.py
+turkanime = 'turkanime_api.cli.turkanime:run'

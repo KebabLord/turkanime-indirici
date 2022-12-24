@@ -1,4 +1,4 @@
-from os import system,path,mkdir
+from os import system,path,mkdir,environ,name
 import json
 from bs4 import BeautifulSoup as bs4
 from rich.progress import Progress, BarColumn, SpinnerColumn
@@ -78,6 +78,7 @@ class Anime():
         self.bolumler = bolumler
         self.dosya = DosyaManager()
         self.otosub = self.dosya.ayar.getboolean("TurkAnime","manuel fansub")
+        environ["PATH"] += ";" if name=="nt" else ":" + self.dosya.ROOT
 
     def indir(self):
         self.dosya.tazele()

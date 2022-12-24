@@ -86,13 +86,13 @@ def webdriver_hazirla(progress=None):
                 progress.stop()
             input("Yazılım firefox'un kurulu olduğu dizini tespit edemedi\n"+
                 "Manual olarak Program Files'ten firefox.exe'yi"+
-                "seçmek için yönlendirileceksiniz.\n\n( Devam etmek için entera basın)")
+                "seçmek için yönlendirileceksiniz.\n\n( Devam etmek için entera basın )")
             from easygui import fileopenbox
             firefox_dizin=fileopenbox("/")
             if firefox_dizin:
                 dosya.ayar.set("TurkAnime","firefox konumu",firefox_dizin)
                 dosya.save_ayarlar()
-                input("Programı yeniden başlatmalısınız. (Devam etmek için entera basın)")
+                input("Programı yeniden başlatmalısınız. \n\n( Devam etmek için entera basın )")
             kapat()
     return webdriver.Firefox(
         profile, options=options,

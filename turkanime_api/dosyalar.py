@@ -4,7 +4,7 @@ DosyaManager()
 DownloadGereksinimler()
     - Gereksinimlerin indirilmesini ve paketten çıkarılmasını sağlar.
 """
-from os import path,mkdir,replace,rename,remove,system
+from os import path,mkdir,replace,rename,remove,system,getcwd
 from struct import calcsize
 from configparser import ConfigParser
 import json
@@ -26,7 +26,6 @@ from rich.progress import (
     TransferSpeedColumn,TimeRemainingColumn
 )
 
-
 class DosyaManager():
     """ Yazılımın konfigürasyon ve indirilenler klasörünü yönet
     - Windows'ta varsayılan dizin: Belgelerim/TurkAnimu
@@ -34,7 +33,7 @@ class DosyaManager():
     """
     def __init__(self):
         if path.isdir(".git"): # Git reposundan çalıştırıldığında.
-            self.ROOT = "."
+            self.ROOT = getcwd()
         else: # Pip modülü veya Exe olarak çalıştırıldığında.
             self.ROOT = path.join(path.expanduser("~"), "TurkAnimu" )
 
