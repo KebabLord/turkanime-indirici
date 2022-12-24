@@ -1,15 +1,14 @@
-from os import path
 import re
 import subprocess as sp
 from time import time
 import base64
-from configparser import ConfigParser
 from selenium.common.exceptions import NoSuchElementException,JavascriptException
 from rich.progress import Progress, BarColumn, SpinnerColumn
 from rich import print as rprint
 from questionary import select
 from bs4 import BeautifulSoup as bs4
 from .tools import prompt_tema
+from .dosyalar import DosyaManager
 
 desteklenen_players = [
     "SIBNET",
@@ -132,11 +131,10 @@ def url_getir(bolum,driver,manualsub=False):
         Ardından desteklenen_player'da belirtilen hiyerarşiye göre sırayla desteklenen
         ve çalışan bir alternatif bulana dek bu listedeki playerları itere eder.
     """
-    parser, url = ConfigParser(), False
-    parser.read(path.join(".","config.ini"))
+    dosya, url = DosyaManager(), False
     key = base64.b64decode(
-            parser.get("TurkAnime","key")
-        ).decode() if parser.has_option("TurkAnime","key") else False
+            dosya.ayar.get("TurkAnime","key")
+        ).decode() if dosya.ayar.has_option("TurkAnime","key") else False
 
     with Progress(
         SpinnerColumn(),'[progress.description]{task.description}',
@@ -145,7 +143,11 @@ def url_getir(bolum,driver,manualsub=False):
         bolum_src = driver.execute_script(f'return $.get("/video/{bolum}")')
 
     fansub_hash = fansub_sec(bolum_src) if manualsub else ""
-    with Progress(SpinnerColumn(), '[progress.description]{task.description}', BarColumn(bar_width=40)) as progress:
+    with Progress(
+            SpinnerColumn(),
+            '[progress.description]{task.description}',
+            BarColumn(bar_width=40)
+        ) as progress:
         task = progress.add_task("[cyan]Video url'si çözülüyor..", start=False)
 
         videos = []
@@ -184,12 +186,11 @@ def url_getir(bolum,driver,manualsub=False):
                 elif not url:
                     key = refresh_key(driver)
                     url = decrypt_cipher(driver,cipher,key)
-                    parser.set(
-                                'TurkAnime','key',
-                                base64.b64encode(bytes(key,"utf_8")).decode()
-                            )
-                    with open("./config.ini","w") as f:
-                        parser.write(f)
+                    dosya.ayar.set(
+                        'TurkAnime','key',
+                        base64.b64encode(bytes(key,"utf_8")).decode()
+                    )
+                    dosya.save_ayarlar()
                 if not key or not url:
                     continue
 

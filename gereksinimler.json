@@ -1,0 +1,28 @@
+[
+  {
+    "name":"mpv",
+    "type":"7z",
+    "is_setup":false,
+    "url":"https://pilotfiber.dl.sourceforge.net/project/mpv-player-windows/64bit/mpv-x86_64-20221218-git-f9d0b0c.7z",
+  	"url_x32":"https://pilotfiber.dl.sourceforge.net/project/mpv-player-windows/32bit/mpv-i686-20221218-git-f9d0b0c.7z"
+  },
+  {
+    "name":"youtube-dl",
+    "type":"exe",
+    "is_setup":false,
+    "url":"https://youtube-dl.org/downloads/latest/youtube-dl.exe"
+  },
+  {
+    "name":"geckodriver",
+    "type":"zip",
+    "is_setup":false,
+    "url":"https://github.com/mozilla/geckodriver/releases/download/v0.32.0/geckodriver-v0.32.0-win64.zip",
+    "url_x32":"https://github.com/mozilla/geckodriver/releases/download/v0.32.0/geckodriver-v0.32.0-win32.zip"
+  },
+  {
+    "name":"vcredist_x86",
+    "type":"exe",
+    "is_setup":true,
+    "url":"https://download.microsoft.com/download/1/6/5/165255E7-1014-4D0A-B094-B6A430A6BFFC/vcredist_x86.exe"
+  }
+]
