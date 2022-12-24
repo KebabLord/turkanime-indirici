@@ -11,7 +11,8 @@ jobs:
       with:
         args: |
           pip install --upgrade pyOpenSSL;
-          pip install -r requirements.txt;
-          pylint -E **/*.py &&
-          pylint turkanime_api/ --fail-under 8.2 &&
-          pylint turkanime.py --fail-under 9.2
+          grep -v py7zr requirements.txt > req2.txt;
+          pip install -r req2.txt;
+          pylint --ignored-modules py7zr -E **/*.py &&
+          pylint --ignored-modules py7zr turkanime_api/ --fail-under 8.2 &&
+          pylint --ignored-modules py7zr turkanime.py --fail-under 9.2

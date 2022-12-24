@@ -1,19 +1,19 @@
-""" TürkAnimu Downloader v6 """
+""" TürkAnimu Downloader v7 """
 from os import path,mkdir
 from sys import exit as kapat
+from time import sleep
 from atexit import register
-from configparser import ConfigParser
 from selenium.common.exceptions import WebDriverException
 from rich.progress import Progress, BarColumn, SpinnerColumn
 from rich import print as rprint
-from questionary import select,autocomplete,prompt
+from questionary import select,autocomplete,checkbox
 
-from turkanime_api import AnimeSorgula,Anime,gereksinim_kontrol
-from turkanime_api import elementi_bekle,webdriver_hazirla,prompt_tema
+from turkanime_api import AnimeSorgula,Anime,DosyaManager,gereksinim_kontrol
+from turkanime_api import elementi_bekle,webdriver_hazirla,prompt_tema,clear
 
 with Progress(SpinnerColumn(), '[progress.description]{task.description}', BarColumn(bar_width=40)) as progress:
     task = progress.add_task("[cyan]Sürücü başlatılıyor..", start=False)
-    gereksinim_kontrol()
+    gereksinim_kontrol(progress)
     driver = webdriver_hazirla(progress)
     register(lambda: (print("Program kapatılıyor..",end="\r") or driver.quit()))
 
@@ -28,8 +28,12 @@ with Progress(SpinnerColumn(), '[progress.description]{task.description}', BarCo
     sorgu = AnimeSorgula(driver)
     progress.update(task,visible=False)
 
+clear()
+rprint("[green]!)[/green] Üst menülere dönmek için Ctrl+C kullanabilirsiniz.\n")
+sleep(2.5)
 
 while True:
+    clear()
     islem = select(
         "İşlemi seç",
         choices=['Anime izle',
@@ -41,66 +45,100 @@ while True:
     ).ask()
 
     if "Anime" in islem:
+        clear()
         try:
             secilen_seri = autocomplete(
                 'Animeyi yazın',
                 choices=sorgu.get_seriler(),
                 style=prompt_tema
             ).ask()
-
-            secilen_bolumler = prompt({
-                'type': "checkbox" if "indir" in islem else "select",
-                'message': 'Bölüm seç',
-                'name': 'anime_bolum',
-                'choices': sorgu.get_bolumler(secilen_seri)},
-                style=prompt_tema,
-                kbi_msg=""
-            )['anime_bolum']
-
+            seri_slug = sorgu.tamliste[secilen_seri]
         except KeyError:
+            rprint("[red][strong]Aradığınız anime bulunamadı.[/strong][red]")
             continue
 
-        anime = Anime(driver, sorgu.anime_ismi ,secilen_bolumler)
+        bolumler = sorgu.get_bolumler(secilen_seri)
+        set_prev = lambda x: [i for i in bolumler if i["value"]==x].pop()
+        previous = None
+        while True:
+            if "izle" in islem:
+                sorgu.mark_bolumler(seri_slug,bolumler,islem="izlendi")
+                previous = sorgu.son_bolum if previous == None else previous
+                clear()
+                secilen = select(
+                    message='Bölüm seç',
+                    choices=bolumler,
+                    style=prompt_tema,
+                    default=previous
+                ).ask(kbi_msg="")
+                if secilen:
+                    previous = set_prev(secilen)
+            else:
+                sorgu.mark_bolumler(seri_slug,bolumler,islem="indirildi")
+                previous = sorgu.son_bolum if previous == None else previous
+                clear()
+                secilen = checkbox(
+                    message = "Bölüm seç",
+                    choices=bolumler,
+                    style=prompt_tema,
+                    initial_choice=previous
+                ).ask(kbi_msg="")
+                if secilen:
+                    previous = set_prev(secilen[-1])
 
-        if islem=="Anime izle":
-            anime.oynat()
-        else:
-            anime.indir()
+            # Bölüm seçim ekranı iptal edildiyse
+            if not secilen:
+                break
+            anime = Anime(driver, sorgu.anime_ismi ,secilen)
+
+            if islem=="Anime izle":
+                anime.oynat()
+            else:
+                anime.indir()
 
     elif "Ayarlar" in islem:
-        parser = ConfigParser()
+        dosya = DosyaManager()
+        ayar = dosya.ayar
+        tr = lambda x: "AÇIK" if x else "KAPALI"
         while True:
-            parser.read(path.join(".","config.ini"))
-            isAutosave   = parser.getboolean("TurkAnime","izlerken kaydet")
-            isAutosub    = parser.getboolean("TurkAnime","manuel fansub")
-            dlFolder     = parser.get("TurkAnime","indirilenler")
-            opsiyon = select(
+            _otosub  = ayar.getboolean("TurkAnime","manuel fansub")
+            _watched = ayar.getboolean("TurkAnime","izlendi ikonu")
+            _otosave = ayar.getboolean("TurkAnime","izlerken kaydet")
+            ayarlar = [
+                'İndirilenler klasörünü seç',
+                f'İzlerken kaydet: {tr(_otosave)}',
+                f'Manuel fansub seç: {tr(_otosub)}',
+                f'İzlendi/İndirildi ikonu: {tr(_watched)}',
+                'Geri dön'
+            ]
+            clear()
+            cevap = select(
                 'İşlemi seç',
-                ['İndirilenler klasörünü seç',
-                f'İzlerken kaydet: {isAutosave}',
-                f'Manuel fansub seç: {isAutosub}',
-                'Geri dön'],
+                ayarlar,
                 style=prompt_tema,
                 instruction=" "
                 ).ask()
-            if opsiyon == 'İndirilenler klasörünü seç':
+            if cevap == ayarlar[0]:
                 from easygui import diropenbox
                 indirilenler_dizin=diropenbox()
                 if indirilenler_dizin:
-                    parser.set('TurkAnime','indirilenler',indirilenler_dizin)
+                    ayar.set('TurkAnime','indirilenler',indirilenler_dizin)
 
-            elif opsiyon == f'Manuel fansub seç: {isAutosub}':
-                parser.set('TurkAnime','manuel fansub',str(not isAutosub))
-
-            elif opsiyon == f'İzlerken kaydet: {isAutosave}':
-                parser.set('TurkAnime','izlerken kaydet',str(not isAutosave))
+            elif cevap == ayarlar[1]:
+                ayar.set('TurkAnime','izlerken kaydet',str(not _otosave))
                 if not path.isdir(path.join(".","Kayıtlar")):
                     mkdir(path.join(".","Kayıtlar"))
+
+            elif cevap == ayarlar[2]:
+                ayar.set('TurkAnime','manuel fansub',str(not _otosub))
+
+            elif cevap == ayarlar[3]:
+                ayar.set('TurkAnime','izlendi ikonu',str(not _watched))
+
             else:
                 break
-
-            with open("./config.ini","w") as f:
-                parser.write(f)
+            dosya.save_ayarlar()
+            sorgu.son_bolum=None
 
     elif "Kapat" in islem:
         break
