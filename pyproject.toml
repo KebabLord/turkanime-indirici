@@ -24,7 +24,7 @@ packages = [
 python = ">=3.6,<4"
 youtube_dl = ">=2021.0.0"
 questionary = "*"
-selenium = ">=3.141.0"
+selenium = ">=3.141.0,<4.3.0"
 bs4 = ">=0.0.1"
 easygui = ">=0.98.2"
 rich = ">=9.5.1"
