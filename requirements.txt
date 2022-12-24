@@ -1,8 +1,8 @@
 youtube-dl
-questionary==1.9.0
-selenium==3.141.0
-bs4==0.0.1
-easygui==0.98.2
-rich==9.10.0
+questionary
+selenium<4.3.0
+bs4
+easygui>=0.98.2
+rich
 py7zr
 requests
