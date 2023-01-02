@@ -14,6 +14,7 @@ from prompt_toolkit import styles
 from selenium import webdriver
 from selenium.webdriver.firefox.options import Options
 from selenium.common.exceptions import SessionNotCreatedException
+from rich.progress import Progress, BarColumn, SpinnerColumn
 from questionary import confirm
 
 from .dosyalar import DosyaManager,DownloadGereksinimler
@@ -24,12 +25,21 @@ def clear():
     """
     system('cls' if name == 'nt' else 'clear')
 
+def create_progress(transient=False):
+    """ Progress animasyonu objesini döndürüyor. """
+    return Progress(
+        SpinnerColumn(),
+        '[progress.description]{task.description}',
+        BarColumn(bar_width=40),
+        transient=transient
+    )
+
 def gereksinim_kontrol(progress=None):
     """ Gereksinimlerin erişilebilir olup olmadığını kontrol eder """
     stdout, bulunmayan = "\n", []
     for gereksinim in ["geckodriver","youtube-dl","mpv"]:
         status = sp.Popen(f'{gereksinim} --version',stdout=sp.PIPE,stderr=sp.PIPE,shell=True).wait()
-        if status==1 or status==127:
+        if status in (1,127):
             stdout += f"x {gereksinim} bulunamadı.\n"
             bulunmayan.append(gereksinim)
         elif status==0:

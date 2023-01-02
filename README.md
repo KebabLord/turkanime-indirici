@@ -30,10 +30,10 @@ Türkanime için terminal video oynatıcı ve indirici. İtinayla her bölümü 
  ![indirme.gif](docs/ss_indir.gif)
 
 ### Yapılacaklar:
- - Progress yaratılma satırı minimal bir class ile kısaltılacak.
+ - ~~Progress yaratılma satırı minimal bir class ile kısaltılacak.~~
  - ~~Domain güncellemesinden beridir kod stabil çalışmıyor, düzeltilecek.~~
  - ~~Kod çorba gibi, basitleştirilecek.~~
- - ~~Navigasyon  ve indirme algoritması http talepleriyle sağlanacak.~~
+ - ~~Navigasyon ve indirme algoritması http talepleriyle sağlanacak.~~
  - ~~Zaman bloğu olarak sleep'den kurtulunacak, elementin yüklenmesi beklenecek.~~
  - ~~Prompt kütüphanesi olarak berbat durumda olan PyInquirer'den Questionary'e geçilecek.~~
  - ~~Arama sonuçları da http talepleriyle getirilecek.~~
