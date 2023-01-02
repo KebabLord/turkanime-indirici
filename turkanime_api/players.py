@@ -44,6 +44,11 @@ def check_video(url):
     if "_myvideo" in url:
         return False
     test = sp.Popen(f'youtube-dl --no-warnings -F "{url}"',stdout=sp.PIPE,shell=True)
+    try:
+        test.wait(10)
+    except sp.TimeoutExpired:
+        test.kill()
+        return False
     stdout = test.communicate()[0].decode()
     stdexit   = test.returncode
     if stdexit == 0 and "php" not in stdout:
