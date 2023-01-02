@@ -2,13 +2,14 @@ from os import system,path,mkdir,environ,name
 from time import sleep
 import json
 from bs4 import BeautifulSoup as bs4
-from rich.progress import Progress, BarColumn, SpinnerColumn
 from rich import print as rprint
 
 from .players import url_getir
 from .dosyalar import DosyaManager
+from .tools import create_progress
 
 class AnimeSorgula():
+    """ İstenilen bölümü veya bölümleri dict olarak getir. """
     def __init__(self,driver=None):
         self.driver=driver
         self.anime_ismi=None
@@ -18,7 +19,7 @@ class AnimeSorgula():
 
     def get_seriler(self):
         """ Sitedeki tüm animeleri [{name:*,value:*}..] formatında döndürür. """
-        with Progress(SpinnerColumn(), '[progress.description]{task.description}', BarColumn(bar_width=40)) as progress:
+        with create_progress() as progress:
             task = progress.add_task("[cyan]Anime listesi getiriliyor..", start=False)
             if self.tamliste:
                 progress.update(task,visible=False)
@@ -36,7 +37,7 @@ class AnimeSorgula():
 
     def get_bolumler(self, isim):
         """ Animenin bölümlerini {bölüm,title} formatında döndürür. """
-        with Progress(SpinnerColumn(), '[progress.description]{task.description}', BarColumn(bar_width=40)) as progress:
+        with create_progress() as progress:
             task = progress.add_task("[cyan]Bölümler getiriliyor..", start=False)
             anime_slug=self.tamliste[isim]
             self.anime_ismi = anime_slug
@@ -97,7 +98,8 @@ class Anime():
                 sleep(3)
                 continue
             suffix="--referer https://video.sibnet.ru/" if "sibnet" in url else ""
-            system(f'youtube-dl --no-warnings -o "{path.join(dlfolder,self.seri,bolum)}.%(ext)s" "{url}" {suffix}')
+            output = path.join(dlfolder,self.seri,bolum)
+            system(f'youtube-dl --no-warnings -o "{output}.%(ext)s" "{url}" {suffix}')
             self.dosya.update_gecmis(self.seri,bolum,islem="indirildi")
         return True
 
@@ -111,7 +113,8 @@ class Anime():
         suffix ="--referrer=https://video.sibnet.ru/ " if  "sibnet" in url else ""
         suffix+= "--msg-level=display-tags=no "
         if self.dosya.ayar.getboolean("TurkAnime","izlerken kaydet"):
-            suffix+="--stream-record={}.mp4 ".format(path.join(self.dosya.ROOT,"Kayıtlar",self.bolumler))
+            output = path.join(self.dosya.ROOT,"Kayıtlar",self.bolumler)
+            suffix+=f"--stream-record={output}.mp4 "
         system(f'mpv "{url}" {suffix} ')
         self.dosya.update_gecmis(self.seri,self.bolumler,islem="izlendi")
         return True

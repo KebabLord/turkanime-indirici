@@ -1,21 +1,29 @@
-""" TürkAnimu Downloader v7 """
+""" TürkAnimu Downloader v7.0.6 """
 from os import path,mkdir,name,environ
 from sys import exit as kapat
 from time import sleep
 from atexit import register
 from selenium.common.exceptions import WebDriverException
-from rich.progress import Progress, BarColumn, SpinnerColumn
 from rich import print as rprint
 from questionary import select,autocomplete,checkbox
 
-from turkanime_api import AnimeSorgula,Anime,DosyaManager,gereksinim_kontrol
-from turkanime_api import elementi_bekle,webdriver_hazirla,prompt_tema,clear
+from turkanime_api import (
+    AnimeSorgula,
+    Anime,
+    DosyaManager,
+    gereksinim_kontrol,
+    elementi_bekle,
+    webdriver_hazirla,
+    prompt_tema,
+    clear,
+    create_progress
+)
 
 dosya = DosyaManager()
-sep = ";" if name=="nt" else ":"
-environ["PATH"] +=  sep + dosya.ROOT + sep
+SEP = ";" if name=="nt" else ":"
+environ["PATH"] +=  SEP + dosya.ROOT + SEP
 
-with Progress(SpinnerColumn(), '[progress.description]{task.description}', BarColumn(bar_width=40)) as progress:
+with create_progress() as progress:
     task = progress.add_task("[cyan]Sürücü başlatılıyor..", start=False)
     gereksinim_kontrol(progress)
     driver = webdriver_hazirla(progress)

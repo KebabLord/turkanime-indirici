@@ -3,11 +3,10 @@ import subprocess as sp
 from time import time
 import base64
 from selenium.common.exceptions import NoSuchElementException,JavascriptException
-from rich.progress import Progress, BarColumn, SpinnerColumn
 from rich import print as rprint
 from questionary import select
 from bs4 import BeautifulSoup as bs4
-from .tools import prompt_tema
+from .tools import prompt_tema,create_progress
 from .dosyalar import DosyaManager
 
 desteklenen_players = [
@@ -45,7 +44,7 @@ def check_video(url):
         return False
     test = sp.Popen(f'youtube-dl --no-warnings -F "{url}"',stdout=sp.PIPE,shell=True)
     try:
-        test.wait(10)
+        test.wait(30)
     except sp.TimeoutExpired:
         test.kill()
         return False
@@ -141,18 +140,12 @@ def url_getir(bolum,driver,manualsub=False):
             dosya.ayar.get("TurkAnime","key")
         ).decode() if dosya.ayar.has_option("TurkAnime","key") else False
 
-    with Progress(
-        SpinnerColumn(),'[progress.description]{task.description}',
-        BarColumn(bar_width=40),transient=True) as progress:
+    with create_progress(transient=True) as progress:
         task = progress.add_task("[cyan]Bölüm sayfası getiriliyor..", start=False)
         bolum_src = driver.execute_script(f'return $.get("/video/{bolum}")')
 
     fansub_hash = fansub_sec(bolum_src) if manualsub else ""
-    with Progress(
-            SpinnerColumn(),
-            '[progress.description]{task.description}',
-            BarColumn(bar_width=40)
-        ) as progress:
+    with create_progress() as progress:
         task = progress.add_task("[cyan]Video url'si çözülüyor..", start=False)
 
         videos = []

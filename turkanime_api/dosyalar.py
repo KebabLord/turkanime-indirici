@@ -8,7 +8,6 @@ from os import path,mkdir,replace,rename,remove,system,getcwd
 from struct import calcsize
 from configparser import ConfigParser
 import json
-from py7zr import SevenZipFile
 from zipfile import ZipFile
 from concurrent.futures import ThreadPoolExecutor
 from urllib.request import urlopen
@@ -16,6 +15,7 @@ import signal
 from shutil import rmtree
 from functools import partial
 import requests
+from py7zr import SevenZipFile
 
 from rich.progress import (
     Event,
@@ -188,7 +188,7 @@ class DownloadGereksinimler():
                     if self.done_event.is_set():
                         print("Başarısız")
                         return
-        except Exception as rr:
+        except Exception as err:
             self.prog.console.log("HATA:",str(err))
             self.status=False
             return
@@ -196,7 +196,7 @@ class DownloadGereksinimler():
 
     def download(self, urls, dest_dir):
         """Birden fazla url'yi hedef dosyaya indir."""
-        urls = [urls] if not type(urls) is list else urls
+        urls = [urls] if not isinstance(urls,list) else urls
         with self.prog:
             with ThreadPoolExecutor(max_workers=3) as pool:
                 for url in urls:
