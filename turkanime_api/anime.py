@@ -1,4 +1,5 @@
 from os import system,path,mkdir,environ,name
+from time import sleep
 import json
 from bs4 import BeautifulSoup as bs4
 from rich.progress import Progress, BarColumn, SpinnerColumn
@@ -88,9 +89,13 @@ class Anime():
             mkdir(path.join(dlfolder,self.seri))
 
         for i,bolum in enumerate(self.bolumler):
-            print(" "*50+f"\r\n{i+1}. bölüm indiriliyor:")
+            print(" "*50+f"\r\n{i+1}. video indiriliyor:")
             otosub = bool(len(self.bolumler)==1 and self.otosub)
             url = url_getir(bolum,self.driver,manualsub=otosub)
+            if not url:
+                rprint("[red]Bu fansuba veya bölüme ait çalışan bir player bulunamadı.[/red]")
+                sleep(3)
+                continue
             suffix="--referer https://video.sibnet.ru/" if "sibnet" in url else ""
             system(f'youtube-dl --no-warnings -o "{path.join(dlfolder,self.seri,bolum)}.%(ext)s" "{url}" {suffix}')
             self.dosya.update_gecmis(self.seri,bolum,islem="indirildi")
