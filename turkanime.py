@@ -5,7 +5,7 @@ from time import sleep
 from atexit import register
 from selenium.common.exceptions import WebDriverException
 from rich import print as rprint
-from questionary import select,autocomplete,checkbox
+from questionary import select,autocomplete,checkbox, confirm, text
 
 from turkanime_api import (
     AnimeSorgula,
@@ -106,7 +106,19 @@ while True:
             if islem=="Anime izle":
                 anime.oynat()
             else:
-                anime.indir()
+                if not confirm(
+                    message = "Eş zamanlı indirme açılsın mı ?",
+                    style=prompt_tema,
+                    auto_enter=False ).ask(kbi_msg=""):
+                    anime.indir()
+                else:
+                    worker_count = text(
+                        message = f'Maksimum eş zamanlı kaç bölüm indirilsin?',
+                        default = f'{len(secilen)}',
+                        style = prompt_tema
+                        ).ask(kbi_msg="")
+                    anime.multi_indir(int(worker_count))
+
 
     elif "Ayarlar" in islem:
         dosya = DosyaManager()
