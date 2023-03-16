@@ -9,7 +9,8 @@ from .dosyalar import DosyaManager
 from .tools import create_progress
 
 from time import perf_counter, sleep
-from subprocess import Popen, TimeoutExpired
+from subprocess import Popen
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import subprocess
 import shlex
 import threading
@@ -165,11 +166,12 @@ class Anime():
                 args=(t[0], t[1], i + 1, progress)) 
                     for i, t in enumerate(cmds)]
             start = perf_counter()
-            for thread in queue:
-                thread.start()
+            
+            with ThreadPoolExecutor(worker_count) as executor:
+                futures = {executor.submit(thread, t[0], t[1], i + 1, progress) for i, t in enumerate(cmds)}
+                for future in as_completed(futures):
+                    pass
 
-            for thread in queue:
-                thread.join()
             end = perf_counter()
 
         rprint(f'İndirme işlemi {int(end - start)} saniye sürdü')
