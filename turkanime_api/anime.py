@@ -127,13 +127,32 @@ class Anime():
             suffix="--referer https://video.sibnet.ru/" if "sibnet" in url else ""
             output = path.join(dlfolder,self.seri,bolum)
             cmd = f'youtube-dl --no-warnings -o "{output}.%(ext)s" "{url}" {suffix}'
-            return bolum, cmd
+            return (bolum, cmd)
 
-        def thread(bolum, cmd):
-            p = Popen(shlex.split(cmd), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        def thread(bolum, cmd, i, progress):
+            task = None
+            p = Popen(shlex.split(cmd), stdout=subprocess.PIPE)
+            b = False
+            output = b''
             while p.poll() is None:
-                pass
-            print("done => ", bolum)
+                c = p.stdout.read(1)
+                if c == b'\r':
+                    if b:
+                        splited = output.split()
+                        yuzde, file_size, speed = splited[1].decode('UTF-8'), \
+                            splited[3].decode('UTF-8'), splited[5].decode('UTF-8')
+                        if not task:
+                            task = progress.add_task(f'[red]Seçilen {i}. bölüm indiriliyor. {file_size}', total=100, visible=False)
+                        else:
+                            progress.update(task, completed=float(yuzde[:-1]), visible=True, \
+                                description=f'[red]Seçilen {i}. bölüm indiriliyor. {file_size} {speed}')
+                        b = not b
+                        output = b''
+                        continue
+                    b = not b
+                elif b:
+                    output += c
+            progress.update(task, completed=100, visible=True)
             self.dosya.update_gecmis(self.seri, bolum,islem="indirildi")
             return True
         
@@ -141,17 +160,20 @@ class Anime():
         for i, bolum in enumerate(self.bolumler):
             cmds.append(find_urls(i, bolum))
         
-        queue = [threading.Thread(target=thread, args=(bolum, cmd)) for bolum, cmd in cmds]
-        start = perf_counter()
-        for thread in queue:
-            thread.start()
+        with create_progress() as progress:
+            queue = [threading.Thread(target=thread,
+                args=(t[0], t[1], i + 1, progress)) 
+                    for i, t in enumerate(cmds)]
+            start = perf_counter()
+            for thread in queue:
+                thread.start()
 
-        for thread in queue:
-            thread.join()
-        end = perf_counter()
+            for thread in queue:
+                thread.join()
+            end = perf_counter()
 
-        rprint(f'time took {end - start}')
-        sleep(50)
+        rprint(f'İndirme işlemi {int(end - start)} saniye sürdü')
+        sleep(5)
         return True
     
     def oynat(self):
