@@ -1,8 +1,2 @@
-venv
-turkanime_api/__pycache__
-geckodriver.exe
-mpv.exe
-gecmis.json
-ayarlar.ini
 geckodriver.log
 log
