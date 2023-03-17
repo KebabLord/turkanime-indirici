@@ -9,11 +9,9 @@ from .dosyalar import DosyaManager
 from .tools import create_progress
 
 from time import perf_counter, sleep
-from subprocess import Popen
+from subprocess import Popen, PIPE
 from concurrent.futures import ThreadPoolExecutor, as_completed
-import subprocess
-import shlex
-import threading
+from shlex import split as csplit
 
 class AnimeSorgula():
     """ İstenilen bölümü veya bölümleri dict olarak getir. """
@@ -132,7 +130,7 @@ class Anime():
 
         def thread(bolum, cmd, i, progress):
             task = None
-            p = Popen(shlex.split(cmd), stdout=subprocess.PIPE)
+            p = Popen(csplit(cmd), stdout=PIPE)
             b = False
             output = b''
             while p.poll() is None:
@@ -162,16 +160,11 @@ class Anime():
             cmds.append(find_urls(i, bolum))
         
         with create_progress() as progress:
-            queue = [threading.Thread(target=thread,
-                args=(t[0], t[1], i + 1, progress)) 
-                    for i, t in enumerate(cmds)]
             start = perf_counter()
-            
             with ThreadPoolExecutor(worker_count) as executor:
                 futures = {executor.submit(thread, t[0], t[1], i + 1, progress) for i, t in enumerate(cmds)}
-                for future in as_completed(futures):
+                for _ in as_completed(futures):
                     pass
-
             end = perf_counter()
 
         rprint(f'İndirme işlemi {int(end - start)} saniye sürdü')
