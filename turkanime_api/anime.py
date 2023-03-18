@@ -1,5 +1,8 @@
 from os import system,path,mkdir,environ,name
-from time import sleep
+from time import sleep,perf_counter
+from subprocess import Popen, PIPE
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from shlex import split as csplit
 import json
 from bs4 import BeautifulSoup as bs4
 from rich import print as rprint
@@ -101,6 +104,73 @@ class Anime():
             output = path.join(dlfolder,self.seri,bolum)
             system(f'youtube-dl --no-warnings -o "{output}.%(ext)s" "{url}" {suffix}')
             self.dosya.update_gecmis(self.seri,bolum,islem="indirildi")
+        return True
+
+    def multi_indir(self, worker_count = 2):
+        self.dosya.tazele()
+        dlfolder = self.dosya.ayar.get("TurkAnime","indirilenler")
+
+        if not path.isdir(path.join(dlfolder,self.seri)):
+            mkdir(path.join(dlfolder,self.seri))
+
+        def find_urls(i, bolum):
+            print(" "*50+f"\r\n{i+1}. video hazırlanıyor:")
+            otosub = bool(len(self.bolumler)==1 and self.otosub)
+            url = url_getir(bolum,self.driver,manualsub=otosub)
+            if not url:
+                rprint("[red]Bu fansuba veya bölüme ait çalışan bir player bulunamadı.[/red]")
+                sleep(3)
+                return ()
+            suffix="--referer https://video.sibnet.ru/" if "sibnet" in url else ""
+            output = path.join(dlfolder,self.seri,bolum)
+            cmd = f'youtube-dl --no-warnings -o "{output}.%(ext)s" "{url}" {suffix}'
+            return (bolum, cmd)
+
+        def thread(bolum, cmd, i, progress):
+            task = None
+            p = Popen(csplit(cmd), stdout=PIPE)
+            b = False
+            output = b''
+            while p.poll() is None:
+                c = p.stdout.read(1)
+                if c == b'\r':
+                    if b:
+                        splited = output.split()
+                        yuzde, file_size, speed = splited[1].decode('UTF-8'), \
+                            splited[3].decode('UTF-8'), splited[5].decode('UTF-8')
+                        if not task:
+                            task = progress.add_task(
+                                f'[red]Seçilen {i}. bölüm indiriliyor. {file_size}',
+                                total=100, visible=False)
+                        else:
+                            progress.update(task, completed=float(yuzde[:-1]), visible=True,
+                                description=f'[red]Seçilen {i}. bölüm indiriliyor. {file_size} {speed}')
+                        b = not b
+                        output = b''
+                        continue
+                    b = not b
+                elif b:
+                    output += c
+            progress.update(task, completed=100, visible=True)
+            self.dosya.update_gecmis(self.seri, bolum,islem="indirildi")
+            return True
+
+        cmds = []
+        for i, bolum in enumerate(self.bolumler):
+            cmd = find_urls(i, bolum)
+            if cmd:
+                cmds.append()
+
+        with create_progress() as progress:
+            start = perf_counter()
+            with ThreadPoolExecutor(worker_count) as executor:
+                futures = {executor.submit(thread, t[0], t[1], i + 1, progress) for i, t in enumerate(cmds)}
+                for _ in as_completed(futures):
+                    pass
+            end = perf_counter()
+
+        rprint(f'İndirme işlemi {int(end - start)} saniye sürdü')
+        sleep(5)
         return True
 
     def oynat(self):
