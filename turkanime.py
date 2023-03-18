@@ -1,4 +1,4 @@
-""" TürkAnimu Downloader v7.0.6 """
+""" TürkAnimu Downloader v7.0.7 """
 from os import path,mkdir,name,environ
 from sys import exit as kapat
 from time import sleep
@@ -106,18 +106,13 @@ while True:
             if islem=="Anime izle":
                 anime.oynat()
             else:
-                if not confirm(
-                    message = "Eş zamanlı indirme açılsın mı ?",
-                    style=prompt_tema,
-                    auto_enter=False ).ask(kbi_msg=""):
+                dosya = DosyaManager()
+                max_dl = dosya.ayar.getint("TurkAnime","aynı anda indirme sayısı")
+                if max_dl <= 1:
                     anime.indir()
                 else:
-                    worker_count = text(
-                        message = f'Maksimum eş zamanlı kaç bölüm indirilsin?',
-                        default = f'{len(secilen)}',
-                        style = prompt_tema
-                        ).ask(kbi_msg="")
-                    anime.multi_indir(int(worker_count))
+                    rprint(f" [green]-[/green] Paralel indirme aktif. (max={max_dl})\n")
+                    anime.multi_indir(max_dl)
 
 
     elif "Ayarlar" in islem:
@@ -128,11 +123,13 @@ while True:
             _otosub  = ayar.getboolean("TurkAnime","manuel fansub")
             _watched = ayar.getboolean("TurkAnime","izlendi ikonu")
             _otosave = ayar.getboolean("TurkAnime","izlerken kaydet")
+            _max_dl  = ayar.get("TurkAnime","aynı anda indirme sayısı")
             ayarlar = [
                 'İndirilenler klasörünü seç',
                 f'İzlerken kaydet: {tr(_otosave)}',
                 f'Manuel fansub seç: {tr(_otosub)}',
                 f'İzlendi/İndirildi ikonu: {tr(_watched)}',
+                f'Aynı anda indirme sayısı: {_max_dl}',
                 'Geri dön'
             ]
             clear()
@@ -158,6 +155,14 @@ while True:
 
             elif cevap == ayarlar[3]:
                 ayar.set('TurkAnime','izlendi ikonu',str(not _watched))
+
+            elif cevap == ayarlar[4]:
+                _max_dl = text(
+                    message = f'Maksimum eş zamanlı kaç bölüm indirilsin?',
+                    default = str(_max_dl),
+                    style = prompt_tema
+                ).ask(kbi_msg="")
+                ayar.set('TurkAnime','aynı anda indirme sayısı',_max_dl)
 
             else:
                 break
