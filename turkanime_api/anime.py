@@ -1,5 +1,8 @@
 from os import system,path,mkdir,environ,name
-from time import sleep
+from time import sleep,perf_counter
+from subprocess import Popen, PIPE
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from shlex import split as csplit
 import json
 from bs4 import BeautifulSoup as bs4
 from rich import print as rprint
@@ -7,11 +10,6 @@ from rich import print as rprint
 from .players import url_getir
 from .dosyalar import DosyaManager
 from .tools import create_progress
-
-from time import perf_counter, sleep
-from subprocess import Popen, PIPE
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from shlex import split as csplit
 
 class AnimeSorgula():
     """ İstenilen bölümü veya bölümleri dict olarak getir. """
@@ -107,7 +105,7 @@ class Anime():
             system(f'youtube-dl --no-warnings -o "{output}.%(ext)s" "{url}" {suffix}')
             self.dosya.update_gecmis(self.seri,bolum,islem="indirildi")
         return True
-    
+
     def multi_indir(self, worker_count = 2):
         self.dosya.tazele()
         dlfolder = self.dosya.ayar.get("TurkAnime","indirilenler")
@@ -116,13 +114,13 @@ class Anime():
             mkdir(path.join(dlfolder,self.seri))
 
         def find_urls(i, bolum):
-            print(" "*50+f"\r\n{i+1}. video indiriliyor:")
+            print(" "*50+f"\r\n{i+1}. video hazırlanıyor:")
             otosub = bool(len(self.bolumler)==1 and self.otosub)
             url = url_getir(bolum,self.driver,manualsub=otosub)
             if not url:
                 rprint("[red]Bu fansuba veya bölüme ait çalışan bir player bulunamadı.[/red]")
                 sleep(3)
-                return
+                return ()
             suffix="--referer https://video.sibnet.ru/" if "sibnet" in url else ""
             output = path.join(dlfolder,self.seri,bolum)
             cmd = f'youtube-dl --no-warnings -o "{output}.%(ext)s" "{url}" {suffix}'
@@ -141,9 +139,11 @@ class Anime():
                         yuzde, file_size, speed = splited[1].decode('UTF-8'), \
                             splited[3].decode('UTF-8'), splited[5].decode('UTF-8')
                         if not task:
-                            task = progress.add_task(f'[red]Seçilen {i}. bölüm indiriliyor. {file_size}', total=100, visible=False)
+                            task = progress.add_task(
+                                f'[red]Seçilen {i}. bölüm indiriliyor. {file_size}',
+                                total=100, visible=False)
                         else:
-                            progress.update(task, completed=float(yuzde[:-1]), visible=True, \
+                            progress.update(task, completed=float(yuzde[:-1]), visible=True,
                                 description=f'[red]Seçilen {i}. bölüm indiriliyor. {file_size} {speed}')
                         b = not b
                         output = b''
@@ -154,11 +154,13 @@ class Anime():
             progress.update(task, completed=100, visible=True)
             self.dosya.update_gecmis(self.seri, bolum,islem="indirildi")
             return True
-        
+
         cmds = []
         for i, bolum in enumerate(self.bolumler):
-            cmds.append(find_urls(i, bolum))
-        
+            cmd = find_urls(i, bolum)
+            if cmd:
+                cmds.append()
+
         with create_progress() as progress:
             start = perf_counter()
             with ThreadPoolExecutor(worker_count) as executor:
@@ -170,7 +172,7 @@ class Anime():
         rprint(f'İndirme işlemi {int(end - start)} saniye sürdü')
         sleep(5)
         return True
-    
+
     def oynat(self):
         url = url_getir(self.bolumler,self.driver,manualsub=self.otosub)
 

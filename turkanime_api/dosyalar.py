@@ -37,11 +37,13 @@ class DosyaManager():
         else: # Pip modülü veya Exe olarak çalıştırıldığında.
             self.ROOT = path.join(path.expanduser("~"), "TurkAnimu" )
 
+        # default ayarlar
         self.default = {
             "manuel fansub" : "False",
             "izlerken kaydet" : "False",
             "indirilenler" : ".",
-            "izlendi ikonu" : "True"
+            "izlendi ikonu" : "True",
+            "aynı anda indirme sayısı" : "3",
         }
         self.ayar_path = path.join(self.ROOT, "ayarlar.ini")
         self.gecmis_path = path.join(self.ROOT, "gecmis.json")
