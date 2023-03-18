@@ -14,10 +14,10 @@ Türkanime için terminal video oynatıcı ve indirici. İtinayla her bölümü 
 
 #### Yenilikler:
  - Seçim ekranı en son seçilen bölümden başlıyor, https://github.com/KebabLord/turkanime-indirici/discussions/35 https://github.com/KebabLord/turkanime-indirici/discussions/30
+ - Aynı anda birden fazla bölüm indirme özelliği https://github.com/KebabLord/turkanime-indirici/pull/49
  - Önceden indirilen veya izlenen animelere izlendi ikonu seçeneği
- - Gereksinimleri otomatik indirme sistemi basitleştirildi
- - Dosya yönetim sistemi eklendi
- - Minimalleştirmeler & Hata gidermeleri
+ - Gereksinimleri uygulama içinden otomatik indirme
+
 
 
 # Kurulum
@@ -30,11 +30,18 @@ Türkanime için terminal video oynatıcı ve indirici. İtinayla her bölümü 
  ![indirme.gif](docs/ss_indir.gif)
 
 ### Yapılacaklar:
- - ~~Progress yaratılma satırı minimal bir class ile kısaltılacak.~~
- - ~~Domain güncellemesinden beridir kod stabil çalışmıyor, düzeltilecek.~~
- - ~~Kod çorba gibi, basitleştirilecek.~~
- - ~~Navigasyon ve indirme algoritması http talepleriyle sağlanacak.~~
- - ~~Zaman bloğu olarak sleep'den kurtulunacak, elementin yüklenmesi beklenecek.~~
- - ~~Prompt kütüphanesi olarak berbat durumda olan PyInquirer'den Questionary'e geçilecek.~~
- - ~~Arama sonuçları da http talepleriyle getirilecek.~~
- - ~~Fansub seçme özelliği tekrar eklenecek.~~
+ - [ ] Yeni sürüm var mı uygulama açılışında kontrol et.
+ - [ ] İndirme bitimi aksiyonları: bildirim veya bilgisayar kapatma.
+ - [ ] Maximum çözünürlüğe ulaş.
+ - [ ] Gui versiyon
+ - [ ] Youtube-dl yerine yt-dlp'ye geçilmeli.
+ - [ ] Selenium'dan kurtulma
+ - [x] ~~Paralel anime indirme özelliği.~~
+ - [x] ~~Progress yaratılma satırı minimal bir class ile kısaltılacak.~~
+ - [x] ~~Domain güncellemesinden beridir kod stabil çalışmıyor, düzeltilecek.~~
+ - [x] ~~Kod çorba gibi, basitleştirilecek.~~
+ - [x] ~~Navigasyon ve indirme algoritması http talepleriyle sağlanacak.~~
+ - [x] ~~Zaman bloğu olarak sleep'den kurtulunacak, elementin yüklenmesi beklenecek.~~
+ - [x] ~~Prompt kütüphanesi olarak berbat durumda olan PyInquirer'den Questionary'e geçilecek.~~
+ - [x] ~~Arama sonuçları da http talepleriyle getirilecek.~~
+ - [x] ~~Fansub seçme özelliği tekrar eklenecek.~~
