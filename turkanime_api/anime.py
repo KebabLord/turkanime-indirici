@@ -159,7 +159,7 @@ class Anime():
         for i, bolum in enumerate(self.bolumler):
             cmd = find_urls(i, bolum)
             if cmd:
-                cmds.append()
+                cmds.append(cmd)
 
         with create_progress() as progress:
             start = perf_counter()
