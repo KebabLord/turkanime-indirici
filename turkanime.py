@@ -6,6 +6,7 @@ from atexit import register
 from selenium.common.exceptions import WebDriverException
 from rich import print as rprint
 from questionary import select,autocomplete,checkbox, confirm, text
+import requests
 
 from turkanime_api import (
     AnimeSorgula,
@@ -22,6 +23,19 @@ from turkanime_api import (
 dosya = DosyaManager()
 SEP = ";" if name=="nt" else ":"
 environ["PATH"] +=  SEP + dosya.ROOT + SEP
+
+def check_latest_version():
+    response = requests.get("https://api.github.com/repos/KebabLord/turkanime-indirici/releases/latest")
+    return response.json()["tag_name"][1:]
+
+def check_current_version():
+    pp = open("pyproject.toml", "r")
+    pp_data = pp.read().split("\n")[2]
+    pp.close()
+    return pp_data[pp_data.index("\"")+1:len(pp_data)-1]
+
+son_versiyon = check_latest_version()
+uygulama_versiyonu = check_current_version()
 
 with create_progress() as progress:
     task = progress.add_task("[cyan]Sürücü başlatılıyor..", start=False)
@@ -41,6 +55,8 @@ with create_progress() as progress:
     progress.update(task,visible=False)
 
 clear()
+if uygulama_versiyonu != son_versiyon:
+    rprint("[red]Uygulamanın sürümü güncel değil[red] [yellow]"+uygulama_versiyonu+"[yellow] -> [green]"+son_versiyon+"[green]");
 rprint("[green]!)[/green] Üst menülere dönmek için Ctrl+C kullanabilirsiniz.\n")
 sleep(2.5)
 
@@ -55,7 +71,6 @@ while True:
         style=prompt_tema,
         instruction=" "
     ).ask()
-
     if "Anime" in islem:
         clear()
         try:
