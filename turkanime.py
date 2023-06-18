@@ -25,14 +25,15 @@ SEP = ";" if name=="nt" else ":"
 environ["PATH"] +=  SEP + dosya.ROOT + SEP
 
 def check_latest_version():
-    response = requests.get("https://api.github.com/repos/KebabLord/turkanime-indirici/releases/latest")
+    """Github'daki en güncel versiyonu string olarak döndürür"""
+    response = requests.get("https://api.github.com/repos/KebabLord/turkanime-indirici/releases/latest", timeout=3)
     return response.json()["tag_name"][1:]
 
 def check_current_version():
-    pp = open("pyproject.toml", "r")
-    pp_data = pp.read().split("\n")[2]
-    pp.close()
-    return pp_data[pp_data.index("\"")+1:len(pp_data)-1]
+    """Bilgisayardaki mevcut versiyonu string olarak döndürür"""
+    with open("pyproject.toml", "r", encoding="UTF-8") as pp:
+        pp_data = pp.read().split("\n")[2]
+        return pp_data[pp_data.index("\"")+1:len(pp_data)-1]
 
 son_versiyon = check_latest_version()
 uygulama_versiyonu = check_current_version()
@@ -56,7 +57,7 @@ with create_progress() as progress:
 
 clear()
 if uygulama_versiyonu != son_versiyon:
-    rprint("[red]Uygulamanın sürümü güncel değil[red] [yellow]"+uygulama_versiyonu+"[yellow] -> [green]"+son_versiyon+"[green]");
+    rprint("[red]Uygulamanın sürümü güncel değil[red] [yellow]"+uygulama_versiyonu+"[yellow] -> [green]"+son_versiyon+"[green]")
 rprint("[green]!)[/green] Üst menülere dönmek için Ctrl+C kullanabilirsiniz.\n")
 sleep(2.5)
 
