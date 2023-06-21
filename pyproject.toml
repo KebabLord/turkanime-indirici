@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "turkanime-cli"
-version = "7.1.0"
+version = "7.1.1"
 description = "Türkanime video oynatıcı ve indirici"
 authors = ["Junicchi <junicchi@waifu.club>"]
 readme = "README.md"
@@ -13,7 +13,9 @@ classifiers = [
     "Programming Language :: Python :: 3.6",
     "Programming Language :: Python :: 3.7",
     "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9"
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11"
 ]
 
 packages = [
@@ -38,6 +40,9 @@ requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
-# Publish sırasında buraya kopyalanmalı
-# ./turkanime.py -> turkanime_api/cli/turkanime.py
+# Publish sırasında yapılması gerekenler:
+#   cp ./turkanime.py turkanime_api/cli/turkanime.py
+#   turkanime_api/version.py dosyasındaki build, pip olarak değişmeli.
+#   poetry build; poetry install; poetry publish
+
 turkanime = 'turkanime_api.cli.turkanime:run'

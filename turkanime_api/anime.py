@@ -66,7 +66,7 @@ class AnimeSorgula():
         if not self.dosya.ayar.getboolean("TurkAnime","izlendi ikonu"):
             return
         is_watched = lambda ep: slug in gecmis[islem] and ep in gecmis[islem][slug]
-        with open(self.dosya.gecmis_path) as f:
+        with open(self.dosya.gecmis_path,encoding="utf-8") as f:
             gecmis = json.load(f)
         self.son_bolum=None
         for bolum in bolumler:

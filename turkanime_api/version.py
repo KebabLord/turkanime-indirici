@@ -10,7 +10,7 @@ build çeşiti ve versiyon numarası bu script'e embedlandı.
 import re
 import requests
 __author__ = "https://github.com/Kebablord/turkanime-indirici"
-__version__ = "7.1.0"
+__version__ = "7.1.1"
 __build__ = "source" # source,exe,pip
 
 isGuncel, update_type = True, None
@@ -33,14 +33,20 @@ else: # source
 # Eğer güncelleme mevcutsa güncelleme tipini belirt
 if not recent_version:
     print("Güncelleme kontrol edilemedi.")
-elif __version__ != recent_version:
-    isGuncel = False
+else:
+    cv = __version__.split(".")
+    rv = recent_version.split(".")
     for i in range(3):
-        if recent_version.split(".")[i] > __version__.split(".")[i]:
+        if cv[i] == rv[i]:
+            continue
+        if int(cv[i]) < int(rv[i]):
+            isGuncel = False
             break
-    if i == 0:
-        update_type = "Radikal"
-    elif i == 1:
-        update_type = "Özellik"
-    else:
-        update_type = "Onarım"
+        break
+    if not isGuncel:
+        if i == 0:
+            update_type = "Radikal"
+        elif i == 1:
+            update_type = "Özellik"
+        else:
+            update_type = "Onarım"
