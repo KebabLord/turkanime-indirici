@@ -30,12 +30,12 @@ Türkanime için terminal video oynatıcı ve indirici. İtinayla her bölümü 
  ![indirme.gif](docs/ss_indir.gif)
 
 ### Yapılacaklar:
- - [ ] Yeni sürüm var mı uygulama açılışında kontrol et.
  - [ ] İndirme bitimi aksiyonları: bildirim veya bilgisayar kapatma.
  - [ ] Maximum çözünürlüğe ulaş.
  - [ ] Gui versiyon
  - [ ] Youtube-dl yerine yt-dlp'ye geçilmeli.
  - [ ] Selenium'dan kurtulma
+ - [x] ~~Yeni sürüm var mı uygulama açılışında kontrol et.~~
  - [x] ~~Paralel anime indirme özelliği.~~
  - [x] ~~Progress yaratılma satırı minimal bir class ile kısaltılacak.~~
  - [x] ~~Domain güncellemesinden beridir kod stabil çalışmıyor, düzeltilecek.~~
