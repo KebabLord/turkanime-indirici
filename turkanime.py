@@ -1,11 +1,11 @@
-""" TürkAnimu Downloader v7.0.7 """
+""" TürkAnimu Downloader """
 from os import path,mkdir,name,environ
 from sys import exit as kapat
 from time import sleep
 from atexit import register
 from selenium.common.exceptions import WebDriverException
 from rich import print as rprint
-from questionary import select,autocomplete,checkbox, confirm, text
+from questionary import select,autocomplete,checkbox, text
 
 from turkanime_api import (
     AnimeSorgula,
@@ -16,13 +16,28 @@ from turkanime_api import (
     webdriver_hazirla,
     prompt_tema,
     clear,
-    create_progress
+    create_progress,
+    isGuncel,update_type,__build__
 )
 
+# Uygulama path'ını işletim sistemine uygun olarak script'e importla
 dosya = DosyaManager()
 SEP = ";" if name=="nt" else ":"
 environ["PATH"] +=  SEP + dosya.ROOT + SEP
 
+# Güncelleme varsa uyarı ver.
+if not isGuncel:
+    rprint(f"[red]!)[/red] {update_type} güncellemesi mevcut!")
+    if __build__ == "pip":
+        print("  - Güncellemek için: pip install -U turkanime-cli")
+    elif __build__ == "exe":
+        print("  - Son sürümü github'daki releases bölümünden indirebilirsin")
+    print("\n")
+    sleep(3)
+else:
+    rprint(f"[green]*)[/green] Script'in güncel {__build__} sürümünü kullanıyorsunuz.")
+
+# Selenium'u başlat
 with create_progress() as progress:
     task = progress.add_task("[cyan]Sürücü başlatılıyor..", start=False)
     gereksinim_kontrol(progress)
@@ -40,10 +55,12 @@ with create_progress() as progress:
     sorgu = AnimeSorgula(driver)
     progress.update(task,visible=False)
 
+# Kullanıcıyı karşıla
 clear()
 rprint("[green]!)[/green] Üst menülere dönmek için Ctrl+C kullanabilirsiniz.\n")
 sleep(2.5)
 
+# Ana menü
 while True:
     clear()
     islem = select(
@@ -158,7 +175,7 @@ while True:
 
             elif cevap == ayarlar[4]:
                 _max_dl = text(
-                    message = f'Maksimum eş zamanlı kaç bölüm indirilsin?',
+                    message = 'Maksimum eş zamanlı kaç bölüm indirilsin?',
                     default = str(_max_dl),
                     style = prompt_tema
                 ).ask(kbi_msg="")
@@ -173,7 +190,7 @@ while True:
         break
 
 
-""" Poetry script'leri modül gibi çalışmaya zorladığından
+""" Poetry script'leri de modül gibi çalışmaya zorladığından
     limitasyonu aşmak için kirli bir çözüm.
 """
 run = lambda: None
