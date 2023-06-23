@@ -10,7 +10,7 @@ build çeşiti ve versiyon numarası bu script'e embedlandı.
 import re
 import requests
 __author__ = "https://github.com/Kebablord/turkanime-indirici"
-__version__ = "7.1.1"
+__version__ = "7.1.3"
 __build__ = "source" # source,exe,pip
 
 isGuncel, update_type = True, None
@@ -23,7 +23,7 @@ if __build__ == "pip":
 elif __build__ == "exe":
     URL = "https://api.github.com/repos/Kebablord/turkanime-indirici/releases/latest"
     release = requests.get(URL).json()
-    recent_version = release['tag_name'].replace("v","")
+    recent_version = release['tag_name'].replace("v","").replace("V","")
 else: # source
     URL = "https://raw.githubusercontent.com/kebablord/turkanime-indirici/master/turkanime_api/version.py"
     source = requests.get(URL).text
