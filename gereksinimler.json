@@ -3,8 +3,8 @@
     "name":"mpv",
     "type":"7z",
     "is_setup":false,
-    "url":"https://pilotfiber.dl.sourceforge.net/project/mpv-player-windows/64bit/mpv-x86_64-20221218-git-f9d0b0c.7z",
-  	"url_x32":"https://pilotfiber.dl.sourceforge.net/project/mpv-player-windows/32bit/mpv-i686-20221218-git-f9d0b0c.7z"
+    "url":"https://master.dl.sourceforge.net/project/mpv-player-windows/64bit/mpv-x86_64-20221218-git-f9d0b0c.7z",
+  	"url_x32":"https://master.dl.sourceforge.net/project/mpv-player-windows/32bit/mpv-i686-20221218-git-f9d0b0c.7z"
   },
   {
     "name":"youtube-dl",
