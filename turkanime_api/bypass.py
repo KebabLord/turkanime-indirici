@@ -7,7 +7,7 @@ from appdirs import user_cache_dir
 from Crypto.Cipher import AES
 
 
-def obtain_key(driver):
+def obtain_key(driver) -> bytes:
     """
     Şifreli iframe url'sini decryptlemek için gerekli anahtarı döndürür. 
     Javascript dosyalarının isimleri ve anahtar, periyodik olarak değiştiğinden,
@@ -46,7 +46,7 @@ def obtain_key(driver):
 
 
 
-def decrypt_cipher(key: str, data: str) -> str:
+def decrypt_cipher(key: bytes, data: bytes) -> str:
     """ CryptoJS.AES.decrypt'in python implementasyonu
         referans:
             - https://stackoverflow.com/a/36780727
@@ -79,17 +79,20 @@ def decrypt_cipher(key: str, data: str) -> str:
 
 
 
-def get_real_url(driver,url_cipher,cache=True):
+def get_real_url(driver, url_cipher: str, cache=True) -> str:
     """ obtain_key & decrypt_cipher fonksiyonlarını kombine eden parolayı cache'leyen fonksiyon. """
     cache_file = os.path.join(user_cache_dir(),"turkanimu_key.cache")
-    # Daha önceden cache'lenmiş bir key varsa önce onunla decrypt etmeyi dene.
+    url_cipher = url_cipher.encode()
+
+    # Daha önceden cache'lenmiş key varsa onunla şifreyi çözmeyi dene.
     if cache and os.path.isfile(cache_file):
         with open(cache_file) as f:
-            key = f.read().strip()
-        plaintext = decrypt_cipher(key,url_cipher)
-        if plaintext:
-            return plaintext
-    # Önceden cache'lenmiş key geçersizse veya mevcut değilse, yeni key ile decryptlemeyi dene.
+            cached_key = f.read().strip().encode()
+            plaintext = decrypt_cipher(cached_key,url_cipher)
+            if plaintext:
+                return plaintext
+
+    # Cache'lenmiş key işe yaramadıysa, yeni key'i edin ve decryptlemeyi dene.
     key = obtain_key(driver)
     plaintext = decrypt_cipher(key,url_cipher)
     if not plaintext:
@@ -97,5 +100,5 @@ def get_real_url(driver,url_cipher,cache=True):
     # Cache'i güncelle
     if cache:
         with open(cache_file,"w") as f:
-            f.write(key)
+            f.write(key.decode("utf-8"))
     return plaintext

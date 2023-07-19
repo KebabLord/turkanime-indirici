@@ -61,26 +61,25 @@ class Anime:
             self.info[key] = val
         self.info["Özet"] = re.findall('"ozet">(.*?)</p>',info_table)[0]
 
-    @property
-    def bolumler_data(self):
+    def get_bolum_listesi(self):
         """ Anime bölümlerinin [(slug,isim),] formatında listesi. """
-        if self._bolumler_data is None:
-            anime_id = self.anime_id
-            src = self.driver.execute_script(f"return $.get('/ajax/bolumler&animeId={anime_id}')")
-            self._bolumler_data = re.findall(r'\/video\/(.*?)\\?".*?title=.*?"(.*?)\\?"',src)
-        return self._bolumler_data
+        anime_id = self.anime_id
+        src = self.driver.execute_script(f"return $.get('/ajax/bolumler&animeId={anime_id}')")
+        return re.findall(r'\/video\/(.*?)\\?".*?title=.*?"(.*?)\\?"',src)
+
+    @staticmethod
+    def get_anime_listesi(driver):
+        """ Anime serilerinin [(slug,isim),] formatında listesi. """
+        src = driver.execute_script("return $.get('/ajax/tamliste')")
+        return re.findall(r'\/anime\/(.*?)".*?animeAdi">(.*?)<',src)
 
     @property
     def bolumler(self):
         """ Anime bölümlerinin [Bolum,] formatında listesi. """
         if not self._bolumler:
-            for slug,title in self.bolumler_data:
+            for slug,title in self.get_bolum_listesi():
                 self._bolumler.append(Bolum(self.driver,slug=slug,title=title,anime=self))
         return self._bolumler
-
-    @staticmethod
-    def fetch_anime_list():
-        print("poop")
 
 
 
@@ -191,9 +190,3 @@ class Video:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 self._info = ydl.extract_info(self.url, download=False)
         return self._info
-
-    def indir(self):
-        ...
-
-    def oynat(self):
-        ...

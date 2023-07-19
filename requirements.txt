@@ -1,8 +1,6 @@
-youtube-dl
-questionary
 selenium<4.3.0
+yt-dlp
 bs4
-easygui>=0.98.2
-rich
-py7zr
-requests
+pycryptodome
+appdirs
+
