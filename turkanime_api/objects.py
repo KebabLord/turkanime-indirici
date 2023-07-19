@@ -1,190 +1,174 @@
-from os import system,path,mkdir,environ,name
-from time import sleep,perf_counter
-from subprocess import Popen, PIPE
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from shlex import split as csplit
-import json
-from bs4 import BeautifulSoup as bs4
-from rich import print as rprint
+import re
 
-from .players import url_getir
-from .dosyalar import DosyaManager
-from .tools import create_progress
+class Anime:
+    """
+    Bir anime serisi hakkında her verinin bulunduğu obje.
+    Obje'yi yaratmak için animenin kodu veya URL'si yeterlidir.
 
-class AnimeSorgula():
-    """ İstenilen bölümü veya bölümleri dict olarak getir. """
-    def __init__(self,driver=None):
-        self.driver=driver
-        self.anime_ismi=None
-        self.tamliste=None
-        self.son_bolum=None
-        self.dosya=DosyaManager()
-
-    def get_seriler(self):
-        """ Sitedeki tüm animeleri [{name:*,value:*}..] formatında döndürür. """
-        with create_progress() as progress:
-            task = progress.add_task("[cyan]Anime listesi getiriliyor..", start=False)
-            if self.tamliste:
-                progress.update(task,visible=False)
-                return self.tamliste.keys()
-
-            soup = bs4(
-                self.driver.execute_script("return $.get('/ajax/tamliste')"),
-                "html.parser"
-            )
-            raw_series, self.tamliste = soup.findAll('span',{"class":'animeAdi'}) , {}
-            for seri in raw_series:
-                self.tamliste[seri.text] = seri.findParent().get('href').split('anime/')[1]
-            progress.update(task,visible=False)
-            return [seri.text for seri in raw_series]
-
-    def get_bolumler(self, isim):
-        """ Animenin bölümlerini {bölüm,title} formatında döndürür. """
-        with create_progress() as progress:
-            task = progress.add_task("[cyan]Bölümler getiriliyor..", start=False)
-            anime_slug=self.tamliste[isim]
-            self.anime_ismi = anime_slug
-            raw = self.driver.execute_script(f"return $.get('/anime/{anime_slug}')")
-            soup = bs4(raw,"html.parser")
-            anime_code = soup.find('meta',{'name':'twitter:image'}).get('content').split('lerb/')[1][:-4]
-
-            raw = self.driver.execute_script(f"return $.get('/ajax/bolumler&animeId={anime_code}')")
-            soup = bs4(raw,"html.parser")
-
-            bolumler = []
-            for bolum in soup.findAll("span",{"class":"bolumAdi"}):
-                bolumler.append({
-                    'name':bolum.text,
-                    'value':bolum.findParent().get("href").split("video/")[1]
-                })
-            progress.update(task,visible=False)
-            return bolumler
-
-    def mark_bolumler(self,slug,bolumler,islem):
-        """ İzlenen bölümlere tick koyar. """
-        self.dosya.tazele()
-        if not self.dosya.ayar.getboolean("TurkAnime","izlendi ikonu"):
-            return
-        is_watched = lambda ep: slug in gecmis[islem] and ep in gecmis[islem][slug]
-        with open(self.dosya.gecmis_path,encoding="utf-8") as f:
-            gecmis = json.load(f)
-        self.son_bolum=None
-        for bolum in bolumler:
-            if is_watched(bolum["value"]) and bolum["name"][-2:] != " ●":
-                bolum["name"] += " ●"
-                self.son_bolum = bolum
-
-
-class Anime():
-    """ İstenilen bölümü veya bölümleri oynat ya da indir. """
-    def __init__(self,driver,seri,bolumler):
+    Öznitelikler:
+    - slug: Animenin kodu: "non-non-biyori".
+    - title: Animenin okunaklı ismi, örneğin: Non Non Biyori
+    - anime_id: Animenin türkanime id'si. Bölümleri ve anime resmini getirirken gerekli.
+    - bolumler_data: Anime bölümlerinin [(str:slug,str:isim),] formatında listesi.
+    - bolumler: Anime bölümlerinin [Bolum:bolum1,Bolum:bolum2,] formatında obje listesi.
+    - info: Anime sayfasından parse'lanan özet,kategori,stüdyo gibi meta bilgileri içeren dict.
+    """
+    def __init__(self,driver,slug):
         self.driver = driver
-        self.seri = seri
-        self.bolumler = bolumler
-        self.dosya = DosyaManager()
-        self.otosub = self.dosya.ayar.getboolean("TurkAnime","manuel fansub")
-        environ["PATH"] += ";" if name=="nt" else ":" + self.dosya.ROOT
+        self.slug = slug
+        self.title = None
+        self.anime_id = 0
+        self.info = {
+            "Kategori":None,
+            "Japonca":None,
+            "Anime Türü":[],
+            "Bölüm Sayısı":0,
+            "Başlama Tarihi":None,
+            "Bitiş Tarihi":None,
+            "Stüdyo":None,
+            "Puanı":0.0,
+            "Özet":None,
+            "Resim":None
+        }
+        self.fetch_info()
+        self._bolumler_data = None
+        self._bolumler = []
 
-    def indir(self):
-        self.dosya.tazele()
-        dlfolder = self.dosya.ayar.get("TurkAnime","indirilenler")
+    def fetch_info(self):
+        """Anime detay sayfasını ayrıştır."""
+        req = self.driver.execute_script(f"return $.get('/anime/{self.slug}')")
+        twitmeta = re.findall(r'twitter.image" content="(.*?serilerb/(.*?)\.jpg)"',req)[0]
+        self.info["Resim"], self.anime_id = twitmeta
+        if not self.title:
+            self.title = re.findall(r'<title>(.*?)<\/title>',req).pop()
 
-        if not path.isdir(path.join(dlfolder,self.seri)):
-            mkdir(path.join(dlfolder,self.seri))
-
-        for i,bolum in enumerate(self.bolumler):
-            print(" "*50+f"\r\n{i+1}. video indiriliyor:")
-            otosub = bool(len(self.bolumler)==1 and self.otosub)
-            url = url_getir(bolum,self.driver,manualsub=otosub)
-            if not url:
-                rprint("[red]Bu fansuba veya bölüme ait çalışan bir player bulunamadı.[/red]")
-                sleep(3)
+        # Anime sayfasındaki bilgi tablosunu parse'la
+        info_table=re.findall(r'<div id="animedetay">(<table.*?</table>)',req)[0]
+        raw_m = re.findall(r"<tr>.*?<b>(.*?)<\/b>.*?width.*?>(.*?)<\/td>.*?<\/tr>",info_table)
+        for key,val in raw_m:
+            if not key in self.info:
                 continue
-            suffix="--referer https://video.sibnet.ru/" if "sibnet" in url else ""
-            output = path.join(dlfolder,self.seri,bolum)
-            system(f'youtube-dl --no-warnings -o "{output}.%(ext)s" "{url}" {suffix}')
-            self.dosya.update_gecmis(self.seri,bolum,islem="indirildi")
-        return True
+            val = re.sub("<.*?>","",val)
+            val = re.sub("^ {1,3}","",val)
+            if key == "Puanı":
+                val = float(re.findall("^(.*?) ",val).pop())
+            elif key == "Anime Türü":
+                val = val.split("  ")
+            self.info[key] = val
+        self.info["Özet"] = re.findall('"ozet">(.*?)</p>',info_table)[0]
 
-    def multi_indir(self, worker_count = 2):
-        self.dosya.tazele()
-        dlfolder = self.dosya.ayar.get("TurkAnime","indirilenler")
+    @property
+    def bolumler_data(self):
+        """ Anime bölümlerinin [(slug,isim),] formatında listesi. """
+        if self._bolumler_data is None:
+            anime_id = self.anime_id
+            req = self.driver.execute_script(f"return $.get('/ajax/bolumler&animeId={anime_id}')")
+            self._bolumler_data = re.findall(r'\/video\/(.*?)\\?".*?title=.*?"(.*?)\\?"',req)
+        return self._bolumler_data
 
-        if not path.isdir(path.join(dlfolder,self.seri)):
-            mkdir(path.join(dlfolder,self.seri))
+    @property
+    def bolumler(self):
+        """ Anime bölümlerinin [Bolum,] formatında listesi. """
+        if not self._bolumler:
+            for slug,title in self.bolumler_data:
+                self._bolumler.append(Bolum(self.driver,slug=slug,title=title,anime=self))
+        return self._bolumler
 
-        def find_urls(i, bolum):
-            print(" "*50+f"\r\n{i+1}. video hazırlanıyor:")
-            otosub = bool(len(self.bolumler)==1 and self.otosub)
-            url = url_getir(bolum,self.driver,manualsub=otosub)
-            if not url:
-                rprint("[red]Bu fansuba veya bölüme ait çalışan bir player bulunamadı.[/red]")
-                sleep(3)
-                return ()
-            suffix="--referer https://video.sibnet.ru/" if "sibnet" in url else ""
-            output = path.join(dlfolder,self.seri,bolum)
-            cmd = f'youtube-dl --no-warnings -o "{output}.%(ext)s" "{url}" {suffix}'
-            return (bolum, cmd)
+    @staticmethod
+    def fetch_anime_list():
+        print("poop")
 
-        def thread(bolum, cmd, i, progress):
-            task = None
-            p = Popen(csplit(cmd), stdout=PIPE)
-            b = False
-            output = b''
-            while p.poll() is None:
-                c = p.stdout.read(1)
-                if c == b'\r':
-                    if b:
-                        splited = output.split()
-                        yuzde, file_size, speed = splited[1].decode('UTF-8'), \
-                            splited[3].decode('UTF-8'), splited[5].decode('UTF-8')
-                        if not task:
-                            task = progress.add_task(
-                                f'[red]Seçilen {i}. bölüm indiriliyor. {file_size}',
-                                total=100, visible=False)
-                        else:
-                            progress.update(task, completed=float(yuzde[:-1]), visible=True,
-                                description=f'[red]Seçilen {i}. bölüm indiriliyor. {file_size} {speed}')
-                        b = not b
-                        output = b''
-                        continue
-                    b = not b
-                elif b:
-                    output += c
-            progress.update(task, completed=100, visible=True)
-            self.dosya.update_gecmis(self.seri, bolum,islem="indirildi")
-            return True
 
-        cmds = []
-        for i, bolum in enumerate(self.bolumler):
-            cmd = find_urls(i, bolum)
-            if cmd:
-                cmds.append(cmd)
 
-        with create_progress() as progress:
-            start = perf_counter()
-            with ThreadPoolExecutor(worker_count) as executor:
-                futures = {executor.submit(thread, t[0], t[1], i + 1, progress) for i, t in enumerate(cmds)}
-                for _ in as_completed(futures):
-                    pass
-            end = perf_counter()
+class Bolum:
+    """
+    Bir anime bölum'ünü temsil eden obje.
+    Obje'yi yaratmak için bölümün kodu veya URL'si yeterlidir.
 
-        rprint(f'İndirme işlemi {int(end - start)} saniye sürdü')
-        sleep(5)
-        return True
+    Öznitelikler:
+    - slug: Bölümün kodu: "naruto-54-bolum" veya URLsi: "https://turkani.co/video/naruto-54-bolum".
+    - title: Bölümün okunaklı ismi. (opsiyonel)
+    - anime: Bölümün ait olduğu anime'nin objesi, eğer tanımlanmadıysa erişildiğinde yaratılır.
+    """
+    def __init__(self,driver,slug,anime=None,title=None):
+        if "http" == slug[:4]:
+            slug = slug.split("/")[-1]
+        self.driver = driver
+        self.slug = slug
+        self._title = title
+        self._html = None
+        self._videos = []
+        self._anime = anime
 
-    def oynat(self):
-        url = url_getir(self.bolumler,self.driver,manualsub=self.otosub)
+    @property
+    def html(self):
+        if self._html is None:
+            self._html = self.driver.execute_script(f'return $.get("/video/{self.slug}")')
+        return self._html
 
-        if not url:
-            rprint("[red]Bu bölüme ait çalışan bir player bulunamadı.[/red]")
-            return False
+    @property
+    def title(self):
+        if self._title is None:
+            self._title = re.findall(r'<title>(.*?)<\/title>',self.html)[0]
+        return self._title
 
-        suffix ="--referrer=https://video.sibnet.ru/ " if  "sibnet" in url else ""
-        suffix+= "--msg-level=display-tags=no "
-        if self.dosya.ayar.getboolean("TurkAnime","izlerken kaydet"):
-            output = path.join(self.dosya.ROOT,"Kayıtlar",self.bolumler)
-            suffix+=f"--stream-record={output}.mp4 "
-        system(f'mpv "{url}" {suffix} ')
-        self.dosya.update_gecmis(self.seri,self.bolumler,islem="izlendi")
-        return True
+    @property
+    def videos(self):
+        if self._videos == []:
+            self.get_videos()
+        return self._videos
+
+    @property
+    def anime(self):
+        """ Bu bölümün ait olduğu anime serisi objesini yarat. """
+        if self._anime is None:
+            self._anime = "Naruto"
+        return self._anime
+
+    def get_videos(self,parse_fansubs=False):
+        req = self.html
+        # Yalnızca tek bir fansub varsa
+        if not re.search(".*birden fazla grup",req):
+            fansub = re.findall(r"</span> ([^\\<>]*)</button>.*?iframe",req)[0]
+            vids=re.findall(r"(ajax\/videosec&b=[A-Za-z0-9]+&v=.*?)'.*?<\/span> ?(.*?)<\/button",req)
+            for vpath,player in vids:
+                self._videos.append(Video(self,vpath,player,fansub))
+        # Fansublar da parse'lanacaksa
+        elif parse_fansubs:
+            fansubs = re.findall(r"(ajax\/videosec&.*?)(?=').*?<\/span> ?(.*?)<\/a>",req)
+            for path,fansub in fansubs:
+                r = self.driver.execute_script(f'return $.get("{path}")')
+                vids=re.findall(r"(ajax\/videosec&b=[A-Za-z0-9]+&v=.*?)'.*?<\/span> ?(.*?)<\/button",r)
+                for vpath,player in vids:
+                    self._videos.append(Video(self,vpath,player,fansub))
+        # Fansubları parselamaksızın tüm videoları getir
+        else:
+            allpath = re.findall(r"(ajax\/videosec&b=[A-Za-z0-9]+.*?)&[fv]=.*?'.*?<\/span>",req)[0]
+            r = self.driver.execute_script(f'return $.get("{allpath}")')
+            vids=re.findall(r"(ajax\/videosec&b=[A-Za-z0-9]+&v=.*?)'.*?<\/span> ?(.*?)<\/button",r)
+            for vpath,player in vids:
+                self._videos.append(Video(self,vpath,player))
+        return self._videos
+
+
+
+class Video:
+    """
+    Bir bölüm adına yüklenmiş herhangi bir videoyu temsil eden obje.
+
+    Öznitelikler:
+    - path: Video'nun türkanime'deki hash'li dizin yolu.
+    - bolum: Video'nun ait olduğu bölüm objesi.
+    - fansub: eğer belirtilmişse, videoyu yükleyen fansub'un ismi.
+    - url: Videonun decrypted gerçek url'si, örn: https://youtube.com/watch?v=XXXXXXXX
+    """
+    def __init__(self,bolum,path,player=None,fansub=None):
+        self.path = path
+        self.player = player
+        self.fansub = fansub
+        self.bolum = bolum
+        self._url = None
+        self._download_url = None
+        self._resolution = None
+        self._size = None
+    ...
