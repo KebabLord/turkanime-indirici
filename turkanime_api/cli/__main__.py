@@ -1,198 +1,139 @@
 """ TürkAnimu Downloader """
-from os import path,mkdir,name,environ
-from sys import exit as kapat
+from os import environ,name
 from time import sleep
-from atexit import register
-from selenium.common.exceptions import WebDriverException
+import sys
+import atexit
 from rich import print as rprint
-from questionary import select,autocomplete,checkbox, text
+from questionary import select,autocomplete,checkbox,confirm
+from selenium.common.exceptions import WebDriverException
 
-from turkanime_api import (
-    AnimeSorgula,
-    Anime,
-    DosyaManager,
-    gereksinim_kontrol,
-    elementi_bekle,
-    webdriver_hazirla,
-    prompt_tema,
-    clear,
-    create_progress,
-    isGuncel,update_type,__build__
-)
 
-# Uygulama path'ını işletim sistemine uygun olarak script'e importla
-dosya = DosyaManager()
+from ..webdriver import create_webdriver,elementi_bekle
+from ..objects import Anime, Bolum
+from .dosyalar import Dosyalar
+from .gereksinimler import Gereksinimler, MISSING
+from .cli_tools import prompt_tema,clear
+
+# Uygulama dizinini sistem PATH'ına ekle.
 SEP = ";" if name=="nt" else ":"
-environ["PATH"] +=  SEP + dosya.ROOT + SEP
+environ["PATH"] +=  SEP + Dosyalar().ta_path + SEP
 
-# Güncelleme varsa uyarı ver.
-if not isGuncel:
-    rprint(f"[red]!)[/red] {update_type} güncellemesi mevcut!")
-    if __build__ == "pip":
-        print("  - Güncellemek için: pip install -U turkanime-cli")
-    elif __build__ == "exe":
-        print("  - Son sürümü github'daki releases bölümünden indirebilirsin")
-    print("\n")
-    sleep(3)
-else:
-    rprint(f"[green]*)[/green] Script'in güncel {__build__} sürümünü kullanıyorsunuz.")
+def gereksinim_kontrol_cli():
+    """ Gereksinimleri kontrol eder ve gerekirse indirip kurar."""
+    gerek = Gereksinimler()
+    if gerek.eksikler:
+        eksik_msg = ""
+        guide_msg = "\nManuel indirmek için:\nhttps://github.com/KebabLord/turkanime-indirici/wiki"
+        for eksik,exit_code in gerek.eksikler:
+            if exit_code is MISSING:
+                eksik_msg += f"{eksik} yazılımı bulunamadı."
+            else:
+                eksik_msg += f"{eksik} yazılımı bulundu ancak çalıştırılamadı."
+        print(eksik_msg,end="\n\n")
+        if name=="nt" and confirm("Otomatik kurulsun mu?").ask():
+            fails = gerek.otomatik_indir()
+            eksik_msg = None, ""
+            for fail in fails:
+                if "err_msg" in fail:
+                    eksik_msg += f"!) {fail['name']} indirilemedi\n"
+                    if fail["err_msg"] != "":
+                        eksik_msg += f"   -   {fail['err_msg'][:45]}...\n"
+                elif "ext_code" in fail:
+                    if fail["ext_code"] is MISSING:
+                        eksik_msg += f"!) {fail['name']} kurulamadı.\n"
+                    else:
+                        eksik_msg += f"!) {fail['name']} çalıştırılamadı.\n"
+            if fails:
+                print(eksik_msg + guide_msg)
+                input("\n(ENTER'a BASIN)")
+                sys.exit(1)
+        else:
+            print(guide_msg)
+            input("\n(ENTER'a BASIN)")
+            sys.exit(1)
 
-# Selenium'u başlat
-with create_progress() as progress:
-    task = progress.add_task("[cyan]Sürücü başlatılıyor..", start=False)
-    gereksinim_kontrol(progress)
-    driver = webdriver_hazirla(progress)
-    register(lambda: (print("Program kapatılıyor..",end="\r") or driver.quit()))
 
-    progress.update(task, description="[cyan]TürkAnime'ye bağlanılıyor..")
+def to_choices(li):
+    """ (name,value) formatını questionary choices formatına dönüştür. """
+    assert len(li) != 0
+    if isinstance(li[0], Bolum):
+        return [{
+            "name": str(b.title),
+            "value": b
+        } for b in li]
+    return [{
+        "name": str(n),
+        "value": s
+    } for s,n in li]
+
+
+def menu_loop(driver):
+    """ Ana menü interaktif navigasyonu """
+    while True:
+        clear()
+        islem = select(
+            "İşlemi seç",
+            choices=['Anime izle',
+                    'Anime indir',
+                    'Ayarlar',
+                    'Kapat'],
+            style=prompt_tema,
+            instruction=" "
+        ).ask()
+        # Anime izle veya indir seçildiyse.
+        if "Anime" in islem:
+            # Seriyi seç.
+            try:
+                animeler = Anime.get_anime_listesi(driver)
+                seri_ismi = autocomplete(
+                    'Animeyi yazın',
+                    choices = [n for s,n in animeler],
+                    style = prompt_tema
+                ).ask()
+                seri_slug = [s for s,n in animeler if n==seri_ismi][0]
+                anime = Anime(driver,seri_slug)
+            except (KeyError,IndexError):
+                rprint("[red][strong]Aradığınız anime bulunamadı.[/strong][red]")
+                sleep(3)
+                continue
+
+            while True:
+                if "izle" in islem:
+                    bolum = select(
+                        message='Bölüm seç',
+                        choices= to_choices(anime.bolumler),
+                        style=prompt_tema,
+                        #default=previous
+                    ).ask(kbi_msg="")
+                    ...
+                else:
+                    bolumler = checkbox(
+                        message = "Bölüm seç",
+                        choices=to_choices(anime.bolumler),
+                        style=prompt_tema,
+                        #initial_choice=previous
+                    ).ask(kbi_msg="")
+                    ...
+        ...
+
+
+def main():
+    # Selenium'u başlat.
+    driver = create_webdriver()
     try:
         driver.get("https://turkanime.co/kullanici/anonim")
         elementi_bekle(".navbar-nav",driver)
     except (ConnectionError,WebDriverException):
-        progress.update(task,visible=False)
         rprint("[red][strong]TürkAnime'ye ulaşılamıyor.[/strong][red]")
-        kapat(1)
-    sorgu = AnimeSorgula(driver)
-    progress.update(task,visible=False)
+        sys.exit(1)
 
-# Kullanıcıyı karşıla
-clear()
-rprint("[green]!)[/green] Üst menülere dönmek için Ctrl+C kullanabilirsiniz.\n")
-sleep(2.5)
-
-# Ana menü
-while True:
     clear()
-    islem = select(
-        "İşlemi seç",
-        choices=['Anime izle',
-                'Anime indir',
-                'Ayarlar',
-                'Kapat'],
-        style=prompt_tema,
-        instruction=" "
-    ).ask()
+    rprint("[green]!)[/green] Üst menülere dönmek için Ctrl+C kullanabilirsiniz.\n")
+    sleep(2.5)
 
-    if "Anime" in islem:
-        clear()
-        try:
-            secilen_seri = autocomplete(
-                'Animeyi yazın',
-                choices=sorgu.get_seriler(),
-                style=prompt_tema
-            ).ask()
-            seri_slug = sorgu.tamliste[secilen_seri]
-        except KeyError:
-            rprint("[red][strong]Aradığınız anime bulunamadı.[/strong][red]")
-            continue
-
-        bolumler = sorgu.get_bolumler(secilen_seri)
-        set_prev = lambda x: [i for i in bolumler if i["value"]==x].pop()
-        previous = None
-        while True:
-            if "izle" in islem:
-                sorgu.mark_bolumler(seri_slug,bolumler,islem="izlendi")
-                previous = sorgu.son_bolum if previous is None else previous
-                clear()
-                secilen = select(
-                    message='Bölüm seç',
-                    choices=bolumler,
-                    style=prompt_tema,
-                    default=previous
-                ).ask(kbi_msg="")
-                if secilen:
-                    previous = set_prev(secilen)
-            else:
-                sorgu.mark_bolumler(seri_slug,bolumler,islem="indirildi")
-                previous = sorgu.son_bolum if previous is None else previous
-                clear()
-                secilen = checkbox(
-                    message = "Bölüm seç",
-                    choices=bolumler,
-                    style=prompt_tema,
-                    initial_choice=previous
-                ).ask(kbi_msg="")
-                if secilen:
-                    previous = set_prev(secilen[-1])
-
-            # Bölüm seçim ekranı iptal edildiyse
-            if not secilen:
-                break
-            anime = Anime(driver, sorgu.anime_ismi ,secilen)
-
-            if islem=="Anime izle":
-                anime.oynat()
-            else:
-                dosya = DosyaManager()
-                max_dl = dosya.ayar.getint("TurkAnime","aynı anda indirme sayısı")
-                if max_dl <= 1:
-                    anime.indir()
-                else:
-                    rprint(f" [green]-[/green] Paralel indirme aktif. (max={max_dl})\n")
-                    anime.multi_indir(max_dl)
+    menu_loop(driver)
 
 
-    elif "Ayarlar" in islem:
-        dosya = DosyaManager()
-        ayar = dosya.ayar
-        tr = lambda x: "AÇIK" if x else "KAPALI"
-        while True:
-            _otosub  = ayar.getboolean("TurkAnime","manuel fansub")
-            _watched = ayar.getboolean("TurkAnime","izlendi ikonu")
-            _otosave = ayar.getboolean("TurkAnime","izlerken kaydet")
-            _max_dl  = ayar.get("TurkAnime","aynı anda indirme sayısı")
-            ayarlar = [
-                'İndirilenler klasörünü seç',
-                f'İzlerken kaydet: {tr(_otosave)}',
-                f'Manuel fansub seç: {tr(_otosub)}',
-                f'İzlendi/İndirildi ikonu: {tr(_watched)}',
-                f'Aynı anda indirme sayısı: {_max_dl}',
-                'Geri dön'
-            ]
-            clear()
-            cevap = select(
-                'İşlemi seç',
-                ayarlar,
-                style=prompt_tema,
-                instruction=" "
-                ).ask()
-            if cevap == ayarlar[0]:
-                from easygui import diropenbox
-                indirilenler_dizin=diropenbox()
-                if indirilenler_dizin:
-                    ayar.set('TurkAnime','indirilenler',indirilenler_dizin)
 
-            elif cevap == ayarlar[1]:
-                ayar.set('TurkAnime','izlerken kaydet',str(not _otosave))
-                if not path.isdir(path.join(".","Kayıtlar")):
-                    mkdir(path.join(".","Kayıtlar"))
-
-            elif cevap == ayarlar[2]:
-                ayar.set('TurkAnime','manuel fansub',str(not _otosub))
-
-            elif cevap == ayarlar[3]:
-                ayar.set('TurkAnime','izlendi ikonu',str(not _watched))
-
-            elif cevap == ayarlar[4]:
-                _max_dl = text(
-                    message = 'Maksimum eş zamanlı kaç bölüm indirilsin?',
-                    default = str(_max_dl),
-                    style = prompt_tema
-                ).ask(kbi_msg="")
-                ayar.set('TurkAnime','aynı anda indirme sayısı',_max_dl)
-
-            else:
-                break
-            dosya.save_ayarlar()
-            sorgu.son_bolum=None
-
-    elif "Kapat" in islem:
-        break
-
-
-""" Poetry script'leri de modül gibi çalışmaya zorladığından
-    limitasyonu aşmak için kirli bir çözüm.
-"""
-run = lambda: None
-if __name__=="__main__":
-    run()
+if __name__ == '__main__':
+    main()
