@@ -7,6 +7,7 @@ find_firefox_executable() -> path:str
 """
 
 from os import name,path,getlogin
+from time import time
 from distutils import spawn
 from selenium import webdriver
 from selenium.webdriver.firefox.options import Options
@@ -64,3 +65,18 @@ def create_webdriver(profile=None,headless=True,firefox_path=None,load_ta=True):
     if load_ta:
         driver.get(init_url)
     return driver
+
+
+def elementi_bekle(selector,_driver):
+    """ Element yüklenene dek bekler. Eğer 10 saniye
+        boyunca yanıt alamazsa error verir.
+    """
+    start=round(time())
+    while round(time())-start<10:
+        try:
+            _driver.find_element_by_css_selector(selector)
+        except NoSuchElementException:
+            continue
+        break
+    else:
+        raise ConnectionError("TürkAnime'ye ulaşılamıyor")

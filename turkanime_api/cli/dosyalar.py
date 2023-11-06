@@ -6,7 +6,6 @@ DownloadGereksinimler()
 """
 from os import path,mkdir,replace,rename,remove,system,getcwd
 from struct import calcsize
-from configparser import ConfigParser
 import json
 from zipfile import ZipFile
 from concurrent.futures import ThreadPoolExecutor
@@ -26,82 +25,73 @@ from rich.progress import (
     TransferSpeedColumn,TimeRemainingColumn
 )
 
-class DosyaManager():
+# yt-dlp, mpv gibi gereksinimlerin indirme linklerinin bulunduğu dosya.
+DL_URL="https://raw.githubusercontent.com/KebabLord/turkanime-indirici/master/gereksinimler.json"
+
+class Dosyalar:
     """ Yazılımın konfigürasyon ve indirilenler klasörünü yönet
-    - Windows'ta varsayılan dizin: Belgelerim/TurkAnimu
+    - Windows'ta varsayılan dizin: $USER/TurkAnimu
     - Linux'ta varsayılan dizin: /home/$USER/TurkAnimu
+
+    Öznitelikler:
+        ayar_path: TurkAnimu config dosyasının dizini
+        Dosyalar.gecmis_path: İzlenme ve indirme log'unun dizini
     """
+    # Defaults to C:/User/xxx/TurkAnimu veya ~/TurkAnimu dizini.
+
     def __init__(self):
-        if path.isdir(".git"): # Git reposundan çalıştırıldığında.
-            self.ROOT = getcwd()
-        else: # Pip modülü veya Exe olarak çalıştırıldığında.
-            self.ROOT = path.join(path.expanduser("~"), "TurkAnimu" )
-
-        # default ayarlar
-        self.default = {
-            "manuel fansub" : "False",
-            "izlerken kaydet" : "False",
+        self.ta_path = path.join(path.expanduser("~"), "TurkAnimu" )
+        if path.isdir(".git"): # Git reposundan çalıştırılıyorsa.
+            self.ta_path = getcwd()
+        self.ayar_path = path.join(self.ta_path, "ayarlar.json")
+        self.gecmis_path = path.join(self.ta_path, "gecmis.json")
+        default_ayarlar = {
+            "manuel fansub" : False,
+            "izlerken kaydet" : False,
             "indirilenler" : ".",
-            "izlendi ikonu" : "True",
-            "aynı anda indirme sayısı" : "3",
+            "izlendi ikonu" : True,
+            "aynı anda indirme sayısı" : 3,
         }
-        self.ayar_path = path.join(self.ROOT, "ayarlar.ini")
-        self.gecmis_path = path.join(self.ROOT, "gecmis.json")
-        self.verify_dosyalar()
-        self.ayar = ConfigParser()
-        self.ayar.read(self.ayar_path)
-
-    def tazele(self):
-        self.ayar = ConfigParser()
-        self.ayar.read(self.ayar_path)
-
-    def save_ayarlar(self):
-        with open(self.ayar_path,"w") as f:
-            self.ayar.write(f)
-        self.tazele()
-
-    def verify_dosyalar(self):
-        """ Config dosyasını güncelle & yoksa yarat. """
-        if not path.isdir(".git"):
-            if not path.isdir(self.ROOT):
-                mkdir(self.ROOT)
-            # Eski sürüme ait config dosyasını yeni ana dizine taşı
-            olds = ["TurkAnime.ini",path.join("TurkAnimu","TurkAnime.ini"),"config.ini"]
-            for old in olds:
-                old = path.join(path.expanduser("~"),old)
-                if path.isfile(old):
-                    replace(old,self.ayar_path)
-
-        if not path.isfile(self.ayar_path):
-            new = "[TurkAnime]\n"
-            for key,val in self.default.items():
-                new += f"{key} = {val}\n"
-            with open(self.ayar_path,"w") as f:
-                f.write(new)
+        # Gerekli dosyalar eğer daha önce yaratılmadıysa yarat.
+        if not path.isdir(".git") and not path.isdir(self.ta_path):
+            mkdir(self.ta_path)
+        # Yeni ayarlar varsa sistemdekine ekle.
+        if path.isfile(self.ayar_path):
+            ayarlar = self.ayarlar
+            for ayar,value in default_ayarlar.items():
+                if not ayar in ayarlar:
+                    ayarlar[ayar] = value
         else:
-            # Önceki sürümlere ait config'e yeni ayarları ekle
-            cfg = ConfigParser()
-            cfg.read(self.ayar_path)
-            for key,val in self.default.items():
-                if key in cfg.options("TurkAnime"):
-                    continue
-                cfg.set('TurkAnime',key,val)
-            with open(self.ayar_path,"w") as f:
-                cfg.write(f)
+            self.set_ayarlar(default_ayarlar)
         if not path.isfile(self.gecmis_path):
-            with open(self.gecmis_path,"w") as f:
-                f.write('{"izlendi":{},"indirildi":{}}\n')
+            with open(self.gecmis_path,"w",encoding="utf-8") as fp:
+                fp.write('{"izlendi":{},"indirildi":{}}\n')
 
-    def update_gecmis(self,seri,bolum,islem):
-        with open(self.gecmis_path,"r") as f:
+    def set_gecmis(self,seri,bolum,islem):
+        with open(self.gecmis_path,"r",encoding="utf-8") as f:
             gecmis = json.load(f)
         if not seri in gecmis[islem]:
             gecmis[islem][seri] = []
         if bolum in gecmis[islem][seri]:
             return
         gecmis[islem][seri].append(bolum)
-        with open(self.gecmis_path,"w") as f:
+        with open(self.gecmis_path,"w",encoding="utf-8") as f:
             json.dump(gecmis,f,indent=2)
+
+    def set_ayarlar(self,ayarlar_):
+        with open(self.ayar_path,"w",encoding="utf-8") as fp:
+            return json.dump(ayarlar_,fp)
+
+    @property
+    def ayarlar(self):
+        with open(self.ayar_path,encoding="utf-8") as fp:
+            return json.load(fp)
+
+    @property
+    def gecmis(self):
+        with open(self.gecmis_path,encoding="utf-8") as fp:
+            return json.load(fp)
+
 
 
 class DownloadGereksinimler():
@@ -115,7 +105,6 @@ class DownloadGereksinimler():
             "•",DownloadColumn(),"•",TransferSpeedColumn(),"•",TimeRemainingColumn()
         )
         self.status = True
-        self.dosya = DosyaManager()
         self.bulunmayan=bulunmayan
         self.fetch_gereksinim()
 
@@ -125,8 +114,7 @@ class DownloadGereksinimler():
             with open("gereksinimler.json") as f:
                 gereksinimler = json.load(f)
         else:
-            base_url="https://raw.githubusercontent.com/KebabLord/turkanime-indirici/master/gereksinimler.json"
-            gereksinimler = json.loads(requests.get(base_url).text)
+            gereksinimler = json.loads(requests.get(DL_URL).text)
         arch = calcsize("P")*8
 
         for file in gereksinimler:
@@ -151,7 +139,7 @@ class DownloadGereksinimler():
                 szip.close()
                 rename(
                     path.join("tmp_"+file["name"],file["name"]+".exe"),
-                    path.join(self.dosya.ROOT,file["name"]+".exe")
+                    path.join(Dosyalar.ta_path,file["name"]+".exe")
                 )
                 rmtree("tmp_"+file["name"],ignore_errors=True)
                 remove(output)
@@ -160,7 +148,7 @@ class DownloadGereksinimler():
                     zipf.extractall("tmp_"+file["name"])
                 rename(
                     path.join("tmp_"+file["name"],file["name"]+".exe"),
-                    path.join(self.dosya.ROOT,file["name"]+".exe")
+                    path.join(Dosyalar.ta_path,file["name"]+".exe")
                 )
                 rmtree("tmp_"+file["name"],ignore_errors=True)
                 remove(output)
@@ -168,7 +156,7 @@ class DownloadGereksinimler():
                 if file["is_setup"]:
                     system(output)
                 else:
-                    replace(output,path.join(self.dosya.ROOT,file["name"]+".exe"))
+                    replace(output,path.join(Dosyalar.ta_path,file["name"]+".exe"))
 
     def copy_url(self, task_id, url, dlpath):
         """Copy data from a url to a local file."""
