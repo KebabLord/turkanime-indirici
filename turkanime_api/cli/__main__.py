@@ -4,9 +4,9 @@ from time import sleep
 import sys
 import atexit
 from rich import print as rprint
-from questionary import select,autocomplete,checkbox,confirm
+from questionary import select,autocomplete,checkbox,confirm,text
 from selenium.common.exceptions import WebDriverException
-
+from easygui import diropenbox
 
 from ..webdriver import create_webdriver,elementi_bekle
 from ..objects import Anime, Bolum
@@ -95,9 +95,12 @@ def menu_loop(driver):
             except (KeyError,IndexError):
                 rprint("[red][strong]Aradığınız anime bulunamadı.[/strong][red]")
                 sleep(3)
-                continue
+            finally:
+                if seri_ismi is None:
+                    continue
 
             while True:
+                bolum, bolumler = None, None
                 if "izle" in islem:
                     bolum = select(
                         message='Bölüm seç',
@@ -114,12 +117,60 @@ def menu_loop(driver):
                         #initial_choice=previous
                     ).ask(kbi_msg="")
                     ...
-        ...
+
+                # Üst menüye dön.
+                if bolum is None and bolumler is None:
+                    break
+
+        elif islem == "Ayarlar":
+            while True:
+                dosyalar = Dosyalar()
+                ayarlar = dosyalar.ayarlar
+                tr = lambda opt: "AÇIK" if opt else "KAPALI" # Bool to Türkçe
+                ayarlar_options = [
+                    'İndirilenler klasörünü seç',
+                    'İzlerken kaydet: '+tr(ayarlar['izlerken kaydet']),
+                    'Manuel fansub seç: '+tr(ayarlar['manuel fansub']),
+                    'İzlendi/İndirildi ikonu: '+tr(ayarlar["izlendi ikonu"]),
+                    'Aynı anda indirme sayısı: '+str(ayarlar["aynı anda indirme sayısı"]),
+                    'Geri dön'
+                ]
+                ayar_islem = select(
+                    'İşlemi seç',
+                    ayarlar_options,
+                    style=prompt_tema,
+                    instruction=" "
+                    ).ask()
+
+                if ayar_islem == ayarlar_options[0]:
+                    indirilenler_dizin=diropenbox()
+                    if indirilenler_dizin:
+                        dosyalar.set_ayar("indirilenler",indirilenler_dizin)
+                elif ayar_islem == ayarlar_options[1]:
+                    dosyalar.set_ayar("izlerken kaydet", not ayarlar['izlerken kaydet'])
+                elif ayar_islem == ayarlar_options[2]:
+                    dosyalar.set_ayar('manuel fansub', not ayarlar['manuel fansub'])
+                elif ayar_islem == ayarlar_options[3]:
+                    dosyalar.set_ayar('izlendi ikonu', not ayarlar['izlendi ikonu'])
+                elif ayar_islem == ayarlar_options[4]:
+                    max_dl = text(
+                        message = 'Maksimum eş zamanlı kaç bölüm indirilsin?',
+                        default = str(ayarlar["aynı anda indirme sayısı"]),
+                        style = prompt_tema
+                    ).ask(kbi_msg="")
+                    if isinstance(max_dl,str) and max_dl.isdigit():
+                        dosyalar.set_ayar("aynı anda indirme sayısı", int(max_dl))
+                else:
+                    break
+
+        elif islem == "Kapat":
+            break
 
 
 def main():
     # Selenium'u başlat.
     driver = create_webdriver()
+    atexit.register(driver.quit)
     try:
         driver.get("https://turkanime.co/kullanici/anonim")
         elementi_bekle(".navbar-nav",driver)

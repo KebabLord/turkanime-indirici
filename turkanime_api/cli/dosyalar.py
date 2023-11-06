@@ -62,12 +62,14 @@ class Dosyalar:
                 if not ayar in ayarlar:
                     ayarlar[ayar] = value
         else:
-            self.set_ayarlar(default_ayarlar)
+            with open(self.ayar_path,"w",encoding="utf-8") as fp:
+                fp.write('{}')
+            self.set_ayar(ayar_list=default_ayarlar)
         if not path.isfile(self.gecmis_path):
             with open(self.gecmis_path,"w",encoding="utf-8") as fp:
                 fp.write('{"izlendi":{},"indirildi":{}}\n')
 
-    def set_gecmis(self,seri,bolum,islem):
+    def set_gecmis(self, seri,bolum,islem):
         with open(self.gecmis_path,"r",encoding="utf-8") as f:
             gecmis = json.load(f)
         if not seri in gecmis[islem]:
@@ -78,9 +80,16 @@ class Dosyalar:
         with open(self.gecmis_path,"w",encoding="utf-8") as f:
             json.dump(gecmis,f,indent=2)
 
-    def set_ayarlar(self,ayarlar_):
+    def set_ayar(self, ayar = None, deger = None, ayar_list = None):
+        assert (ayar != None and deger != None) or ayar_list != None
+        ayarlar = self.ayarlar
+        if ayar_list:
+            for n,v in ayar_list.items():
+                ayarlar[n] = v
+        else:
+            ayarlar[ayar] = deger
         with open(self.ayar_path,"w",encoding="utf-8") as fp:
-            return json.dump(ayarlar_,fp)
+            json.dump(ayarlar,fp,indent=2)
 
     @property
     def ayarlar(self):
