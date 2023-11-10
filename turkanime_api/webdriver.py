@@ -11,7 +11,7 @@ from time import time
 from distutils import spawn
 from selenium import webdriver
 from selenium.webdriver.firefox.options import Options
-from selenium.common.exceptions import SessionNotCreatedException
+from selenium.common.exceptions import SessionNotCreatedException, NoSuchElementException
 
 # Gerekli çerez & dosyaların yüklendiği dull sayfa
 init_url = "https://turkanime.co/kullanici/anonim"
