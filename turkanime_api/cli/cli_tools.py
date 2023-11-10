@@ -25,7 +25,6 @@ def create_progress(transient=False):
         transient=transient
     )
 
-
 prompt_tema = styles.Style([
     ('qmark', 'fg:#5F819D bold'),
     ('question', 'fg:#289c64 bold'),
@@ -36,6 +35,6 @@ prompt_tema = styles.Style([
     ('separator', 'fg:#6C6C6C'),
     ('instruction', 'fg:#77a371'),
     ('text', ''),
-    ('disabled', 'fg:#858585 italic')
+    ('disabled', 'fg:#858585 italic'),
 ])
 

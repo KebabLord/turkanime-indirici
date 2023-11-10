@@ -35,7 +35,7 @@ def find_firefox_executable():
     raise SessionNotCreatedException("firefox'un konumu bulunamadı.")
 
 
-def create_webdriver(profile=None,headless=True,firefox_path=None,load_ta=True):
+def create_webdriver(profile=None,headless=True,firefox_path=None,preload_ta=True):
     """ Selenium webdriver'ı hazırla. """
     options = Options()
     if headless:
@@ -62,7 +62,7 @@ def create_webdriver(profile=None,headless=True,firefox_path=None,load_ta=True):
             profile, options=options,
             service_log_path='/dev/null',desired_capabilities=desired
             )
-    if load_ta:
+    if preload_ta:
         driver.get(init_url)
     return driver
 

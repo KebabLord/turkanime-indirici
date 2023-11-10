@@ -141,7 +141,6 @@ class DownloadGereksinimler():
                     "\nGereksinimleri manuel olarak kurmak için klavuz.html'i oku.")
                 exit(1)
 
-
             if file["type"] == "7z":
                 szip = SevenZipFile(output,mode='r')
                 szip.extractall(path="tmp_"+file["name"])
