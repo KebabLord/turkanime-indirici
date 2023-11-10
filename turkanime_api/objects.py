@@ -1,8 +1,27 @@
+from os import path,remove
+from tempfile import NamedTemporaryFile
+import subprocess as sp
 import re
 import json
 import yt_dlp
 
 from .bypass import get_real_url
+
+# Çalıştığı bilinen playerlar ve öncelikleri
+SUPPORTED = [
+    "GDRIVE",
+    "YADISK",
+    "DAILYMOTION",
+    "MAIL",
+    "MYVI",
+    "VK",
+    "GPLUS",
+    "VIDMOLY",
+    "YOURUPLOAD",
+    "SIBNET",
+    "SENDVID",
+    "ODNOKLASSNIKI"
+]
 
 class Anime:
     """
@@ -117,7 +136,7 @@ class Bolum:
 
     @property
     def videos(self):
-        if self._videos == []:
+        if not self._videos:
             self.get_videos()
         return self._videos
 
@@ -125,7 +144,7 @@ class Bolum:
     def anime(self):
         """ Bu bölümün ait olduğu anime serisi objesini yarat. """
         if self._anime is None:
-            self._anime = "Naruto"
+            ...
         return self._anime
 
     def get_videos(self,parse_fansubs=False):
@@ -152,6 +171,58 @@ class Bolum:
                 self._videos.append(Video(self,vpath,player))
         return self._videos
 
+    def filter_videos(self, by_res=True, by_fansub=None, default_res=600, callback=None):
+        """
+        Aranan kritere en yakın videonun en başta olduğu filtrelenmiş bir video listesi döndürür.
+        - Çalışmayan videoları listeden sil
+        - Kritere (yüksek çözünürlük / belirtilmiş fansub) en yakın videoyu listenin başına koy
+
+        Tek video yerine sıralı liste dönmesinin amacı, ilk videonun
+        problemli olması durumunda alternatiflere ulaşabilmek.
+
+            @by_res -> 1080p'ye ulaşıncaya dek tüm videoların metadatasını çek.
+            @by_fansub -> İstediğim fansub'u öncelikli tut.
+            @default_res -> Çözünürlüğü bilinmeyen videoların varsayılan çözünürlüğü.
+            @callback -> function(player_name, current_index, total_index)
+        """
+        # Yalnızca desteklenenleri filtrele.
+        vids = filter(lambda x: x.player in SUPPORTED, self.videos)
+        # Kaliteli player'a göre sırala
+        vids = sorted(vids, key = lambda x: SUPPORTED.index(x.player))
+        # Seçilmiş fansub'u öncelikli tut
+        if by_fansub:
+            vids = sorted(vids, key = lambda x: x.fansub != by_fansub)
+
+        def get_resolution(v):
+            """ Çözünürlüğü ayrıştır """
+            res = v.info["resolution"]
+            if not res or not re.search(r'\d{2,4}',res):
+                return default_res
+            return int(re.findall(r'\d{2,4}',res)[-1])
+
+        index = len(self.videos) - len(vids)
+        # Kriteri sağlayan videoyu listenin en başına koyup döngüyü durdur.
+        for vid in vids.copy():
+            if callback:
+                callback(index, len(self.videos), vid.player)
+            index += 1
+            if not vid.info:
+                vids.remove(vid)
+                continue
+            if not by_res: # Çözünürlük umrumuzda değilse ilk çalışan videonun ardından dur.
+                vids.remove(vid)
+                vids.insert(0,vid)
+                break
+            res = get_resolution(vid)
+            if res == 1080: # 1080p bulunduysa dur
+                vids.remove(vid)
+                vids.insert(0,vid)
+                break
+        else: # Kriteri sağlayan ideal video bulunamadıysa 1080p'ye en yakın çözünürlüğü bul.
+            if vids == []:
+                return []
+            return sorted(vids, key = get_resolution)
+        return vids
 
 
 class Video:
@@ -171,7 +242,14 @@ class Video:
         self.bolum = bolum
         self._info = None
         self._url = None
-
+        self.ydl_opts = {
+          'quiet': True,
+          'ignoreerrors': 'only_download',
+          'retries': 5,
+          'fragment_retries': 10,
+          'restrictfilenames': True,
+          'nocheckcertificate': True
+        }
     @property
     def url(self):
         if self._url is None:
@@ -186,7 +264,41 @@ class Video:
     @property
     def info(self):
         if self._info is None:
-            ydl_opts = {"quiet":True}
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                self._info = ydl.extract_info(self.url, download=False)
+            with yt_dlp.YoutubeDL(self.ydl_opts) as ydl:
+                info = ydl.extract_info(self.url, download=False)
+                self._info = ydl.sanitize_info(info)
         return self._info
+
+    def indir(self, output=None, callback=None):
+        """ info.json'u kullanarak videoyu indir """
+        opts = self.ydl_opts
+        if callback:
+            opts['progress_hooks'] = [callback]
+        if output:
+            opts['outtmpl'] = {'default': output + r'.%(ext)s'}
+        with NamedTemporaryFile("w",delete=False) as tmp:
+            json.dump(self.info, tmp)
+        with yt_dlp.YoutubeDL(opts) as ydl:
+            ydl.download_with_info_file(tmp.name)
+        remove(tmp.name)
+
+    def oynat(self, dakika_hatirla=False ,izlerken_kaydet=False, mpv_opts=[]):
+        """ Oynatmak için yt-dlp + mpv kullanıyoruz. """
+        with NamedTemporaryFile("w",delete=False) as tmp:
+            json.dump(self.info, tmp)
+        cmd = [
+            "mpv",
+            "--no-input-terminal",
+            "--msg-level=all=error",
+            "--script-opts=ytdl_hook-ytdl_path=yt-dlp,ytdl_hook-try_ytdl_first=yes",
+            "--ytdl-raw-options=load-info-json=" + tmp.name,
+            "ytdl://"
+        ]
+        if dakika_hatirla:
+            mpv_opts.append("--save-position-on-quit")
+        if izlerken_kaydet:
+            mpv_opts.append("--stream-record")
+        for opt in mpv_opts:
+            cmd.insert(1,opt)
+
+        return sp.run(cmd, text=True, stdout=sp.PIPE, stderr=sp.PIPE)

@@ -4,7 +4,7 @@ from time import sleep
 import sys
 import atexit
 from rich import print as rprint
-from questionary import select,autocomplete,checkbox,confirm,text
+import questionary as qa
 from selenium.common.exceptions import WebDriverException
 from easygui import diropenbox
 
@@ -30,7 +30,7 @@ def gereksinim_kontrol_cli():
             else:
                 eksik_msg += f"{eksik} yazılımı bulundu ancak çalıştırılamadı."
         print(eksik_msg,end="\n\n")
-        if name=="nt" and confirm("Otomatik kurulsun mu?").ask():
+        if name=="nt" and qa.confirm("Otomatik kurulsun mu?").ask():
             fails = gerek.otomatik_indir()
             eksik_msg = None, ""
             for fail in fails:
@@ -53,25 +53,31 @@ def gereksinim_kontrol_cli():
             sys.exit(1)
 
 
-def to_choices(li):
-    """ (name,value) formatını questionary choices formatına dönüştür. """
-    assert len(li) != 0
-    if isinstance(li[0], Bolum):
-        return [{
-            "name": str(b.title),
-            "value": b
-        } for b in li]
-    return [{
-        "name": str(n),
-        "value": s
-    } for s,n in li]
+def eps_to_choices(liste,mark_type=None):
+    """ - [Bolum,] listesini `questionary.Choice` listesine dönüştürür.
+        - Ayrıca geçmiş.json'daki izlenen/indirilen bölümlere işaret koyar.
+    """
+    assert len(liste) != 0 and isinstance(liste[0], Bolum)
+    seri, choices, gecmis = liste[0].anime.slug, [], []
+    if mark_type:
+        gecmis_ = Dosyalar().gecmis
+        if seri in gecmis_[mark_type]:
+            gecmis = gecmis_[mark_type][seri]
+    for bolum in liste:
+        name = str(bolum.title)
+        if bolum.slug in gecmis:
+            name += " ●"
+        choices += [qa.Choice(name,bolum)]
+    return choices
 
+def play_best_video(bolum):
+    ...
 
 def menu_loop(driver):
     """ Ana menü interaktif navigasyonu """
     while True:
         clear()
-        islem = select(
+        islem = qa.select(
             "İşlemi seç",
             choices=['Anime izle',
                     'Anime indir',
@@ -85,7 +91,7 @@ def menu_loop(driver):
             # Seriyi seç.
             try:
                 animeler = Anime.get_anime_listesi(driver)
-                seri_ismi = autocomplete(
+                seri_ismi = qa.autocomplete(
                     'Animeyi yazın',
                     choices = [n for s,n in animeler],
                     style = prompt_tema
@@ -100,30 +106,36 @@ def menu_loop(driver):
                     continue
 
             while True:
-                bolum, bolumler = None, None
                 if "izle" in islem:
-                    bolum = select(
+                    choices = eps_to_choices(anime.bolumler, mark_type="izlendi")
+                    izlenen = [c for c in choices if c.title[-1] == "●"]
+                    son_izlenen = izlenen[-1] if izlenen else None
+                    bolum = qa.select(
                         message='Bölüm seç',
-                        choices= to_choices(anime.bolumler),
+                        choices= choices,
                         style=prompt_tema,
-                        #default=previous
+                        default=son_izlenen
                     ).ask(kbi_msg="")
-                    ...
+                    if not bolum:
+                        break
+                    bolum.filter_videos()[0].oynat()
+                    Dosyalar().set_gecmis(anime.slug, bolum.slug, "izlendi")
                 else:
-                    bolumler = checkbox(
+                    choices = eps_to_choices(anime.bolumler, mark_type="indirildi")
+                    inen = [c for c in choices if c.title[-1] == "●"]
+                    son_inen = inen[-1] if inen else None
+                    bolumler = qa.checkbox(
                         message = "Bölüm seç",
-                        choices=to_choices(anime.bolumler),
+                        choices=choices,
                         style=prompt_tema,
-                        #initial_choice=previous
+                        initial_choice=son_inen
                     ).ask(kbi_msg="")
-                    ...
-
-                # Üst menüye dön.
-                if bolum is None and bolumler is None:
-                    break
+                    if not bolumler:
+                        break
 
         elif islem == "Ayarlar":
             while True:
+                clear()
                 dosyalar = Dosyalar()
                 ayarlar = dosyalar.ayarlar
                 tr = lambda opt: "AÇIK" if opt else "KAPALI" # Bool to Türkçe
@@ -135,7 +147,7 @@ def menu_loop(driver):
                     'Aynı anda indirme sayısı: '+str(ayarlar["aynı anda indirme sayısı"]),
                     'Geri dön'
                 ]
-                ayar_islem = select(
+                ayar_islem = qa.select(
                     'İşlemi seç',
                     ayarlar_options,
                     style=prompt_tema,
@@ -153,7 +165,7 @@ def menu_loop(driver):
                 elif ayar_islem == ayarlar_options[3]:
                     dosyalar.set_ayar('izlendi ikonu', not ayarlar['izlendi ikonu'])
                 elif ayar_islem == ayarlar_options[4]:
-                    max_dl = text(
+                    max_dl = qa.text(
                         message = 'Maksimum eş zamanlı kaç bölüm indirilsin?',
                         default = str(ayarlar["aynı anda indirme sayısı"]),
                         style = prompt_tema
@@ -169,8 +181,15 @@ def menu_loop(driver):
 
 def main():
     # Selenium'u başlat.
-    driver = create_webdriver()
-    atexit.register(driver.quit)
+    driver = create_webdriver(preload_ta=False)
+
+    # Script herhangi bir sebepten dolayı sonlandırıldığında.
+    def kapat():
+        print("Kapatılıyor..")
+        driver.quit()
+    atexit.register(kapat)
+
+    # Türkanime'ye bağlan.
     try:
         driver.get("https://turkanime.co/kullanici/anonim")
         elementi_bekle(".navbar-nav",driver)
@@ -178,12 +197,11 @@ def main():
         rprint("[red][strong]TürkAnime'ye ulaşılamıyor.[/strong][red]")
         sys.exit(1)
 
+    # Navigasyon menüsünü başlat.
     clear()
     rprint("[green]!)[/green] Üst menülere dönmek için Ctrl+C kullanabilirsiniz.\n")
-    sleep(2.5)
-
+    sleep(1.7)
     menu_loop(driver)
-
 
 
 if __name__ == '__main__':
