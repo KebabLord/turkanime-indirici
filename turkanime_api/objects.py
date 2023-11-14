@@ -1,4 +1,4 @@
-from os import path,remove
+from os import remove
 from tempfile import NamedTemporaryFile
 import subprocess as sp
 import re
@@ -13,7 +13,6 @@ SUPPORTED = [
     "YADISK",
     "DAILYMOTION",
     "MAIL",
-    "MYVI",
     "VK",
     "GPLUS",
     "VIDMOLY",
@@ -21,6 +20,7 @@ SUPPORTED = [
     "SIBNET",
     "SENDVID",
     "ODNOKLASSNIKI"
+    "MYVI",
 ]
 
 class Anime:
@@ -35,8 +35,9 @@ class Anime:
     - bolumler_data: Anime bölümlerinin [(slug:str,isim:str),] formatında listesi.
     - bolumler: Anime bölümlerinin [bolum1:Bolum,bolum2:Bolum,] formatında obje listesi.
     - info: Anime sayfasından parse'lanan özet,kategori,stüdyo gibi meta bilgileri içeren dict.
+    - parse_fansubs: Bolum objesi yaratılırken fansubları da parse'lamasını belirt.
     """
-    def __init__(self,driver,slug):
+    def __init__(self,driver,slug,parse_fansubs=True):
         self.driver = driver
         self.slug = slug
         self.title = None
@@ -56,6 +57,7 @@ class Anime:
         self.fetch_info()
         self._bolumler_data = None
         self._bolumler = []
+        self.parse_fansubs = parse_fansubs
 
     def fetch_info(self):
         """Anime detay sayfasını ayrıştır."""
@@ -97,7 +99,13 @@ class Anime:
         """ Anime bölümlerinin [Bolum,] formatında listesi. """
         if not self._bolumler:
             for slug,title in self.get_bolum_listesi():
-                self._bolumler.append(Bolum(self.driver,slug=slug,title=title,anime=self))
+                self._bolumler.append(
+                    Bolum(
+                        self.driver,
+                        slug=slug,
+                        title=title,
+                        anime=self,
+                        parse_fansubs=self.parse_fansubs))
         return self._bolumler
 
 
@@ -111,16 +119,19 @@ class Bolum:
     - slug: Bölümün kodu: "naruto-54-bolum" veya URLsi: "https://turkani.co/video/naruto-54-bolum".
     - title: Bölümün okunaklı ismi. (opsiyonel)
     - anime: Bölümün ait olduğu anime'nin objesi, eğer tanımlanmadıysa erişildiğinde yaratılır.
+    - parse_fansubs: Fansubları da parse'la ve video objesine yerleştir, fazladan n*f istek gönderir. 
     """
-    def __init__(self,driver,slug,anime=None,title=None):
+    def __init__(self,driver,slug,anime=None,title=None,parse_fansubs=True):
         if "http" == slug[:4]:
             slug = slug.split("/")[-1]
         self.driver = driver
         self.slug = slug
+        self.parse_fansubs = parse_fansubs
         self._title = title
         self._html = None
         self._videos = []
         self._anime = anime
+        self._fansubs = []
 
     @property
     def html(self):
@@ -147,7 +158,17 @@ class Bolum:
             ...
         return self._anime
 
-    def get_videos(self,parse_fansubs=False):
+    @property
+    def fansubs(self):
+        """ Bölüm sayfasından fansub listesini ayrıştır. """
+        if not self._fansubs:
+            self._fansubs = re.findall(r"</span> ([^<>/]*?)</a></button>",self.html)
+            if not self._fansubs:
+                self._fansubs = re.findall(r"</span> ([^\\<>]*)</button>.*?iframe",self.html)
+        return self._fansubs
+
+    def get_videos(self):
+        self._videos = []
         # Yalnızca tek bir fansub varsa
         if not re.search(".*birden fazla grup",self.html):
             fansub = re.findall(r"</span> ([^\\<>]*)</button>.*?iframe",self.html)[0]
@@ -155,7 +176,7 @@ class Bolum:
             for vpath,player in vids:
                 self._videos.append(Video(self,vpath,player,fansub))
         # Fansublar da parse'lanacaksa
-        elif parse_fansubs:
+        elif self.parse_fansubs:
             fansubs = re.findall(r"(ajax\/videosec&.*?)'.*?<\/span> ?(.*?)<\/a>",self.html)
             for path,fansub in fansubs:
                 src = self.driver.execute_script(f'return $.get("{path}")')
@@ -180,10 +201,10 @@ class Bolum:
         Tek video yerine sıralı liste dönmesinin amacı, ilk videonun
         problemli olması durumunda alternatiflere ulaşabilmek.
 
-            @by_res -> 1080p'ye ulaşıncaya dek tüm videoların metadatasını çek.
-            @by_fansub -> İstediğim fansub'u öncelikli tut.
-            @default_res -> Çözünürlüğü bilinmeyen videoların varsayılan çözünürlüğü.
-            @callback -> function(player_name, current_index, total_index)
+            - by_res: 1080p'ye ulaşıncaya dek tüm videoların metadatasını çek.
+            - by_fansub: İstediğim fansub'u öncelikli tut.
+            - default_res: Çözünürlüğü bilinmeyen videoların varsayılan çözünürlüğü.
+            - callback: function(player_name, current_index, total_index)
         """
         # Yalnızca desteklenenleri filtrele.
         vids = filter(lambda x: x.player in SUPPORTED, self.videos)
@@ -200,11 +221,11 @@ class Bolum:
                 return default_res
             return int(re.findall(r'\d{2,4}',res)[-1])
 
-        index = len(self.videos) - len(vids)
+        index = 0
         # Kriteri sağlayan videoyu listenin en başına koyup döngüyü durdur.
         for vid in vids.copy():
             if callback:
-                callback(index, len(self.videos), vid.player)
+                callback(index, len(self.videos) - len(vids), vid.player + " deneniyor..")
             index += 1
             if not vid.info:
                 vids.remove(vid)
