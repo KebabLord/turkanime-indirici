@@ -51,6 +51,7 @@ class Dosyalar:
             "indirilenler" : ".",
             "izlendi ikonu" : True,
             "aynı anda indirme sayısı" : 3,
+            "max çözünürlük" : True
         }
         # Gerekli dosyalar eğer daha önce yaratılmadıysa yarat.
         if not path.isdir(".git") and not path.isdir(self.ta_path):
@@ -60,7 +61,7 @@ class Dosyalar:
             ayarlar = self.ayarlar
             for ayar,value in default_ayarlar.items():
                 if not ayar in ayarlar:
-                    ayarlar[ayar] = value
+                    self.set_ayar(ayar,value)
         else:
             with open(self.ayar_path,"w",encoding="utf-8") as fp:
                 fp.write('{}')
@@ -100,105 +101,3 @@ class Dosyalar:
     def gecmis(self):
         with open(self.gecmis_path,encoding="utf-8") as fp:
             return json.load(fp)
-
-
-
-class DownloadGereksinimler():
-    """ Gereksinimleri indirir, arşivden çıkarır ve gerekirse kurar. """
-    def __init__(self,bulunmayan=[]):
-        self.done_event = Event()
-        signal.signal(signal.SIGINT, lambda s,f:self.done_event.set())
-        self.prog = Progress(
-            TextColumn("[bold blue]{task.fields[filename]}", justify="right"),
-            BarColumn(bar_width=None),"[self.prog.percentage]{task.percentage:>3.1f}%",
-            "•",DownloadColumn(),"•",TransferSpeedColumn(),"•",TimeRemainingColumn()
-        )
-        self.status = True
-        self.bulunmayan=bulunmayan
-        self.fetch_gereksinim()
-
-    def fetch_gereksinim(self):
-        """ Parse gereksinimler.json """
-        if path.isfile("gereksinimler.json"):
-            with open("gereksinimler.json") as f:
-                gereksinimler = json.load(f)
-        else:
-            gereksinimler = json.loads(requests.get(DL_URL).text)
-        arch = calcsize("P")*8
-
-        for file in gereksinimler:
-            if not file["name"] in self.bulunmayan:
-                continue
-            url = file["url_x32"] if "url_x32" in file and arch == 32 else file["url"]
-            output = url.split("/")[-1]
-            if not path.isfile(output):
-                self.download(url,".")
-
-            if not self.status:
-                self.prog.stop()
-                self.prog.console.log(
-                    "\n\nSiteye ulaşılamıyor: https://"+file["url"].split("/")[2]+
-                    "\nGereksinimleri manuel olarak kurmak için klavuz.html'i oku.")
-                exit(1)
-
-            if file["type"] == "7z":
-                szip = SevenZipFile(output,mode='r')
-                szip.extractall(path="tmp_"+file["name"])
-                szip.close()
-                rename(
-                    path.join("tmp_"+file["name"],file["name"]+".exe"),
-                    path.join(Dosyalar.ta_path,file["name"]+".exe")
-                )
-                rmtree("tmp_"+file["name"],ignore_errors=True)
-                remove(output)
-            if file["type"] == "zip":
-                with ZipFile(output, 'r') as zipf:
-                    zipf.extractall("tmp_"+file["name"])
-                rename(
-                    path.join("tmp_"+file["name"],file["name"]+".exe"),
-                    path.join(Dosyalar.ta_path,file["name"]+".exe")
-                )
-                rmtree("tmp_"+file["name"],ignore_errors=True)
-                remove(output)
-            if file["type"] == "exe":
-                if file["is_setup"]:
-                    system(output)
-                else:
-                    replace(output,path.join(Dosyalar.ta_path,file["name"]+".exe"))
-
-    def copy_url(self, task_id, url, dlpath):
-        """Copy data from a url to a local file."""
-        self.prog.console.log(f"İndiriliyor {url.split('/')[-1]}")
-        try:
-            response = urlopen(url)
-        except Exception as err:
-            self.prog.console.log("HATA:",str(err))
-            self.status=False
-            return
-        try:
-            # This will break if the response doesn't contain content length
-            self.prog.update(task_id, total=int(response.info()["Content-length"]))
-            with open(dlpath, "wb") as dest_file:
-                self.prog.start_task(task_id)
-                for data in iter(partial(response.read, 32768), b""):
-                    dest_file.write(data)
-                    self.prog.update(task_id, advance=len(data))
-                    if self.done_event.is_set():
-                        print("Başarısız")
-                        return
-        except Exception as err:
-            self.prog.console.log("HATA:",str(err))
-            self.status=False
-            return
-        self.prog.console.log(f"İndirildi: {dlpath}")
-
-    def download(self, urls, dest_dir):
-        """Birden fazla url'yi hedef dosyaya indir."""
-        urls = [urls] if not isinstance(urls,list) else urls
-        with self.prog:
-            with ThreadPoolExecutor(max_workers=3) as pool:
-                for url in urls:
-                    filename = url.split("/")[-1]
-                    dest_path = path.join(dest_dir, filename)
-                    task_id = self.prog.add_task("download", filename=filename, start=False)
-                    pool.submit(self.copy_url, task_id, url, dest_path)

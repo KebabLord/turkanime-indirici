@@ -10,7 +10,7 @@ import requests
 from .dosyalar import Dosyalar
 
 DL_URL = "https://raw.githubusercontent.com/KebabLord/turkanime-indirici/master/gereksinimler.json"
-DEPENDS = ["geckodriver","youtube-dl","mpv"]
+DEPENDS = ["geckodriver",("yt-dlp","youtube-dl"),"mpv"]
 
 NOT_WORKING = -1
 MISSING = 0
@@ -39,11 +39,16 @@ class Gereksinimler:
 
     @property
     def eksikler(self):
-        """ Bulunamayan veya çalıştırılamayan gereksinimler. """
+        """ Bulunamayan veya çalıştırılamayan gereksinimleri tespit et. """
         if self._eksikler == []:
             for gereksinim in DEPENDS:
+                alternatif = None
+                if isinstance(gereksinim,tuple):
+                    gereksinim, alternatif = gereksinim
                 exit_code = self.app_kontrol(gereksinim)
                 if exit_code != SUCCESS:
+                    if alternatif and self.app_kontrol(gereksinim) is SUCCESS:
+                        continue
                     self._eksikler.append((gereksinim,exit_code))
         return self._eksikler
 
@@ -54,18 +59,21 @@ class Gereksinimler:
             self._url_liste = json.loads(requests.get(DL_URL).text)
         return self._url_liste
 
-    def otomatik_indir(self, break_on_fail = False, callback = None):
+    def otomatik_indir(self, url_liste=None, break_on_fail = False, callback = None):
         """ Tüm eksik dosyaları otomatik olarak indir. """
         fail = []
+        if url_liste is None:
+            url_liste = self.url_liste
         for eksik, _ in self.eksikler:
-            meta = next(i for i in self.url_liste if i['name'] == eksik)
+            meta = next(i for i in url_liste if i['name'] == eksik)
+            assert meta != None
             res = self.dosya_indir(meta["url"],callback=callback)
             if "err_msg" in res:
                 fail += [{"name":eksik,"err_msg":res["err_msg"]}]
                 if break_on_fail:
                     break
                 continue
-            self.dosyayi_kur(eksik,res["path"])
+            self.dosyayi_kur(eksik+".exe",res["path"])
             ec = self.app_kontrol(eksik)
             if ec != SUCCESS:
                 fail += [{"name":eksik,"ext_code":ec}]
@@ -73,7 +81,8 @@ class Gereksinimler:
 
     def dosya_indir(self,url,callback = None):
         """ URL'deki dosyayı indirir, belirtilmişse callback'e rapor eder. """
-        file_name = path.join(self.tmp, url.split("/")[-1])
+        remote_file = url.split("/")[-1]
+        file_name = path.join(self.tmp.name, remote_file)
         response = requests.get(url, stream=True)
         if response.status_code != 200:
             text = re.sub(" {2,6}"," ",re.sub("<.*?>","",response.text.replace("\n"," ")))
@@ -85,7 +94,7 @@ class Gereksinimler:
                 file.write(data)
                 downloaded_size += len(data)
                 if callback:
-                    callback(downloaded_size, total_size)
+                    callback(downloaded_size, total_size, remote_file)
         return {"path":file_name}
 
     def dosyayi_kur(self,file_name,file_path,setup=False):
@@ -95,7 +104,7 @@ class Gereksinimler:
         if file_type == "7z":
             with SevenZipFile(file_path, mode='r') as szip:
                 szip.extractall(path=tmp.name)
-            replace( path.join(tmp.name,file_name), self.folder)
+            replace( path.join(tmp.name,file_name), path.join(self.folder,file_name))
         elif file_type == "zip":
             with ZipFile(file_path, 'r') as zipf:
                 zipf.extractall(tmp.name)

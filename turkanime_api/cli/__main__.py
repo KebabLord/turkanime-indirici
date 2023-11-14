@@ -12,7 +12,7 @@ from ..webdriver import create_webdriver,elementi_bekle
 from ..objects import Anime, Bolum
 from .dosyalar import Dosyalar
 from .gereksinimler import Gereksinimler, MISSING
-from .cli_tools import prompt_tema,clear
+from .cli_tools import prompt_tema,clear,CliProgress
 
 # Uygulama dizinini sistem PATH'ına ekle.
 SEP = ";" if name=="nt" else ":"
@@ -21,23 +21,28 @@ environ["PATH"] +=  SEP + Dosyalar().ta_path + SEP
 def gereksinim_kontrol_cli():
     """ Gereksinimleri kontrol eder ve gerekirse indirip kurar."""
     gerek = Gereksinimler()
-    if gerek.eksikler:
+    with CliProgress("Gereksinimler kontrol ediliyor.."):
+        eksikler = gerek.eksikler
+    if eksikler:
         eksik_msg = ""
         guide_msg = "\nManuel indirmek için:\nhttps://github.com/KebabLord/turkanime-indirici/wiki"
-        for eksik,exit_code in gerek.eksikler:
+        for eksik,exit_code in eksikler:
             if exit_code is MISSING:
-                eksik_msg += f"{eksik} yazılımı bulunamadı."
+                eksik_msg += f"!) {eksik} yazılımı bulunamadı.\n"
             else:
-                eksik_msg += f"{eksik} yazılımı bulundu ancak çalıştırılamadı."
+                eksik_msg += f"!) {eksik} yazılımı bulundu ancak çalıştırılamadı.\n"
         print(eksik_msg,end="\n\n")
         if name=="nt" and qa.confirm("Otomatik kurulsun mu?").ask():
-            fails = gerek.otomatik_indir()
-            eksik_msg = None, ""
+            with CliProgress("Güncel indirme linkleri getiriliyor.."):
+                links = gerek.url_liste
+            with CliProgress() as clip:
+                fails = gerek.otomatik_indir(url_liste=links, callback=cli.callback)
+            eksik_msg = ""
             for fail in fails:
                 if "err_msg" in fail:
                     eksik_msg += f"!) {fail['name']} indirilemedi\n"
                     if fail["err_msg"] != "":
-                        eksik_msg += f"   -   {fail['err_msg'][:45]}...\n"
+                        eksik_msg += f" - {fail['err_msg'][:55]}...\n"
                 elif "ext_code" in fail:
                     if fail["ext_code"] is MISSING:
                         eksik_msg += f"!) {fail['name']} kurulamadı.\n"
@@ -70,8 +75,6 @@ def eps_to_choices(liste,mark_type=None):
         choices += [qa.Choice(name,bolum)]
     return choices
 
-def play_best_video(bolum):
-    ...
 
 def menu_loop(driver):
     """ Ana menü interaktif navigasyonu """
@@ -90,24 +93,27 @@ def menu_loop(driver):
         if "Anime" in islem:
             # Seriyi seç.
             try:
-                animeler = Anime.get_anime_listesi(driver)
+                with CliProgress("Anime listesi getiriliyor.."):
+                    animeler = Anime.get_anime_listesi(driver)
                 seri_ismi = qa.autocomplete(
                     'Animeyi yazın',
                     choices = [n for s,n in animeler],
                     style = prompt_tema
                 ).ask()
+                if seri_ismi is None:
+                    continue
                 seri_slug = [s for s,n in animeler if n==seri_ismi][0]
                 anime = Anime(driver,seri_slug)
             except (KeyError,IndexError):
                 rprint("[red][strong]Aradığınız anime bulunamadı.[/strong][red]")
-                sleep(3)
-            finally:
-                if seri_ismi is None:
-                    continue
+                sleep(1.5)
+                continue
 
             while True:
+                dosya = Dosyalar()
                 if "izle" in islem:
-                    choices = eps_to_choices(anime.bolumler, mark_type="izlendi")
+                    with CliProgress("Bölümler getiriliyor.."):
+                        choices = eps_to_choices(anime.bolumler, mark_type="izlendi")
                     izlenen = [c for c in choices if c.title[-1] == "●"]
                     son_izlenen = izlenen[-1] if izlenen else None
                     bolum = qa.select(
@@ -118,8 +124,23 @@ def menu_loop(driver):
                     ).ask(kbi_msg="")
                     if not bolum:
                         break
-                    bolum.filter_videos()[0].oynat()
-                    Dosyalar().set_gecmis(anime.slug, bolum.slug, "izlendi")
+                    fansubs, sub = bolum.fansubs, None
+                    if dosya.ayarlar["manuel fansub"] and len(fansubs) > 1:
+                        sub = qa.select(
+                            message='Fansub seç',
+                            choices= fansubs,
+                            style=prompt_tema,
+                        ).ask(kbi_msg="")
+                    with CliProgress() as clip:
+                        vids = bolum.filter_videos(
+                            by_res=dosya.ayarlar["max çözünürlük"],
+                            by_fansub=sub,
+                            callback=clip.callback)
+                    for i in range(3):
+                        status = vids[i].oynat()
+                        if status.returncode == 0:
+                            break
+                    dosya.set_gecmis(anime.slug, bolum.slug, "izlendi")
                 else:
                     choices = eps_to_choices(anime.bolumler, mark_type="indirildi")
                     inen = [c for c in choices if c.title[-1] == "●"]
@@ -180,19 +201,24 @@ def menu_loop(driver):
 
 
 def main():
+    # Gereksinimleri kontrol et
+    gereksinim_kontrol_cli()
+
     # Selenium'u başlat.
-    driver = create_webdriver(preload_ta=False)
+    with CliProgress("Driver başlatılıyor.."):
+        driver = create_webdriver(preload_ta=False)
 
     # Script herhangi bir sebepten dolayı sonlandırıldığında.
     def kapat():
-        print("Kapatılıyor..")
-        driver.quit()
+        with CliProgress("Driver kapatılıyor.."):
+            driver.quit()
     atexit.register(kapat)
 
     # Türkanime'ye bağlan.
     try:
-        driver.get("https://turkanime.co/kullanici/anonim")
-        elementi_bekle(".navbar-nav",driver)
+        with CliProgress("Türkanime'ye bağlanılıyor.."):
+            driver.get("https://turkanime.co/kullanici/anonim")
+            elementi_bekle(".navbar-nav",driver)
     except (ConnectionError,WebDriverException):
         rprint("[red][strong]TürkAnime'ye ulaşılamıyor.[/strong][red]")
         sys.exit(1)
