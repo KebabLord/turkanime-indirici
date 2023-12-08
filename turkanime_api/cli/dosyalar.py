@@ -4,26 +4,8 @@ DosyaManager()
 DownloadGereksinimler()
     - Gereksinimlerin indirilmesini ve paketten çıkarılmasını sağlar.
 """
-from os import path,mkdir,replace,rename,remove,system,getcwd
-from struct import calcsize
+from os import path,mkdir,getcwd
 import json
-from zipfile import ZipFile
-from concurrent.futures import ThreadPoolExecutor
-from urllib.request import urlopen
-import signal
-from shutil import rmtree
-from functools import partial
-import requests
-from py7zr import SevenZipFile
-
-from rich.progress import (
-    Event,
-    Progress,
-    TextColumn,
-    BarColumn,
-    DownloadColumn,
-    TransferSpeedColumn,TimeRemainingColumn
-)
 
 # yt-dlp, mpv gibi gereksinimlerin indirme linklerinin bulunduğu dosya.
 DL_URL="https://raw.githubusercontent.com/KebabLord/turkanime-indirici/master/gereksinimler.json"

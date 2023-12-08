@@ -7,6 +7,7 @@ from rich import print as rprint
 import questionary as qa
 from selenium.common.exceptions import WebDriverException
 from easygui import diropenbox
+import concurrent.futures as cf
 
 from ..webdriver import create_webdriver,elementi_bekle
 from ..objects import Anime, Bolum
@@ -36,7 +37,7 @@ def gereksinim_kontrol_cli():
             with CliProgress("Güncel indirme linkleri getiriliyor.."):
                 links = gerek.url_liste
             with CliProgress() as clip:
-                fails = gerek.otomatik_indir(url_liste=links, callback=cli.callback)
+                fails = gerek.otomatik_indir(url_liste=links, callback=clip.callback)
             eksik_msg = ""
             for fail in fails:
                 if "err_msg" in fail:
@@ -153,6 +154,26 @@ def menu_loop(driver):
                     ).ask(kbi_msg="")
                     if not bolumler:
                         break
+
+                    def paralel_indirici(bolum,progress):
+                        # En iyi ve çalışan videoları filtrele.
+                        vids = bolum.filter_videos(
+                            by_res=dosya.ayarlar["max çözünürlük"],
+                            callback=progress.uniq_callback)
+                        if not vids:
+                            input("none workin nigga "+str(bolum))
+                            return
+                        # En iyi videoyu indir ve işaretle.
+                        vids[0].indir(progress.ytdl_callback)
+                        dosya.set_gecmis(anime.slug, bolum.slug, "indirildi")
+ 
+                    with CliProgress(is_indirme=True, hide_after=False) as progress:
+                        futures = []
+                        with cf.ThreadPoolExecutor() as executor:
+                            for bolum in bolumler:
+                                futures.append(executor.submit(paralel_indirici, bolum, progress))
+                            cf.wait(futures)
+
 
         elif islem == "Ayarlar":
             while True:

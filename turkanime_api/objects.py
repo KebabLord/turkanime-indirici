@@ -1,10 +1,16 @@
+""" Örnek:
+>>> ani = Anime(driver,"non-non-biyori")
+>>> bol3 = ani.bolumler[2]
+>>> vid1 = bol3.videos[0]
+>>> vid1.oynat()
+"""
 from os import remove
 from tempfile import NamedTemporaryFile
 import subprocess as sp
 import re
 import json
 import yt_dlp
-
+from random import randint
 from .bypass import get_real_url
 
 # Çalıştığı bilinen playerlar ve öncelikleri
@@ -22,6 +28,19 @@ SUPPORTED = [
     "ODNOKLASSNIKI"
     "MYVI",
 ]
+
+class LogHandler:
+    """ TODO: ytdlp log handler prototipi """
+    @staticmethod
+    def error(msg):
+        pass
+    @staticmethod
+    def warning(msg):
+        pass
+    @staticmethod
+    def debug(msg):
+        pass
+
 
 class Anime:
     """
@@ -204,7 +223,7 @@ class Bolum:
             - by_res: 1080p'ye ulaşıncaya dek tüm videoların metadatasını çek.
             - by_fansub: İstediğim fansub'u öncelikli tut.
             - default_res: Çözünürlüğü bilinmeyen videoların varsayılan çözünürlüğü.
-            - callback: function(player_name, current_index, total_index)
+            - callback: function(player_name + status, current_index, total_index, pid)
         """
         # Yalnızca desteklenenleri filtrele.
         vids = filter(lambda x: x.player in SUPPORTED, self.videos)
@@ -213,6 +232,9 @@ class Bolum:
         # Seçilmiş fansub'u öncelikli tut
         if by_fansub:
             vids = sorted(vids, key = lambda x: x.fansub != by_fansub)
+
+        # Unique identifier number for callback
+        uid = id(self)
 
         def get_resolution(v):
             """ Çözünürlüğü ayrıştır """
@@ -224,8 +246,9 @@ class Bolum:
         index = 0
         # Kriteri sağlayan videoyu listenin en başına koyup döngüyü durdur.
         for vid in vids.copy():
+            msg_prefix = f"({self.slug.split('-bolum')[0].split('-')[-1]}) {vid.player} "
             if callback:
-                callback(index, len(self.videos) - len(vids), vid.player + " deneniyor..")
+                callback(index, len(self.videos) - len(vids), uid, msg_prefix+"deneniyor..")
             index += 1
             if not vid.info:
                 vids.remove(vid)
@@ -242,7 +265,9 @@ class Bolum:
         else: # Kriteri sağlayan ideal video bulunamadıysa 1080p'ye en yakın çözünürlüğü bul.
             if vids == []:
                 return []
-            return sorted(vids, key = get_resolution)
+            vids = sorted(vids, key = get_resolution, reverse=True)
+        if callback:
+            callback(len(self.videos) - len(vids), len(self.videos) - len(vids), uid, msg_prefix+"çalışıyor.")
         return vids
 
 
@@ -256,14 +281,16 @@ class Video:
     - fansub: eğer belirtilmişse, videoyu yükleyen fansub'un ismi.
     - url: Videonun decrypted gerçek url'si, örn: https://youtube.com/watch?v=XXXXXXXX
     """
-    def __init__(self,bolum,path,player=None,fansub=None):
+    def __init__(self,bolum,path,player=None,fansub=None,log_handler=LogHandler):
         self.path = path
         self.player = player
         self.fansub = fansub
         self.bolum = bolum
         self._info = None
         self._url = None
+
         self.ydl_opts = {
+          'logger': log_handler,
           'quiet': True,
           'ignoreerrors': 'only_download',
           'retries': 5,
@@ -271,6 +298,8 @@ class Video:
           'restrictfilenames': True,
           'nocheckcertificate': True
         }
+
+
     @property
     def url(self):
         if self._url is None:
@@ -290,13 +319,14 @@ class Video:
                 self._info = ydl.sanitize_info(info)
         return self._info
 
-    def indir(self, output=None, callback=None):
+    def indir(self, callback=None, output=None):
         """ info.json'u kullanarak videoyu indir """
-        opts = self.ydl_opts
+        file_name = self.bolum.slug
+        opts = self.ydl_opts.copy()
         if callback:
             opts['progress_hooks'] = [callback]
-        if output:
-            opts['outtmpl'] = {'default': output + r'.%(ext)s'}
+        #if output:
+        opts['outtmpl'] = {'default': file_name + r'.%(ext)s'}
         with NamedTemporaryFile("w",delete=False) as tmp:
             json.dump(self.info, tmp)
         with yt_dlp.YoutubeDL(opts) as ydl:
