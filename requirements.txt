@@ -3,4 +3,7 @@ yt-dlp
 bs4
 pycryptodome
 appdirs
+py7zr
+rich
+easygui
 
