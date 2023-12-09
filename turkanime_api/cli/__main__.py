@@ -3,11 +3,11 @@ from os import environ,name
 from time import sleep
 import sys
 import atexit
+import concurrent.futures as cf
 from rich import print as rprint
 import questionary as qa
 from selenium.common.exceptions import WebDriverException
 from easygui import diropenbox
-import concurrent.futures as cf
 
 from ..webdriver import create_webdriver,elementi_bekle
 from ..objects import Anime, Bolum
@@ -133,14 +133,12 @@ def menu_loop(driver):
                             style=prompt_tema,
                         ).ask(kbi_msg="")
                     with CliProgress() as clip:
-                        vids = bolum.filter_videos(
+                        best_video = bolum.best_video(
                             by_res=dosya.ayarlar["max çözünürlük"],
                             by_fansub=sub,
-                            callback=clip.callback)
-                    for i in range(3):
-                        status = vids[i].oynat()
-                        if status.returncode == 0:
-                            break
+                            callback=clip.bestvid_callback)
+                    assert best_video, "Video oynatılamadı."
+                    best_video.oynat()
                     dosya.set_gecmis(anime.slug, bolum.slug, "izlendi")
                 else:
                     choices = eps_to_choices(anime.bolumler, mark_type="indirildi")
@@ -157,22 +155,21 @@ def menu_loop(driver):
 
                     def paralel_indirici(bolum,progress):
                         # En iyi ve çalışan videoları filtrele.
-                        vids = bolum.filter_videos(
+                        best_video = bolum.best_video(
                             by_res=dosya.ayarlar["max çözünürlük"],
-                            callback=progress.uniq_callback)
-                        if not vids:
-                            input("none workin nigga "+str(bolum))
-                            return
-                        # En iyi videoyu indir ve işaretle.
-                        vids[0].indir(progress.ytdl_callback)
-                        dosya.set_gecmis(anime.slug, bolum.slug, "indirildi")
- 
+                            callback=progress.bestvid_callback)
+                        if best_video:
+                            # En iyi videoyu indir ve işaretle.
+                            best_video.indir(progress.ytdl_callback)
+                            dosya.set_gecmis(anime.slug, bolum.slug, "indirildi")
+
                     with CliProgress(is_indirme=True, hide_after=False) as progress:
                         futures = []
                         with cf.ThreadPoolExecutor() as executor:
                             for bolum in bolumler:
                                 futures.append(executor.submit(paralel_indirici, bolum, progress))
                             cf.wait(futures)
+
 
 
         elif islem == "Ayarlar":

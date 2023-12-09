@@ -55,23 +55,25 @@ class CliProgress():
             self.progress.stop()
             self._progress = None
 
-    def uniq_callback(self,current,total,uid,msg=None,remove_after=False):
-        """ Paralel senaryo için multi-task callback handling 
-            task'ları ayırt edebilmek için uid (uniq_id) parametresi zorunludur.
-        """
-        msg = "[cyan]"+(msg if msg else "")
-        for uid_,task_id in self.tasks.items():
-            if uid == uid_:
+    def bestvid_callback(self, hook):
+        """ Objects.Video.best_video methodu için callback handler. """
+        msg = "[cyan]"
+        if hook.get("player"):
+            msg = msg + f'{hook["player"]} {hook["status"]}.'
+        elif hook.get("status") == "hiçbiri çalışmıyor":
+            ...
+
+        uid = hook.get("object")
+        for task_uid,task_id in self.tasks.items():
+            if task_uid == uid:
                 break
         else:
-            task_id = self.progress.add_task(msg, total=total)
+            task_id = self.progress.add_task(msg, total=hook["total"])
             self.tasks[uid] = task_id
-
-        self.progress.update(task_id, completed=current, description=msg)
-        if current>=total and remove_after:
-            remove_task(task_id)
+        self.progress.update(task_id, completed=hook["current"], description=msg)
 
     def ytdl_callback(self,hook):
+        """ ydl_options['progress_hooks'] için callback handler. """
         info = hook["info_dict"]
         uid = info["_filename"]
         if hook["status"] in ("finished","downloading") and "downloaded_bytes" in hook:
@@ -84,7 +86,6 @@ class CliProgress():
                 self.tasks[uid] = task_id
             self.progress.update(task_id,completed=hook["downloaded_bytes"])
         if hook["status"] == "error":
-            input("error verdi nigga")
             if uid in self.tasks:
                 task_id = self.tasks[uid]
                 self.progress.stop_task(task_id)
