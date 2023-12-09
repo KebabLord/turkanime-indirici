@@ -10,7 +10,7 @@ import subprocess as sp
 import re
 import json
 import yt_dlp
-from random import randint
+import requests
 from .bypass import get_real_url
 
 # Çalıştığı bilinen playerlar ve öncelikleri
@@ -21,11 +21,13 @@ SUPPORTED = [
     "MAIL",
     "VK",
     "GPLUS",
+    "MP4UPLOAD",
+    "UQLOAD",
     "VIDMOLY",
     "YOURUPLOAD",
     "SIBNET",
     "SENDVID",
-    "ODNOKLASSNIKI"
+    "ODNOKLASSNIKI",
     "MYVI",
 ]
 
@@ -211,64 +213,51 @@ class Bolum:
                 self._videos.append(Video(self,vpath,player))
         return self._videos
 
-    def filter_videos(self, by_res=True, by_fansub=None, default_res=600, callback=None):
+    def best_video(self, by_res=True, by_fansub=None, default_res=600, callback=lambda x:None):
         """
-        Aranan kritere en yakın videonun en başta olduğu filtrelenmiş bir video listesi döndürür.
-        - Çalışmayan videoları listeden sil
-        - Kritere (yüksek çözünürlük / belirtilmiş fansub) en yakın videoyu listenin başına koy
+        Parametrelerde belirtilmiş en ideal videoyu tespit edip döndürür.
 
-        Tek video yerine sıralı liste dönmesinin amacı, ilk videonun
-        problemli olması durumunda alternatiflere ulaşabilmek.
-
-            - by_res: 1080p'ye ulaşıncaya dek tüm videoların metadatasını çek.
-            - by_fansub: İstediğim fansub'u öncelikli tut.
-            - default_res: Çözünürlüğü bilinmeyen videoların varsayılan çözünürlüğü.
-            - callback: function(player_name + status, current_index, total_index, pid)
+        - by_res: 1080p'ye ulaşmaya çalış
+        - by_fansub: belirtilen fansub'u öncelikli tut.
+        - default_res: Çözünürlüğü bilinmeyen videoların varsayılan çözünürlüğü.
+        - callback: function(hook_dict)
         """
+        # Callback fonksiyonu belirtilmişse paslanacak hook_dict
+        hook_dict = {
+            "current": None,
+            "total": len(self.videos),
+            "player": None,
+            "status": None,
+            "object": self
+        }
+
         # Yalnızca desteklenenleri filtrele.
-        vids = filter(lambda x: x.player in SUPPORTED, self.videos)
+        vids = filter(lambda x: x.is_supported, self.videos)
         # Kaliteli player'a göre sırala
         vids = sorted(vids, key = lambda x: SUPPORTED.index(x.player))
-        # Seçilmiş fansub'u öncelikli tut
+        # Seçilmiş fansub'un videolarını öncelikli tut
         if by_fansub:
             vids = sorted(vids, key = lambda x: x.fansub != by_fansub)
 
-        # Unique identifier number for callback
-        uid = id(self)
-
-        def get_resolution(v):
-            """ Çözünürlüğü ayrıştır """
-            res = v.info["resolution"]
-            if not res or not re.search(r'\d{2,4}',res):
-                return default_res
-            return int(re.findall(r'\d{2,4}',res)[-1])
-
-        index = 0
-        # Kriteri sağlayan videoyu listenin en başına koyup döngüyü durdur.
-        for vid in vids.copy():
-            msg_prefix = f"({self.slug.split('-bolum')[0].split('-')[-1]}) {vid.player} "
-            if callback:
-                callback(index, len(self.videos) - len(vids), uid, msg_prefix+"deneniyor..")
-            index += 1
-            if not vid.info:
+        for i,vid in enumerate(vids.copy(),start=1):
+            hook_dict = {**hook_dict, "current": i, "player": vid.player}
+            callback({**hook_dict, "status": "üstbilgi çekiliyor"})
+            if not vid.is_working:
+                callback({**hook_dict, "status": "çalışmıyor"})
                 vids.remove(vid)
                 continue
-            if not by_res: # Çözünürlük umrumuzda değilse ilk çalışan videonun ardından dur.
-                vids.remove(vid)
-                vids.insert(0,vid)
-                break
-            res = get_resolution(vid)
-            if res == 1080: # 1080p bulunduysa dur
-                vids.remove(vid)
-                vids.insert(0,vid)
-                break
-        else: # Kriteri sağlayan ideal video bulunamadıysa 1080p'ye en yakın çözünürlüğü bul.
+            # Çözünürlük önemli değilse ya da max çözünürlük bulunduysa videoyu döndür.
+            if not by_res or (vid.resolution or default_res) >= 1080:
+                callback({**hook_dict, "current":len(vids), "status": "çalışıyor"})
+                return vid
+        else:
             if vids == []:
-                return []
-            vids = sorted(vids, key = get_resolution, reverse=True)
-        if callback:
-            callback(len(self.videos) - len(vids), len(self.videos) - len(vids), uid, msg_prefix+"çalışıyor.")
-        return vids
+                callback({**hook_dict, "player": None, "status": "hiçbiri çalışmıyor"})
+                return None
+            else: # 1080+ bulunamadıysa, en yüksek çözünürlüğü seç.
+                vid = max(vids, key = lambda x:x.resolution or default_res)
+                callback({**hook_dict, "player": vid.player , "status": "çalışıyor"})
+                return vid
 
 
 class Video:
@@ -286,8 +275,10 @@ class Video:
         self.player = player
         self.fansub = fansub
         self.bolum = bolum
+        self._resolution = None
         self._info = None
         self._url = None
+        self.is_supported = self.player in SUPPORTED
 
         self.ydl_opts = {
           'logger': log_handler,
@@ -309,18 +300,54 @@ class Video:
             plaintext = get_real_url(self.bolum.driver,cipher)
             # "\\/\\/fembed.com\\/v\\/0d1e8ilg"  -->  "https://fembed.com/v/0d1e8ilg"
             self._url = "https:"+json.loads(plaintext)
+            self._url = self._url.replace("uqload.io","uqload.com") # .com mirror'unu kullan
         return self._url
 
     @property
     def info(self):
         if self._info is None:
+            assert self.is_supported, "Bu player desteklenmiyor."
             with yt_dlp.YoutubeDL(self.ydl_opts) as ydl:
                 info = ydl.extract_info(self.url, download=False)
                 self._info = ydl.sanitize_info(info)
         return self._info
 
+    @property
+    def resolution(self):
+        """ Video çözünürlüğünü ara, bulunamadıysa None. """
+        if self._resolution is None:
+            formats = self.info.get("formats")
+            res = self.info.get("resolution")
+            if res and re.search(r'\d{2,4}',res):
+                res = int(re.findall(r'\d{2,4}',res)[-1])
+            elif formats:
+                if "height" in formats[0]:
+                    res = max(formats,key=lambda x:x.get("height") or 0).get("height")
+                elif "format_id" in formats[0]:
+                    fid = formats[0].get("format_id")
+                    res = {"sd":480, "hd":720, "fhd": 1080, "hq":2160}.get(fid)
+            if not res and self.player == "MP4UPLOAD":
+                try:
+                    v_id = self.info.get("id").split("embed-")[1]
+                    r = requests.get(f"https://www.mp4upload.com/{v_id}?method_free=Free+Download")
+                    res = int(re.findall(r"infoname.*?<span.*?x (\d+)<",r.text)[0])
+                except:
+                    pass
+            self._resolution = res
+        return self._resolution
+
+    @property
+    def is_working(self):
+        """ Video çalışıyor mu? """
+        assert self.is_supported, "Bu player desteklenmiyor."
+        try:
+            return self.info is not None
+        except:
+            return False
+
     def indir(self, callback=None, output=None):
         """ info.json'u kullanarak videoyu indir """
+        assert self.is_working, "Video çalışmıyor."
         file_name = self.bolum.slug
         opts = self.ydl_opts.copy()
         if callback:
@@ -335,6 +362,7 @@ class Video:
 
     def oynat(self, dakika_hatirla=False ,izlerken_kaydet=False, mpv_opts=[]):
         """ Oynatmak için yt-dlp + mpv kullanıyoruz. """
+        assert self.is_working, "Video çalışmıyor."
         with NamedTemporaryFile("w",delete=False) as tmp:
             json.dump(self.info, tmp)
         cmd = [
