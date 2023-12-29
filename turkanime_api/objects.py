@@ -140,7 +140,7 @@ class Bolum:
     - slug: Bölümün kodu: "naruto-54-bolum" veya URLsi: "https://turkani.co/video/naruto-54-bolum".
     - title: Bölümün okunaklı ismi. (opsiyonel)
     - anime: Bölümün ait olduğu anime'nin objesi, eğer tanımlanmadıysa erişildiğinde yaratılır.
-    - parse_fansubs: Fansubları da parse'la ve video objesine yerleştir, fazladan n*f istek gönderir. 
+    - parse_fansubs: Fansubları da parse'la. Fazladan fansub sayısı kadar istek gönderir.
     """
     def __init__(self,driver,slug,anime=None,title=None,parse_fansubs=True):
         if "http" == slug[:4]:
@@ -222,17 +222,18 @@ class Bolum:
         - default_res: Çözünürlüğü bilinmeyen videoların varsayılan çözünürlüğü.
         - callback: function(hook_dict)
         """
+        # Yalnızca desteklenenleri filtrele.
+        vids = list(filter(lambda x: x.is_supported, self.videos))
+
         # Callback fonksiyonu belirtilmişse paslanacak hook_dict
         hook_dict = {
             "current": None,
-            "total": len(self.videos),
+            "total": len(vids),
             "player": None,
             "status": None,
             "object": self
         }
 
-        # Yalnızca desteklenenleri filtrele.
-        vids = filter(lambda x: x.is_supported, self.videos)
         # Kaliteli player'a göre sırala
         vids = sorted(vids, key = lambda x: SUPPORTED.index(x.player))
         # Seçilmiş fansub'un videolarını öncelikli tut
@@ -250,14 +251,13 @@ class Bolum:
             if not by_res or (vid.resolution or default_res) >= 1080:
                 callback({**hook_dict, "current":len(vids), "status": "çalışıyor"})
                 return vid
-        else:
-            if vids == []:
-                callback({**hook_dict, "player": None, "status": "hiçbiri çalışmıyor"})
-                return None
-            else: # 1080+ bulunamadıysa, en yüksek çözünürlüğü seç.
-                vid = max(vids, key = lambda x:x.resolution or default_res)
-                callback({**hook_dict, "player": vid.player , "status": "çalışıyor"})
-                return vid
+        if vids == []:
+            callback({**hook_dict, "player": None, "status": "hiçbiri çalışmıyor"})
+            return None
+        # 1080+ bulunamadıysa, en yüksek çözünürlüğü seç.
+        vid = max(vids, key = lambda x:x.resolution or default_res)
+        callback({**hook_dict, "player": vid.player , "status": "çalışıyor"})
+        return vid
 
 
 class Video:

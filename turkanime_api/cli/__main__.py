@@ -5,6 +5,8 @@ import sys
 import atexit
 import concurrent.futures as cf
 from rich import print as rprint
+from rich.table import Table
+from rich.live import Live
 import questionary as qa
 from selenium.common.exceptions import WebDriverException
 from easygui import diropenbox
@@ -12,51 +14,12 @@ from easygui import diropenbox
 from ..webdriver import create_webdriver,elementi_bekle
 from ..objects import Anime, Bolum
 from .dosyalar import Dosyalar
-from .gereksinimler import Gereksinimler, MISSING
-from .cli_tools import prompt_tema,clear,CliProgress
+from .gereksinimler import gereksinim_kontrol_cli
+from .cli_tools import prompt_tema,clear,indirme_task_cli,VidSearchCLI,CliStatus
 
 # Uygulama dizinini sistem PATH'ına ekle.
 SEP = ";" if name=="nt" else ":"
 environ["PATH"] +=  SEP + Dosyalar().ta_path + SEP
-
-def gereksinim_kontrol_cli():
-    """ Gereksinimleri kontrol eder ve gerekirse indirip kurar."""
-    gerek = Gereksinimler()
-    with CliProgress("Gereksinimler kontrol ediliyor.."):
-        eksikler = gerek.eksikler
-    if eksikler:
-        eksik_msg = ""
-        guide_msg = "\nManuel indirmek için:\nhttps://github.com/KebabLord/turkanime-indirici/wiki"
-        for eksik,exit_code in eksikler:
-            if exit_code is MISSING:
-                eksik_msg += f"!) {eksik} yazılımı bulunamadı.\n"
-            else:
-                eksik_msg += f"!) {eksik} yazılımı bulundu ancak çalıştırılamadı.\n"
-        print(eksik_msg,end="\n\n")
-        if name=="nt" and qa.confirm("Otomatik kurulsun mu?").ask():
-            with CliProgress("Güncel indirme linkleri getiriliyor.."):
-                links = gerek.url_liste
-            with CliProgress() as clip:
-                fails = gerek.otomatik_indir(url_liste=links, callback=clip.callback)
-            eksik_msg = ""
-            for fail in fails:
-                if "err_msg" in fail:
-                    eksik_msg += f"!) {fail['name']} indirilemedi\n"
-                    if fail["err_msg"] != "":
-                        eksik_msg += f" - {fail['err_msg'][:55]}...\n"
-                elif "ext_code" in fail:
-                    if fail["ext_code"] is MISSING:
-                        eksik_msg += f"!) {fail['name']} kurulamadı.\n"
-                    else:
-                        eksik_msg += f"!) {fail['name']} çalıştırılamadı.\n"
-            if fails:
-                print(eksik_msg + guide_msg)
-                input("\n(ENTER'a BASIN)")
-                sys.exit(1)
-        else:
-            print(guide_msg)
-            input("\n(ENTER'a BASIN)")
-            sys.exit(1)
 
 
 def eps_to_choices(liste,mark_type=None):
@@ -70,10 +33,10 @@ def eps_to_choices(liste,mark_type=None):
         if seri in gecmis_[mark_type]:
             gecmis = gecmis_[mark_type][seri]
     for bolum in liste:
-        name = str(bolum.title)
+        isim = str(bolum.title)
         if bolum.slug in gecmis:
-            name += " ●"
-        choices += [qa.Choice(name,bolum)]
+            isim += " ●"
+        choices += [qa.Choice(isim,bolum)]
     return choices
 
 
@@ -94,7 +57,7 @@ def menu_loop(driver):
         if "Anime" in islem:
             # Seriyi seç.
             try:
-                with CliProgress("Anime listesi getiriliyor.."):
+                with CliStatus("Anime listesi getiriliyor.."):
                     animeler = Anime.get_anime_listesi(driver)
                 seri_ismi = qa.autocomplete(
                     'Animeyi yazın',
@@ -113,7 +76,7 @@ def menu_loop(driver):
             while True:
                 dosya = Dosyalar()
                 if "izle" in islem:
-                    with CliProgress("Bölümler getiriliyor.."):
+                    with CliStatus("Bölümler getiriliyor.."):
                         choices = eps_to_choices(anime.bolumler, mark_type="izlendi")
                     izlenen = [c for c in choices if c.title[-1] == "●"]
                     son_izlenen = izlenen[-1] if izlenen else None
@@ -132,12 +95,14 @@ def menu_loop(driver):
                             choices= fansubs,
                             style=prompt_tema,
                         ).ask(kbi_msg="")
-                    with CliProgress() as clip:
+                    vid_cli = VidSearchCLI()
+                    with vid_cli.progress:
                         best_video = bolum.best_video(
                             by_res=dosya.ayarlar["max çözünürlük"],
                             by_fansub=sub,
-                            callback=clip.bestvid_callback)
+                            callback=vid_cli.callback)
                     assert best_video, "Video oynatılamadı."
+                    print("  Video başlatılacak..")
                     best_video.oynat()
                     dosya.set_gecmis(anime.slug, bolum.slug, "izlendi")
                 else:
@@ -153,24 +118,15 @@ def menu_loop(driver):
                     if not bolumler:
                         break
 
-                    def paralel_indirici(bolum,progress):
-                        # En iyi ve çalışan videoları filtrele.
-                        best_video = bolum.best_video(
-                            by_res=dosya.ayarlar["max çözünürlük"],
-                            callback=progress.bestvid_callback)
-                        if best_video:
-                            # En iyi videoyu indir ve işaretle.
-                            best_video.indir(progress.ytdl_callback)
-                            dosya.set_gecmis(anime.slug, bolum.slug, "indirildi")
-
-                    with CliProgress(is_indirme=True, hide_after=False) as progress:
+                    # İndirme tablosu yarat ve başlat.
+                    table = Table.grid(expand=False)
+                    with Live(table, refresh_per_second=10):
                         futures = []
                         with cf.ThreadPoolExecutor() as executor:
                             for bolum in bolumler:
-                                futures.append(executor.submit(paralel_indirici, bolum, progress))
+                                futures.append(executor.submit(
+                                    indirme_task_cli, bolum, table, dosya))
                             cf.wait(futures)
-
-
 
         elif islem == "Ayarlar":
             while True:
@@ -223,18 +179,18 @@ def main():
     gereksinim_kontrol_cli()
 
     # Selenium'u başlat.
-    with CliProgress("Driver başlatılıyor.."):
+    with CliStatus("Driver başlatılıyor.."):
         driver = create_webdriver(preload_ta=False)
 
     # Script herhangi bir sebepten dolayı sonlandırıldığında.
     def kapat():
-        with CliProgress("Driver kapatılıyor.."):
+        with CliStatus("Driver kapatılıyor.."):
             driver.quit()
     atexit.register(kapat)
 
     # Türkanime'ye bağlan.
     try:
-        with CliProgress("Türkanime'ye bağlanılıyor.."):
+        with CliStatus("Türkanime'ye bağlanılıyor.."):
             driver.get("https://turkanime.co/kullanici/anonim")
             elementi_bekle(".navbar-nav",driver)
     except (ConnectionError,WebDriverException):

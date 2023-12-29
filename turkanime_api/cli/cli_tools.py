@@ -1,8 +1,11 @@
 from os import name,system
 from prompt_toolkit import styles
 
+from rich.panel import Panel
+from rich.console import Group
 from rich.progress import (
     Progress,
+    TextColumn,
     BarColumn,
     SpinnerColumn,
     DownloadColumn,
@@ -11,97 +14,97 @@ from rich.progress import (
     TransferSpeedColumn
 )
 
+
 def clear():
     """ Daha kompakt görüntü için her prompt sonrası clear
         Debug yapacaksanız devre dışı bırakmanız önerilir.
     """
     system('cls' if name == 'nt' else 'clear')
 
-class CliProgress():
-    """ Progress barı yaratma ve takip etme objesi. """
-    def __init__(self,msg=None,is_indirme=False,hide_after=True):
-        self.is_indirme = is_indirme
-        self.hide_after = hide_after
-        self._progress = None
-        self.task_id = None
-        self.msg = msg
-        self.tasks = {}
+def CliStatus(msg,hide=True):
+    prg = Progress(
+        SpinnerColumn("bouncingBar"),
+        TextColumn("[cyan]"+msg),
+        BarColumn(bar_width=40),
+        transient=hide)
+    prg.add_task(msg, total=None)
+    return prg
 
-    @property
-    def progress(self):
-        """ Progress animasyonu objesi. """
-        if self._progress is None:
-            cols = (
-                SpinnerColumn("bouncingBar"),
-                '[progress.description]{task.description}',
-                BarColumn(bar_width=40))
-            if self.is_indirme:
-                cols += (
-                    TaskProgressColumn(),
-                    DownloadColumn(),
-                    TransferSpeedColumn(),
-                    TimeRemainingColumn()
-                )
-            self._progress = Progress(*cols, transient = self.hide_after)
-            self._progress.start()
-        return self._progress
-
-    def callback(self,current,total,msg=""):
-        """ Paralel olmayan task'lar için tekil progress yönetimi. """
-        if not self.progress.tasks:
-            self.progress.add_task(f"[cyan]{msg}", total=total)
-        self.progress.update(self.progress.tasks[0].id, completed=current)
-        if self.progress.finished:
-            self.progress.stop()
-            self._progress = None
-
-    def bestvid_callback(self, hook):
-        """ Objects.Video.best_video methodu için callback handler. """
-        msg = "[cyan]"
-        if hook.get("player"):
-            msg = msg + f'{hook["player"]} {hook["status"]}.'
-        elif hook.get("status") == "hiçbiri çalışmıyor":
-            ...
-
-        uid = hook.get("object")
-        for task_uid,task_id in self.tasks.items():
-            if task_uid == uid:
-                break
-        else:
-            task_id = self.progress.add_task(msg, total=hook["total"])
-            self.tasks[uid] = task_id
-        self.progress.update(task_id, completed=hook["current"], description=msg)
-
+class DownloadCLI():
+    def __init__(self):
+        columns = (
+            SpinnerColumn("bouncingBar"), '[cyan]{task.description}',
+            BarColumn(bar_width=40), TaskProgressColumn(), DownloadColumn(),
+            TransferSpeedColumn(), TimeRemainingColumn()
+        )
+        self.progress = Progress(*columns)
     def ytdl_callback(self,hook):
         """ ydl_options['progress_hooks'] için callback handler. """
-        info = hook["info_dict"]
-        uid = info["_filename"]
         if hook["status"] in ("finished","downloading") and "downloaded_bytes" in hook:
-            if uid in self.tasks:
-                task_id = self.tasks[uid]
-            else:
-                descp = "["+info['webpage_url_domain'].split(".")[-2].upper()+"] "
-                descp += info["_filename"].split(".")[0]
+            descp = "İndiriliyor.."
+            if hook["downloaded_bytes"] >= hook["total_bytes"]:
+                descp = "İndirildi!"
+            if not self.progress.tasks:
                 task_id = self.progress.add_task(descp, total=hook["total_bytes"])
-                self.tasks[uid] = task_id
-            self.progress.update(task_id,completed=hook["downloaded_bytes"])
+            else:
+                task_id = self.progress.tasks[0].id
+            self.progress.update(task_id,description=descp,completed=hook["downloaded_bytes"])
         if hook["status"] == "error":
-            if uid in self.tasks:
-                task_id = self.tasks[uid]
-                self.progress.stop_task(task_id)
+            if self.progress.tasks:
+                # TODO: hata mesajı gösterilecek
+                self.progress.tasks.pop(0)
+    def dl_callback(self,hook):
+        """ gereksinimler.dosya_indir için callback handler. """
+        if not self.progress.tasks:
+            task_id = self.progress.add_task(hook.get("msg"), total=hook.get("total"))
+        else:
+            task_id = self.progress.tasks[0].id
+        self.progress.update(task_id,completed=hook.get("current"))
 
-    def __enter__(self):
-        if not self.msg is None:
-            self.progress.add_task(f"[cyan]{self.msg}", total=None)
-        return self
 
-    def __del__(self):
-        if self._progress:
-            self.progress.stop()
-        self.tasks = {}
+class VidSearchCLI():
+    def __init__(self):
+        columns = (
+            SpinnerColumn("bouncingBar"),
+            '[cyan]{task.description}',
+            BarColumn(bar_width=40),
+            TextColumn("[cyan]{task.completed}/{task.total} denendi."),
+        )
+        self.progress = Progress(*columns)
+    def callback(self, hook):
+        """ Objects.Video.best_video methodu için callback handler. """
+        msg = ""
+        if hook.get("player"):
+            msg += f'{hook["player"]} {hook["status"]}'
+            msg += "!" if hook["status"] == "çalışıyor" else "."
+        elif hook.get("status") == "hiçbiri çalışmıyor":
+            pass # TODO: hata mesajı falan gösterilmeli
+        if self.progress.tasks:
+            task_id = self.progress.tasks[0].id
+        else:
+            task_id = self.progress.add_task(msg, total=hook["total"])
+        completed = hook["total"] if hook["status"] == "çalışıyor" else hook["current"]
+        self.progress.update(task_id, completed=completed, description=msg)
 
-    def __exit__(self, _=None, __=None, ___=None):
-        self.__del__()
+
+def indirme_task_cli(bolum_,table_,dosya_=None):
+    """ Progress barı dinamik olarak güncellerken indirme yapar. """
+    vid_cli = VidSearchCLI()
+    dl_cli = DownloadCLI()
+    table_.add_row(Panel.fit(
+            Group(vid_cli.progress, dl_cli.progress),
+            title=bolum_.slug,
+            border_style="green"))
+    table_.add_row("")
+    # En iyi ve çalışan videoları filtrele.
+    best_video = bolum_.best_video(
+        by_res=False,#dosya.ayarlar["max çözünürlük"],
+        callback=vid_cli.callback)
+    # En iyi videoyu indir ve işaretle.
+    if best_video:
+        best_video.indir(callback=dl_cli.ytdl_callback)
+        if dosya_:
+            dosya_.set_gecmis(bolum_.anime.slug, bolum_.slug, "indirildi")
 
 
 prompt_tema = styles.Style([
