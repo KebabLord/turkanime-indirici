@@ -1,4 +1,5 @@
-from os import path,replace,system
+from os import path,replace,system,name
+import sys
 import tempfile
 import re
 import subprocess as sp
@@ -6,8 +7,10 @@ import json
 from zipfile import ZipFile
 from py7zr import SevenZipFile
 import requests
+import questionary as qa
 
 from .dosyalar import Dosyalar
+from .cli_tools import CliStatus,DownloadCLI
 
 DL_URL = "https://raw.githubusercontent.com/KebabLord/turkanime-indirici/master/gereksinimler.json"
 DEPENDS = ["geckodriver",("yt-dlp","youtube-dl"),"mpv"]
@@ -66,7 +69,7 @@ class Gereksinimler:
             url_liste = self.url_liste
         for eksik, _ in self.eksikler:
             meta = next(i for i in url_liste if i['name'] == eksik)
-            assert meta != None
+            assert meta is not None
             res = self.dosya_indir(meta["url"],callback=callback)
             if "err_msg" in res:
                 fail += [{"name":eksik,"err_msg":res["err_msg"]}]
@@ -94,7 +97,8 @@ class Gereksinimler:
                 file.write(data)
                 downloaded_size += len(data)
                 if callback:
-                    callback(downloaded_size, total_size, remote_file)
+                    hook = {"current":downloaded_size,"total":total_size,"file":remote_file}
+                    callback(hook)
         return {"path":file_name}
 
     def dosyayi_kur(self,file_name,file_path,setup=False):
@@ -114,3 +118,42 @@ class Gereksinimler:
                 system(file_path)
             else:
                 replace( path.join(tmp.name,file_name), path.join(self.folder,file_name))
+
+
+def gereksinim_kontrol_cli():
+    """ Gereksinimleri kontrol eder ve gerekirse indirip kurar."""
+    gerek = Gereksinimler()
+    with CliStatus("Gereksinimler kontrol ediliyor.."):
+        eksikler = gerek.eksikler
+    if eksikler:
+        eksik_msg = ""
+        guide_msg = "\nManuel indirmek için:\nhttps://github.com/KebabLord/turkanime-indirici/wiki"
+        for eksik,exit_code in eksikler:
+            if exit_code is MISSING:
+                eksik_msg += f"!) {eksik} yazılımı bulunamadı.\n"
+            else:
+                eksik_msg += f"!) {eksik} yazılımı bulundu ancak çalıştırılamadı.\n"
+        print(eksik_msg,end="\n\n")
+        if name=="nt" and qa.confirm("Otomatik kurulsun mu?").ask():
+            with CliStatus("Güncel indirme linkleri getiriliyor.."):
+                links = gerek.url_liste
+            fails = gerek.otomatik_indir(url_liste=links, callback=DownloadCLI().dl_callback)
+            eksik_msg = ""
+            for fail in fails:
+                if "err_msg" in fail:
+                    eksik_msg += f"!) {fail['name']} indirilemedi\n"
+                    if fail["err_msg"] != "":
+                        eksik_msg += f" - {fail['err_msg'][:55]}...\n"
+                elif "ext_code" in fail:
+                    if fail["ext_code"] is MISSING:
+                        eksik_msg += f"!) {fail['name']} kurulamadı.\n"
+                    else:
+                        eksik_msg += f"!) {fail['name']} çalıştırılamadı.\n"
+            if fails:
+                print(eksik_msg + guide_msg)
+                input("\n(ENTER'a BASIN)")
+                sys.exit(1)
+        else:
+            print(guide_msg)
+            input("\n(ENTER'a BASIN)")
+            sys.exit(1)

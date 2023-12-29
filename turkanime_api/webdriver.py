@@ -14,7 +14,7 @@ from selenium.webdriver.firefox.options import Options
 from selenium.common.exceptions import SessionNotCreatedException, NoSuchElementException
 
 # Gerekli çerez & dosyaların yüklendiği dull sayfa
-init_url = "https://turkanime.co/kullanici/anonim"
+INIT_URL = "https://turkanime.co/kullanici/anonim"
 
 def find_firefox_executable():
     """ firefox.exe'yi bilinen konumlarda ara. """
@@ -63,7 +63,7 @@ def create_webdriver(profile=None,headless=True,firefox_path=None,preload_ta=Tru
             service_log_path='/dev/null',desired_capabilities=desired
             )
     if preload_ta:
-        driver.get(init_url)
+        driver.get(INIT_URL)
     return driver
 
 
