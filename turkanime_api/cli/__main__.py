@@ -16,6 +16,7 @@ from ..objects import Anime, Bolum
 from .dosyalar import Dosyalar
 from .gereksinimler import gereksinim_kontrol_cli
 from .cli_tools import prompt_tema,clear,indirme_task_cli,VidSearchCLI,CliStatus
+from .version import guncel_surum, update_type
 
 # Uygulama dizinini sistem PATH'ına ekle.
 SEP = ";" if name=="nt" else ":"
@@ -181,6 +182,20 @@ def menu_loop(driver):
 
 
 def main():
+    # Güncelleme kontrolü
+    try:
+        with CliStatus("Güncelleme kontrol ediliyor.."):
+            surum = guncel_surum()
+        tip = update_type(surum)
+        if tip:
+            rprint(f"[yellow]{tip} Güncellemesi mevcut!! v{surum}[/yellow]")
+            rprint(f"[yellow]Yeni özellikler için uygulamayı güncelleyebilirsiniz! [/yellow]")
+            sleep(5)
+    except:
+        rprint("[red][strong]Güncelleme kontrol edilemedi.[/strong][red]")
+        sleep(3)
+
+
     # Gereksinimleri kontrol et
     gereksinim_kontrol_cli()
 
