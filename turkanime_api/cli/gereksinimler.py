@@ -1,4 +1,5 @@
-from os import path,replace,system,name
+from os import path,system,name
+from shutil import move
 import sys
 import tempfile
 import re
@@ -13,7 +14,7 @@ from .dosyalar import Dosyalar
 from .cli_tools import CliStatus,DownloadCLI
 
 DL_URL = "https://raw.githubusercontent.com/KebabLord/turkanime-indirici/master/gereksinimler.json"
-DEPENDS = ["geckodriver",("yt-dlp","youtube-dl"),"mpv"]
+DEPENDS = ["geckodriver","yt-dlp","mpv"]
 
 NOT_WORKING = -1
 MISSING = 0
@@ -45,12 +46,9 @@ class Gereksinimler:
         """ Bulunamayan veya çalıştırılamayan gereksinimleri tespit et. """
         if self._eksikler == []:
             for gereksinim in DEPENDS:
-                alternatif = None
-                if isinstance(gereksinim,tuple):
-                    gereksinim, alternatif = gereksinim
                 exit_code = self.app_kontrol(gereksinim)
                 if exit_code != SUCCESS:
-                    if alternatif and self.app_kontrol(gereksinim) is SUCCESS:
+                    if self.app_kontrol(gereksinim) is SUCCESS:
                         continue
                     self._eksikler.append((gereksinim,exit_code))
         return self._eksikler
@@ -108,16 +106,16 @@ class Gereksinimler:
         if file_type == "7z":
             with SevenZipFile(file_path, mode='r') as szip:
                 szip.extractall(path=tmp.name)
-            replace( path.join(tmp.name,file_name), path.join(self.folder,file_name))
+            move( path.join(tmp.name,file_name), path.join(self.folder,file_name))
         elif file_type == "zip":
             with ZipFile(file_path, 'r') as zipf:
                 zipf.extractall(tmp.name)
-            replace( path.join(tmp.name,file_name), path.join(self.folder,file_name))
+            move( path.join(tmp.name,file_name), path.join(self.folder,file_name))
         elif file_type == "exe":
             if setup:
                 system(file_path)
             else:
-                replace( path.join(tmp.name,file_name), path.join(self.folder,file_name))
+                move( path.join(tmp.name,file_name), path.join(self.folder,file_name))
 
 
 def gereksinim_kontrol_cli():
@@ -137,7 +135,9 @@ def gereksinim_kontrol_cli():
         if name=="nt" and qa.confirm("Otomatik kurulsun mu?").ask():
             with CliStatus("Güncel indirme linkleri getiriliyor.."):
                 links = gerek.url_liste
-            fails = gerek.otomatik_indir(url_liste=links, callback=DownloadCLI().dl_callback)
+            dl_cli = DownloadCLI()
+            with dl_cli.progress:
+                fails = gerek.otomatik_indir(url_liste=links, callback=dl_cli.dl_callback)
             eksik_msg = ""
             for fail in fails:
                 if "err_msg" in fail:

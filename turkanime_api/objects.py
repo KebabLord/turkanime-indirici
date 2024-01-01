@@ -379,5 +379,4 @@ class Video:
             mpv_opts.append("--stream-record")
         for opt in mpv_opts:
             cmd.insert(1,opt)
-
         return sp.run(cmd, text=True, stdout=sp.PIPE, stderr=sp.PIPE)

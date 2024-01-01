@@ -14,7 +14,6 @@ from rich.progress import (
     TransferSpeedColumn
 )
 
-
 def clear():
     """ Daha kompakt görüntü için her prompt sonrası clear
         Debug yapacaksanız devre dışı bırakmanız önerilir.
@@ -56,11 +55,10 @@ class DownloadCLI():
     def dl_callback(self,hook):
         """ gereksinimler.dosya_indir için callback handler. """
         if not self.progress.tasks:
-            task_id = self.progress.add_task(hook.get("msg"), total=hook.get("total"))
+            task_id = self.progress.add_task(hook.get("file"), total=hook.get("total"))
         else:
             task_id = self.progress.tasks[0].id
         self.progress.update(task_id,completed=hook.get("current"))
-
 
 class VidSearchCLI():
     def __init__(self):
@@ -98,7 +96,7 @@ def indirme_task_cli(bolum_,table_,dosya_=None):
     table_.add_row("")
     # En iyi ve çalışan videoları filtrele.
     best_video = bolum_.best_video(
-        by_res=False,#dosya.ayarlar["max çözünürlük"],
+        by_res=dosya_.ayarlar["max resolution"],
         callback=vid_cli.callback)
     # En iyi videoyu indir ve işaretle.
     if best_video:

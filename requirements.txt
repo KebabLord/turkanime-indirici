@@ -1,9 +1,9 @@
-selenium<4.3.0
+selenium>=4.2.0,<4.3.0
 yt-dlp
 bs4
 pycryptodome
 appdirs
 py7zr
-rich
+rich>=13.0.0
 easygui
 

@@ -98,12 +98,12 @@ def menu_loop(driver):
                     vid_cli = VidSearchCLI()
                     with vid_cli.progress:
                         best_video = bolum.best_video(
-                            by_res=dosya.ayarlar["max çözünürlük"],
+                            by_res=dosya.ayarlar["max resolution"],
                             by_fansub=sub,
                             callback=vid_cli.callback)
                     assert best_video, "Video oynatılamadı."
                     print("  Video başlatılacak..")
-                    best_video.oynat()
+                    best_video.oynat(dakika_hatirla=dosya.ayarlar["dakika hatirla"])
                     dosya.set_gecmis(anime.slug, bolum.slug, "izlendi")
                 else:
                     choices = eps_to_choices(anime.bolumler, mark_type="indirildi")
@@ -139,7 +139,9 @@ def menu_loop(driver):
                     'İzlerken kaydet: '+tr(ayarlar['izlerken kaydet']),
                     'Manuel fansub seç: '+tr(ayarlar['manuel fansub']),
                     'İzlendi/İndirildi ikonu: '+tr(ayarlar["izlendi ikonu"]),
-                    'Aynı anda indirme sayısı: '+str(ayarlar["aynı anda indirme sayısı"]),
+                    'Paralel indirme sayisi: '+str(ayarlar["paralel indirme sayisi"]),
+                    'Maksimum çözünürlüğe ulaş: '+tr(ayarlar["max resolution"]),
+                    'Kaldığın dakikayı hatirla: '+tr(ayarlar["dakika hatirla"]),
                     'Geri dön'
                 ]
                 ayar_islem = qa.select(
@@ -162,11 +164,15 @@ def menu_loop(driver):
                 elif ayar_islem == ayarlar_options[4]:
                     max_dl = qa.text(
                         message = 'Maksimum eş zamanlı kaç bölüm indirilsin?',
-                        default = str(ayarlar["aynı anda indirme sayısı"]),
+                        default = str(ayarlar["paralel indirme sayisi"]),
                         style = prompt_tema
                     ).ask(kbi_msg="")
                     if isinstance(max_dl,str) and max_dl.isdigit():
-                        dosyalar.set_ayar("aynı anda indirme sayısı", int(max_dl))
+                        dosyalar.set_ayar("paralel indirme sayisi", int(max_dl))
+                elif ayar_islem == ayarlar_options[5]:
+                    dosyalar.set_ayar('max resolution', not ayarlar['max resolution'])
+                elif ayar_islem == ayarlar_options[6]:
+                    dosyalar.set_ayar('dakika hatirla', not ayarlar['dakika hatirla'])
                 else:
                     break
 

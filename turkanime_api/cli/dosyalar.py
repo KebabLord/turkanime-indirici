@@ -27,13 +27,15 @@ class Dosyalar:
             self.ta_path = getcwd()
         self.ayar_path = path.join(self.ta_path, "ayarlar.json")
         self.gecmis_path = path.join(self.ta_path, "gecmis.json")
+        # Ayar isimleri ascii karakterlerden oluşmalı.
         default_ayarlar = {
             "manuel fansub" : False,
             "izlerken kaydet" : False,
             "indirilenler" : ".",
             "izlendi ikonu" : True,
-            "aynı anda indirme sayısı" : 3,
-            "max çözünürlük" : True
+            "paralel indirme sayisi" : 3,
+            "max resolution" : True,
+            "dakika hatirla" : True,
         }
         # Gerekli dosyalar eğer daha önce yaratılmadıysa yarat.
         if not path.isdir(".git") and not path.isdir(self.ta_path):
