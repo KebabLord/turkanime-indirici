@@ -16,19 +16,19 @@ from .bypass import get_real_url
 # Çalıştığı bilinen playerlar ve öncelikleri
 SUPPORTED = [
     "GDRIVE",
-    "YADISK",
-    "DAILYMOTION",
-    "MAIL",
-    "VK",
     "GPLUS",
     "MP4UPLOAD",
-    "UQLOAD",
+    "YADISK",
+    "MAIL",
+    "ODNOKLASSNIKI",
+    "VK",
+    "DAILYMOTION",
+    "SIBNET",
     "VIDMOLY",
     "YOURUPLOAD",
-    "SIBNET",
     "SENDVID",
-    "ODNOKLASSNIKI",
     "MYVI",
+    "UQLOAD",
 ]
 
 class LogHandler:
@@ -369,9 +369,10 @@ class Video:
             "mpv",
             "--no-input-terminal",
             "--msg-level=all=error",
+#            "--log-file=output.txt",
             "--script-opts=ytdl_hook-ytdl_path=yt-dlp,ytdl_hook-try_ytdl_first=yes",
             "--ytdl-raw-options=load-info-json=" + tmp.name,
-            "ytdl://"
+            "ytdl://" + self.bolum.slug # Kaldığın yerden devam etmenin çalışması için.
         ]
         if dakika_hatirla:
             mpv_opts.append("--save-position-on-quit")
