@@ -5,6 +5,8 @@ DownloadGereksinimler()
     - Gereksinimlerin indirilmesini ve paketten çıkarılmasını sağlar.
 """
 from os import path,mkdir,getcwd
+from tempfile import NamedTemporaryFile
+from shutil import move
 import json
 
 # yt-dlp, mpv gibi gereksinimlerin indirme linklerinin bulunduğu dosya.
@@ -55,15 +57,18 @@ class Dosyalar:
                 fp.write('{"izlendi":{},"indirildi":{}}\n')
 
     def set_gecmis(self, seri,bolum,islem):
-        with open(self.gecmis_path,"r",encoding="utf-8") as f:
-            gecmis = json.load(f)
+        with open(self.gecmis_path,"r",encoding="utf-8") as fp:
+            gecmis = json.load(fp)
         if not seri in gecmis[islem]:
             gecmis[islem][seri] = []
         if bolum in gecmis[islem][seri]:
             return
         gecmis[islem][seri].append(bolum)
-        with open(self.gecmis_path,"w",encoding="utf-8") as f:
-            json.dump(gecmis,f,indent=2)
+        # Geçmiş dosyasını /tmp'de güncelle, sonra taşı.
+        with NamedTemporaryFile("w",encoding="utf-8",delete=False) as tmp:
+            with tmp.file as fp:
+                json.dump(gecmis,fp,indent=2)
+        move(tmp.name,self.gecmis_path)
 
     def set_ayar(self, ayar = None, deger = None, ayar_list = None):
         assert (ayar != None and deger != None) or ayar_list != None

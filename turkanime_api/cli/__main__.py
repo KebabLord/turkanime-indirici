@@ -96,6 +96,8 @@ def menu_loop(driver):
                             choices= fansubs,
                             style=prompt_tema,
                         ).ask(kbi_msg="")
+                        if not sub:
+                            break
                     vid_cli = VidSearchCLI()
                     with vid_cli.progress:
                         best_video = bolum.best_video(
@@ -189,7 +191,7 @@ def main():
         tip = update_type(surum)
         if tip:
             rprint(f"[yellow]{tip} Güncellemesi mevcut!! v{surum}[/yellow]")
-            rprint(f"[yellow]Yeni özellikler için uygulamayı güncelleyebilirsiniz! [/yellow]")
+            rprint("[yellow]Yeni özellikler için uygulamayı güncelleyebilirsiniz! [/yellow]")
             sleep(5)
     except:
         rprint("[red][strong]Güncelleme kontrol edilemedi.[/strong][red]")

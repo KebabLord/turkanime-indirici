@@ -29,15 +29,11 @@ class Gereksinimler:
 
     def app_kontrol(self,app):
         """ Gereksinimi çalıştırmayı deneyip exit kodunu öğren. """
-        exit_code = sp.Popen(
-            f'{app} --version',
-            stdout=sp.PIPE,
-            stderr=sp.PIPE,
-            shell=True
-        ).wait()
+        process = sp.Popen(f'{app} --version', stdout=sp.PIPE, stderr=sp.PIPE, shell=True)
+        exit_code, stdout = process.wait(), process.stdout.read().decode()
         if exit_code == 0:
             return SUCCESS
-        if exit_code in (1,127):
+        if exit_code in (1,127,32512):
             return MISSING
         return NOT_WORKING
 
@@ -63,8 +59,7 @@ class Gereksinimler:
     def otomatik_indir(self, url_liste=None, break_on_fail = False, callback = None):
         """ Tüm eksik dosyaları otomatik olarak indir. """
         fail = []
-        if url_liste is None:
-            url_liste = self.url_liste
+        url_liste = self.url_liste if url_liste is None else url_liste
         for eksik, _ in self.eksikler:
             meta = next(i for i in url_liste if i['name'] == eksik)
             assert meta is not None
@@ -99,23 +94,31 @@ class Gereksinimler:
                     callback(hook)
         return {"path":file_name}
 
-    def dosyayi_kur(self,file_name,file_path,setup=False):
+    def dosyayi_kur(self,file_name,file_path,is_setup=False,is_dir=False):
         """ 7z, Zip veya Exe formatındaki indirilmiş dosyayı uygulama dizinine kurar. """
         file_type = file_path.split(".")[-1]
         tmp = tempfile.TemporaryDirectory()
+        if is_dir: # Klasörü kopyala
+            from_ = tmp.name
+            to_ = path.join(self.folder, file_name.removesuffix("."+file_type))
+        else: # Klasörün içindeki dosyayı kopyala
+            from_ = path.join(tmp.name, file_name)
+            to_ = path.join(self.folder, file_name)
+
         if file_type == "7z":
             with SevenZipFile(file_path, mode='r') as szip:
                 szip.extractall(path=tmp.name)
-            move( path.join(tmp.name,file_name), path.join(self.folder,file_name))
+            move( from_, to_)
         elif file_type == "zip":
             with ZipFile(file_path, 'r') as zipf:
                 zipf.extractall(tmp.name)
+            move( from_, to_)
             move( path.join(tmp.name,file_name), path.join(self.folder,file_name))
         elif file_type == "exe":
-            if setup:
+            if is_setup:
                 system(file_path)
             else:
-                move( path.join(tmp.name,file_name), path.join(self.folder,file_name))
+                move( from_, to_)
 
 
 def gereksinim_kontrol_cli():

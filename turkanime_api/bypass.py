@@ -86,7 +86,7 @@ def get_real_url(driver, url_cipher: str, cache=True) -> str:
 
     # Daha önceden cache'lenmiş key varsa onunla şifreyi çözmeyi dene.
     if cache and os.path.isfile(cache_file):
-        with open(cache_file) as f:
+        with open(cache_file,"r",encoding="utf-8") as f:
             cached_key = f.read().strip().encode()
             plaintext = decrypt_cipher(cached_key,url_cipher)
             if plaintext:
@@ -99,6 +99,6 @@ def get_real_url(driver, url_cipher: str, cache=True) -> str:
         raise ValueError("Embed URLsinin şifresi çözülemedi.")
     # Cache'i güncelle
     if cache:
-        with open(cache_file,"w") as f:
+        with open(cache_file,"w",encoding="utf-8") as f:
             f.write(key.decode("utf-8"))
     return plaintext

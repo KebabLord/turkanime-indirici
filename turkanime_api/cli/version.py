@@ -10,7 +10,7 @@ build çeşiti ve versiyon numarası bu script'e embedlandı.
 import re
 import requests
 __author__ = "https://github.com/Kebablord/turkanime-indirici"
-__version__ = "8.0.0"
+__version__ = "8.0.1"
 __build__ = "source" # source,exe,pip
 
 def guncel_surum():
@@ -24,9 +24,9 @@ def guncel_surum():
         release = requests.get(url,timeout=5).json()
         recent_version = release['tag_name'].replace("v","").replace("V","")
     else: # source
-        url = "https://raw.githubusercontent.com/kebablord/turkanime-indirici/master/turkanime_api/version.py"
+        url = "https://raw.githubusercontent.com/KebabLord/turkanime-indirici/master/pyproject.toml"
         source = requests.get(url,timeout=5).text
-        raw = re.findall('__version__.*?"(.*?)"',source)
+        raw = re.findall("version *= *['\"](.*?)['\"]",source)
         recent_version = raw[0] if raw else None
     return recent_version
 

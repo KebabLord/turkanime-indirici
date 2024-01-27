@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "turkanime-cli"
-version = "8.0.0"
+version = "8.0.1"
 description = "Türkanime video oynatıcı ve indirici"
 authors = ["Junicchi <junicchi@waifu.club>"]
 readme = "README.md"
@@ -24,7 +24,7 @@ packages = [
 [tool.poetry.dependencies]
 python = ">=3.7,<4"
 yt_dlp = "*"
-questionary = "*
+questionary = "*"
 selenium = ">=4.2.0,<4.3.0"
 bs4 = ">=0.0.1"
 easygui = ">=0.98.2"
