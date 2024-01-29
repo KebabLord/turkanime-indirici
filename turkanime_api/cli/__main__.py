@@ -54,6 +54,8 @@ def menu_loop(driver):
             style=prompt_tema,
             instruction=" "
         ).ask()
+        if not islem:
+            break
         # Anime izle veya indir seçildiyse.
         if "Anime" in islem:
             # Seriyi seç.

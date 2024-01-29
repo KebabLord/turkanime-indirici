@@ -113,7 +113,6 @@ class Gereksinimler:
             with ZipFile(file_path, 'r') as zipf:
                 zipf.extractall(tmp.name)
             move( from_, to_)
-            move( path.join(tmp.name,file_name), path.join(self.folder,file_name))
         elif file_type == "exe":
             if is_setup:
                 system(file_path)
