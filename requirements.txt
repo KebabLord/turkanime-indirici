@@ -7,3 +7,4 @@ py7zr
 rich>=13.0.0
 easygui
 questionary
+requests

@@ -23,14 +23,16 @@ packages = [
 
 [tool.poetry.dependencies]
 python = ">=3.7,<4"
-yt_dlp = "*"
-questionary = "*"
 selenium = ">=4.2.0"
+yt_dlp = "*"
 bs4 = ">=0.0.1"
-easygui = ">=0.98.2"
-rich = ">=13.0.0"
-requests = "*"
+pycryptodome = "*"
+appdirs = "*"
+questionary = "*"
 py7zr = "*"
+rich = ">=13.0.0"
+easygui = ">=0.98.2"
+requests = "*"
 
 [tool.poetry.dev-dependencies]
 
