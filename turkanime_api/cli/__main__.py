@@ -23,22 +23,26 @@ SEP = ";" if name=="nt" else ":"
 environ["PATH"] +=  SEP + Dosyalar().ta_path + SEP
 
 
-def eps_to_choices(liste,mark_type=None):
+def eps_to_choices(liste,mark_type):
     """ - [Bolum,] listesini `questionary.Choice` listesine dönüştürür.
         - Ayrıca geçmiş.json'daki izlenen/indirilen bölümlere işaret koyar.
     """
     assert len(liste) != 0 and isinstance(liste[0], Bolum)
-    seri, choices, gecmis = liste[0].anime.slug, [], []
-    if mark_type:
-        gecmis_ = Dosyalar().gecmis
-        if seri in gecmis_[mark_type]:
-            gecmis = gecmis_[mark_type][seri]
+    slug = liste[0].anime.slug
+    recent, choices, gecmis = None, [], []
+    gecmis_ = Dosyalar().gecmis
+    if slug in gecmis_[mark_type]:
+        gecmis = gecmis_[mark_type][slug]
+        recent = gecmis[-1]
     for bolum in liste:
         isim = str(bolum.title)
         if bolum.slug in gecmis:
             isim += " ●"
-        choices += [qa.Choice(isim,bolum)]
-    return choices
+        choice = qa.Choice(isim,bolum)
+        if bolum.slug == recent:
+            recent = choice
+        choices.append(choice)
+    return choices, recent
 
 
 def menu_loop(driver):
@@ -80,14 +84,12 @@ def menu_loop(driver):
                 dosya = Dosyalar()
                 if "izle" in islem:
                     with CliStatus("Bölümler getiriliyor.."):
-                        choices = eps_to_choices(anime.bolumler, mark_type="izlendi")
-                    izlenen = [c for c in choices if c.title[-1] == "●"]
-                    son_izlenen = izlenen[-1] if izlenen else None
+                        choices, recent = eps_to_choices(anime.bolumler, mark_type="izlendi")
                     bolum = qa.select(
                         message='Bölüm seç',
-                        choices= choices,
+                        choices=choices,
                         style=prompt_tema,
-                        default=son_izlenen
+                        default=recent
                     ).ask(kbi_msg="")
                     if not bolum:
                         break
@@ -100,25 +102,33 @@ def menu_loop(driver):
                         ).ask(kbi_msg="")
                         if not sub:
                             break
-                    vid_cli = VidSearchCLI()
-                    with vid_cli.progress:
-                        best_video = bolum.best_video(
-                            by_res=dosya.ayarlar["max resolution"],
-                            by_fansub=sub,
-                            callback=vid_cli.callback)
-                    assert best_video, "Video oynatılamadı."
-                    print("  Video başlatılacak..")
-                    best_video.oynat(dakika_hatirla=dosya.ayarlar["dakika hatirla"])
-                    dosya.set_gecmis(anime.slug, bolum.slug, "izlendi")
+                    # En iyi videoyu bul ve oynat, 3 şansı var.
+                    success = False
+                    for _ in range(3):
+                        vid_cli = VidSearchCLI()
+                        with vid_cli.progress:
+                            best_video = bolum.best_video(
+                                by_res=dosya.ayarlar["max resolution"],
+                                by_fansub=sub,
+                                callback=vid_cli.callback)
+                        if not best_video:
+                            break
+                        print("  Video başlatılacak..")
+                        proc = best_video.oynat(dakika_hatirla=dosya.ayarlar["dakika hatirla"])
+                        if proc.returncode == 0:
+                            success = True
+                            break
+                        best_video.is_working = False
+                        print("  Video çalışmadı, başka bir video denenecek..")
+                    if success:
+                        dosya.set_gecmis(anime.slug, bolum.slug, "izlendi")
                 else:
-                    choices = eps_to_choices(anime.bolumler, mark_type="indirildi")
-                    inen = [c for c in choices if c.title[-1] == "●"]
-                    son_inen = inen[-1] if inen else None
+                    choices, recent = eps_to_choices(anime.bolumler, mark_type="indirildi")
                     bolumler = qa.checkbox(
                         message = "Bölüm seç",
                         choices=choices,
                         style=prompt_tema,
-                        initial_choice=son_inen
+                        initial_choice=recent
                     ).ask(kbi_msg="")
                     if not bolumler:
                         break

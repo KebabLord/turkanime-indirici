@@ -278,6 +278,7 @@ class Video:
         self._resolution = None
         self._info = None
         self._url = None
+        self._is_working = None
         self.is_supported = self.player in SUPPORTED
 
         self.ydl_opts = {
@@ -308,8 +309,12 @@ class Video:
         if self._info is None:
             assert self.is_supported, "Bu player desteklenmiyor."
             with yt_dlp.YoutubeDL(self.ydl_opts) as ydl:
-                info = ydl.extract_info(self.url, download=False)
-                self._info = ydl.sanitize_info(info)
+                raw_info = ydl.extract_info(self.url, download=False)
+                info = ydl.sanitize_info(raw_info)
+            # false-pozitifleri önlemek için.
+            if info and info.get("video_ext") == "html":
+                info = None
+            self._info = info or {}
         return self._info
 
     @property
@@ -333,17 +338,23 @@ class Video:
                     res = int(re.findall(r"infoname.*?<span.*?x (\d+)<",r.text)[0])
                 except:
                     pass
-            self._resolution = res
+            self._resolution = res or 0
         return self._resolution
 
     @property
     def is_working(self):
         """ Video çalışıyor mu? """
         assert self.is_supported, "Bu player desteklenmiyor."
-        try:
-            return self.info is not None
-        except:
-            return False
+        if self._is_working is None:
+            try:
+                self._is_working = self.info not in (None, {})
+            except:
+                self._is_working = False
+        return self._is_working
+
+    @is_working.setter
+    def is_working(self,value):
+        self._is_working = value
 
     def indir(self, callback=None, output=None):
         """ info.json'u kullanarak videoyu indir """
@@ -369,7 +380,6 @@ class Video:
             "mpv",
             "--no-input-terminal",
             "--msg-level=all=error",
-#            "--log-file=output.txt",
             "--script-opts=ytdl_hook-ytdl_path=yt-dlp,ytdl_hook-try_ytdl_first=yes",
             "--ytdl-raw-options=load-info-json=" + tmp.name,
             "ytdl://" + self.bolum.slug # Kaldığın yerden devam etmenin çalışması için.

@@ -10,8 +10,8 @@ build çeşiti ve versiyon numarası bu script'e embedlandı.
 import re
 import requests
 __author__ = "https://github.com/Kebablord/turkanime-indirici"
-__version__ = "8.0.4"
-__build__ = "exe" # source,exe,pip
+__version__ = "8.1.0"
+__build__ = "source" # source,exe,pip
 
 def guncel_surum():
     """ En güncel sürümün numarasını "X.Y.Z" formatında edin. """
