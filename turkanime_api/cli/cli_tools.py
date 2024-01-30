@@ -102,7 +102,9 @@ def indirme_task_cli(bolum_,table_,dosya_=None):
         callback=vid_cli.callback)
     # En iyi videoyu indir ve işaretle.
     if best_video:
-        best_video.indir(callback=dl_cli.ytdl_callback)
+        best_video.indir(
+            callback = dl_cli.ytdl_callback,
+            output = dosya_.ayarlar["indirilenler"])
         if dosya_:
             dosya_.set_gecmis(bolum_.anime.slug, bolum_.slug, "indirildi")
 

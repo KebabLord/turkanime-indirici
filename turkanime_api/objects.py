@@ -5,6 +5,7 @@
 >>> vid1.oynat()
 """
 from os import remove
+from os.path import join
 from tempfile import NamedTemporaryFile
 import subprocess as sp
 import re
@@ -356,15 +357,16 @@ class Video:
     def is_working(self,value):
         self._is_working = value
 
-    def indir(self, callback=None, output=None):
+    def indir(self, callback=None, output=""):
         """ info.json'u kullanarak videoyu indir """
         assert self.is_working, "Video çalışmıyor."
-        file_name = self.bolum.slug
+        seri_slug = self.bolum.anime.slug if self.bolum.anime else ""
+        output = join(output, seri_slug, self.bolum.slug)
         opts = self.ydl_opts.copy()
         if callback:
             opts['progress_hooks'] = [callback]
         #if output:
-        opts['outtmpl'] = {'default': file_name + r'.%(ext)s'}
+        opts['outtmpl'] = {'default': output + r'.%(ext)s'}
         with NamedTemporaryFile("w",delete=False) as tmp:
             json.dump(self.info, tmp)
         with yt_dlp.YoutubeDL(opts) as ydl:
