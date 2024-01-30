@@ -31,15 +31,15 @@ echo Surum dosyasi yaratiliyor..
 cd ..
 py version_generator.py
 
-echo Root.py yaratiliyor..
+echo compiled.py yaratiliyor..
 (
     echo from turkanime_api.cli.__main__ import main
     echo if __name__ == "__main__":
     echo     main^(^)
-) > ..\root.py
+) > ..\compiled.py
 
 echo EXE derleniyor..
-pyinstaller --noconfirm --onefile --console --icon "docs\TurkAnimu.ico" --name "TurkAnimu" --version-file versionfile.txt "root.py" && (
+pyinstaller --noconfirm --onefile --console --icon "docs\TurkAnimu.ico" --name "TurkAnimu" --version-file versionfile.txt "compiled.py" && (
   echo Hersey yolunda gitti, calistirilabilir dosya: dist/TurkAnimu.exe
 )
 
