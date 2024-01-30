@@ -117,7 +117,7 @@ class Gereksinimler:
             if is_setup:
                 system(file_path)
             else:
-                move( from_, to_)
+                move( file_path, to_)
 
 
 def gereksinim_kontrol_cli():
