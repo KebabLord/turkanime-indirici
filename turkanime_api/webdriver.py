@@ -50,7 +50,7 @@ def create_webdriver(options=None,headless=True,firefox_path=None,preload_ta=Tru
     if firefox_path:
         options.binary_location = firefox_path
     elif not spawn.find_executable("firefox"):
-        firefox_path = find_firefox_executable()
+        options.binary_location = find_firefox_executable()
     # Pürüzsüz çalışması için profile tweaks.
     profile = webdriver.FirefoxProfile()
     profile.set_preference("app.update.auto", False)

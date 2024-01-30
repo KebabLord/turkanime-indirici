@@ -37,6 +37,7 @@ class DownloadCLI():
             TransferSpeedColumn(), TimeRemainingColumn()
         )
         self.progress = Progress(*columns)
+        self.multi_tasks = {}
     def ytdl_callback(self,hook):
         """ ydl_options['progress_hooks'] için callback handler. """
         if hook["status"] in ("finished","downloading") and "downloaded_bytes" in hook:
@@ -54,10 +55,11 @@ class DownloadCLI():
                 self.progress.tasks.pop(0)
     def dl_callback(self,hook):
         """ gereksinimler.dosya_indir için callback handler. """
-        if not self.progress.tasks:
+        if not self.multi_tasks or hook.get("file") not in self.multi_tasks:
             task_id = self.progress.add_task(hook.get("file"), total=hook.get("total"))
+            self.multi_tasks[hook.get("file")] = task_id
         else:
-            task_id = self.progress.tasks[0].id
+            task_id = self.multi_tasks[hook.get("file")]
         self.progress.update(task_id,completed=hook.get("current"))
 
 class VidSearchCLI():

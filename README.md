@@ -34,10 +34,10 @@ Türkanime için terminal video oynatıcı ve indirici. İtinayla her bölümü 
 
 ### Yapılacaklar:
  - [ ] İndirme bitimi aksiyonları: bildirim veya bilgisayar kapatma.
- - [ ] Maximum çözünürlüğe ulaş.
  - [ ] Gui versiyon
- - [ ] Youtube-dl yerine yt-dlp'ye geçilmeli.
  - [ ] Selenium'dan kurtulma
+ - [x] ~~Maximum çözünürlüğe ulaş.~~
+ - [x] ~~Youtube-dl yerine yt-dlp'ye geçilmeli.~~
  - [x] ~~Yeni sürüm var mı uygulama açılışında kontrol et.~~
  - [x] ~~Paralel anime indirme özelliği.~~
  - [x] ~~Progress yaratılma satırı minimal bir class ile kısaltılacak.~~
