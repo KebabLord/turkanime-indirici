@@ -4,33 +4,55 @@
 [![Downloads](https://static.pepy.tech/personalized-badge/turkanime-cli?period=total&units=international_system&left_color=grey&right_color=orange&left_text=Pip%20Installs)](https://pepy.tech/project/turkanime-cli)
 [![Pypi version](https://img.shields.io/pypi/v/turkanime-cli?style=flat-square)](https://pypi.org/project/turkanime-cli/)
 
-Türkanime için terminal video oynatıcı ve indirici. İtinayla her bölümü indirir & oynatır.
- - Yığın bölüm indirebilir
- - Animu izleyebilir
- - Uygulama içinden arama yapabilir
- - Fansub seçtirebilir
- - Bir yandan izlerken bir yandan animeyi kaydedebilir
- - İndirmelere kaldığı yerden devam edebilir
- 
-#### Desteklenen kaynaklar:
-```Sibnet, Odnoklassinki, Sendvid, Mail.ru, VK, Google+, Myvi, GoogleDrive, Yandisk, Vidmoly, Yourupload, Dailymotion```
-
-#### Yenilikler:
- - Seçim ekranı en son seçilen bölümden başlıyor, https://github.com/KebabLord/turkanime-indirici/discussions/35 https://github.com/KebabLord/turkanime-indirici/discussions/30
- - Aynı anda birden fazla bölüm indirme özelliği https://github.com/KebabLord/turkanime-indirici/pull/49
- - Önceden indirilen veya izlenen animelere izlendi ikonu seçeneği
- - Gereksinimleri uygulama içinden otomatik indirme
-
-
-
-# Kurulum
-Önceden derlenmiş sürümleri [indirebilir](https://github.com/KebabLord/turkanime-indirici/releases/latest) ya da pip ile kolayca `pip install turkanime-cli` kurabilirsiniz. Pip ile kuruyorsanız, ya da scripti kaynak kodundan çalıştırıyorsanız mpv ve geckodriver'ın sisteminizde kurulu olduğundan ve sistem path'ında olduğundan emin olun. Konuya ilişkin rehber için [wiki sayfası](https://github.com/KebabLord/turkanime-indirici/wiki/Herhangi-bir-uygulamay%C4%B1-system-path'%C4%B1na-ekleme).
+Türkanime için video oynatıcı, indirici ve kütüphane. İtinayla her bölümü indirir & oynatır.
+ - Yığın bölüm indirebilir, indirmeye kaldığı yerden devam edebilir.
+ - Animu izleyebilir, izlerken kaydedebilir ve kaldığı dakikadan devam edebilir.
+ - Fansub seçebilir, en yüksek çözünürlüğe sahip videoyu bulabilir.
 
  ### İzleme ekranı
- ![indirme.gif](docs/ss_izle.gif)
+ ![izleme.gif](https://i.imgur.com/s04Dnox.gif)
 
  ### İndirme ekranı
- ![indirme.gif](docs/ss_indir.gif)
+ ![indirme.gif](https://i.imgur.com/k7Y3LYA.gif)
+ 
+#### Geliştirici misin?
+Tüm metodları görmek için [dökümantasyona](https://github.com/KebabLord/turkanime-indirici/wiki) bir göz at derim.
+```py
+""" Bu API'yı kullanmak bu kadar kolay """
+>>> import turkanime_api as ta
+# Webdriver'ı başlat
+>>> driver = ta.create_webdriver()
+# Anime objesini yarat
+>>> anime = ta.Anime(driver,"non-non-biyori")
+>>> print(anime.info)
+{'Anime Türü': ['Okul', 'Yaşamdan Kesitler', 'Seinen', 'Komedi'],
+ 'Başlama Tarihi': '08 Ekim 2013, Salı',
+ 'Bitiş Tarihi': '24 Aralık 2013, Salı',
+ 'Bölüm Sayısı': '13 / 12+',
+ 'Japonca': 'のんのんびより',
+ 'Kategori': 'TV',
+ 'Puanı': 8.54,
+ 'Resim': 'http://www.turkanime.co/imajlar/serilerb/1825.jpg',
+ 'Stüdyo': 'Silver Link.',
+ 'Özet': "İlkokula giden Hotaru Ichijou, ailesiyle birlikte Tokyo'dan "
+         'memleketine taşınmıştır. Farklı yaşıtlardaki 5 öğrencinin bulunduğu '
+         'yeni okuluna uyum sağlamalıdır.'}
+>>> bolum4 = anime.bolumler[3]
+>>> bolum4.videos[0].url
+'https://drive.google.com/file/d/1E8cy53kiuBg13S30M50m_5yS8xnr9aYf/preview'
+```
+
+#### Desteklenen kaynaklar:
+```
+Sibnet  Odnoklassinki  Sendvid  Mail.ru
+VK  Google+  Myvi  GoogleDrive  Yandisk
+Vidmoly  Dailymotion  Uqload  MP4upload
+```
+
+# Kurulum
+Önceden derlenmiş "exe" sürümleri [indirebilir](https://github.com/KebabLord/turkanime-indirici/releases/latest) ya da pip ile kolayca kurabilirsiniz: `py -m pip install turkanime-cli`
+Daha fazlası için [wiki sayfasını](https://github.com/KebabLord/turkanime-indirici/wiki/Herhangi-bir-uygulamay%C4%B1-system-path'%C4%B1na-ekleme) ziyaret edebilirsiniz.
+Script'in çalışabilmesi için bilgisayarınızda firefox kurulu olmalıdır. Cloudflare korumasını aşabilmenin şimdilik tek yolu bu.
 
 ### Yapılacaklar:
  - [ ] İndirme bitimi aksiyonları: bildirim veya bilgisayar kapatma.
