@@ -42,10 +42,11 @@ class DownloadCLI():
         """ ydl_options['progress_hooks'] için callback handler. """
         if hook["status"] in ("finished","downloading") and "downloaded_bytes" in hook:
             descp = "İndiriliyor.."
-            if hook["downloaded_bytes"] >= hook["total_bytes"]:
+            total_bytes = hook.get("total_bytes") or hook.get("total_bytes_estimate")
+            if hook["downloaded_bytes"] >= total_bytes:
                 descp = "İndirildi!"
             if not self.progress.tasks:
-                task_id = self.progress.add_task(descp, total=hook["total_bytes"])
+                task_id = self.progress.add_task(descp, total=total_bytes)
             else:
                 task_id = self.progress.tasks[0].id
             self.progress.update(task_id,description=descp,completed=hook["downloaded_bytes"])

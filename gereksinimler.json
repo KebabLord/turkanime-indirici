@@ -28,7 +28,16 @@
   {
     "name":"yt-dlp",
     "type":"exe",
-    "is_setup":false,
     "url":"https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe"
+  },
+  {
+    "name":"7zr",
+    "type":"exe",
+    "url":"https://www.7-zip.org/a/7zr.exe"
+  },
+  {
+    "name":"aria2c",
+    "type":"exe",
+    "url":"https://github.com/aria2/aria2/releases/download/release-1.37.0/aria2-1.37.0-win-64bit-build1.zip"
   }
 ]
