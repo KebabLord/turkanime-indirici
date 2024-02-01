@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "turkanime-cli"
-version = "8.2.1"
+version = "8.2.2"
 description = "Türkanime video oynatıcı ve indirici"
 authors = ["Junicchi <junicchi@waifu.club>"]
 readme = "README.md"

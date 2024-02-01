@@ -10,7 +10,7 @@ build çeşiti ve versiyon numarası bu script'e embedlandı.
 import re
 import requests
 __author__ = "https://github.com/Kebablord/turkanime-indirici"
-__version__ = "8.2.1"
+__version__ = "8.2.2"
 __build__ = "source" # source,exe,pip
 
 def guncel_surum():

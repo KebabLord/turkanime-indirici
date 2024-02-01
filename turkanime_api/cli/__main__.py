@@ -135,9 +135,10 @@ def menu_loop(driver):
 
                     # İndirme tablosu yarat ve başlat.
                     table = Table.grid(expand=False)
-                    with Live(table, refresh_per_second=10):
+                    with Live(table, refresh_per_second=10, vertical_overflow="visible"):
                         futures = []
-                        with cf.ThreadPoolExecutor() as executor:
+                        paralel = dosya.ayarlar.get("paralel indirme sayisi")
+                        with cf.ThreadPoolExecutor(max_workers=paralel) as executor:
                             for bolum in bolumler:
                                 futures.append(executor.submit(
                                     indirme_task_cli, bolum, table, dosya))
