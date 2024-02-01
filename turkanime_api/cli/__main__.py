@@ -157,6 +157,7 @@ def menu_loop(driver):
                     'Paralel indirme sayisi: '+str(ayarlar["paralel indirme sayisi"]),
                     'Maksimum çözünürlüğe ulaş: '+tr(ayarlar["max resolution"]),
                     'Kaldığın dakikayı hatirla: '+tr(ayarlar["dakika hatirla"]),
+                    'Aria2c ile hızlandır (deneysel): '+tr(ayarlar["aria2c kullan"]),
                     'Geri dön'
                 ]
                 ayar_islem = qa.select(
@@ -188,6 +189,8 @@ def menu_loop(driver):
                     dosyalar.set_ayar('max resolution', not ayarlar['max resolution'])
                 elif ayar_islem == ayarlar_options[6]:
                     dosyalar.set_ayar('dakika hatirla', not ayarlar['dakika hatirla'])
+                elif ayar_islem == ayarlar_options[7]:
+                    dosyalar.set_ayar('aria2c kullan', not ayarlar['aria2c kullan'])
                 else:
                     break
 

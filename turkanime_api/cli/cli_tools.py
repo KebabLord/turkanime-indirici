@@ -1,4 +1,8 @@
-from os import name,system
+from os import name,system,path,listdir
+from tempfile import NamedTemporaryFile
+import re
+from time import sleep
+from threading import Thread
 from prompt_toolkit import styles
 
 from rich.panel import Panel
@@ -40,19 +44,28 @@ class DownloadCLI():
         self.multi_tasks = {}
     def ytdl_callback(self,hook):
         """ ydl_options['progress_hooks'] için callback handler. """
-        if hook["status"] in ("finished","downloading") and "downloaded_bytes" in hook:
+        if hook["status"] in ("finished","downloading"):
             descp = "İndiriliyor.."
-            total_bytes = hook.get("total_bytes") or hook.get("total_bytes_estimate")
-            if hook["downloaded_bytes"] >= total_bytes:
-                descp = "İndirildi!"
+            total = hook.get("total_bytes") or hook.get("total_bytes_estimate")
+            completed = hook.get("downloaded_bytes")
             if not self.progress.tasks:
-                task_id = self.progress.add_task(descp, total=total_bytes)
+                task_id = self.progress.add_task(descp, total=total)
             else:
                 task_id = self.progress.tasks[0].id
-            self.progress.update(task_id,description=descp,completed=hook["downloaded_bytes"])
+            if hook["status"] == "finished":
+                task = self.progress.tasks[0]
+                dom = (completed or total) or (task.total or task.completed) # Dominant valid value
+                self.progress.update(task_id, description="İndirildi.",completed=dom, total=dom)
+            elif completed:
+                if total and completed >= total:
+                    descp = "İndirildi!"
+                self.progress.update(task_id,
+                    description=descp,
+                    completed=completed,
+                    total=total)
         if hook["status"] == "error":
             if self.progress.tasks:
-                # TODO: hata mesajı gösterilecek
+                # TODO: hata mesajı gösterilmeli
                 self.progress.tasks.pop(0)
     def dl_callback(self,hook):
         """ gereksinimler.dosya_indir için callback handler. """
@@ -79,7 +92,7 @@ class VidSearchCLI():
             msg += f'{hook["player"]} {hook["status"]}'
             msg += "!" if hook["status"] == "çalışıyor" else "."
         elif hook.get("status") == "hiçbiri çalışmıyor":
-            pass # TODO: hata mesajı falan gösterilmeli
+            pass # TODO: hata mesajı gösterilmeli
         if self.progress.tasks:
             task_id = self.progress.tasks[0].id
         else:
@@ -88,26 +101,82 @@ class VidSearchCLI():
         self.progress.update(task_id, completed=completed, description=msg)
 
 
-def indirme_task_cli(bolum_,table_,dosya_=None):
+def indirme_task_cli(bolum,table,dosya):
     """ Progress barı dinamik olarak güncellerken indirme yapar. """
     vid_cli = VidSearchCLI()
     dl_cli = DownloadCLI()
-    table_.add_row(Panel.fit(
+    table.add_row(Panel.fit(
             Group(vid_cli.progress, dl_cli.progress),
-            title=bolum_.slug,
+            title=bolum.slug,
             border_style="green"))
-    table_.add_row("")
-    # En iyi ve çalışan videoları filtrele.
-    best_video = bolum_.best_video(
-        by_res=dosya_.ayarlar["max resolution"],
+    table.add_row("")
+    # En iyi çalışan videoyu bul.
+    best_video = bolum.best_video(
+        by_res=dosya.ayarlar["max resolution"],
         callback=vid_cli.callback)
-    # En iyi videoyu indir ve işaretle.
-    if best_video:
-        best_video.indir(
-            callback = dl_cli.ytdl_callback,
-            output = dosya_.ayarlar["indirilenler"])
-        if dosya_:
-            dosya_.set_gecmis(bolum_.anime.slug, bolum_.slug, "indirildi")
+    if not best_video:
+        # TODO: hata mesajı gösterilmeli
+        return
+    down_dir = dosya.ayarlar["indirilenler"]
+    if dosya.ayarlar.get("aria2c kullan"):
+        indir_aria2c(best_video, callback=dl_cli.ytdl_callback, output=down_dir)
+    else:
+        best_video.indir(callback=dl_cli.ytdl_callback, output=down_dir)
+    dosya.set_gecmis(bolum.anime.slug, bolum.slug, "indirildi")
+
+
+def indir_aria2c(video, callback, output):
+    """ Objects.Video.indir için aria2c implementasyonu
+    Harici downloader kullanınca ytdl hooklar çalışmadığından
+    custom_hook fonksiyonunu bu şekilde yazmak zorunda kaldım
+    """
+    subdir = path.join(output,(video.bolum.anime.slug if video.bolum.anime else ""))
+    tmp = NamedTemporaryFile()
+    video.ydl_opts = {
+        **video.ydl_opts,
+        'external_downloader' : {'default': 'aria2c'},
+        'external_downloader_args': {'aria2c': [
+            '--quiet','--file-allocation=none',
+            '--log='+tmp.name,'--log-level=info']}
+    }
+    is_finished = False
+    def custom_hook():
+        """ Toplam boyutu loglardan, indirileni de dosya boyutundan öğren ve callback yolla. """
+        total = None
+        while not is_finished:
+            sleep(1)
+            # Try to get estimated file size from aria2c log.
+            try:
+                with open(tmp.name,encoding="utf-8") as fp:
+                    log = fp.read()
+                sizes = re.findall(r'Content-Type: video.*\n?Content-Length: (\d+)',log)
+                total = max([int(i) for i in sizes])
+            except ValueError:
+                pass
+            # Calculate downloaded bytes from part files.
+            downloaded = 0
+            try:
+                for file in listdir(subdir):
+                    if not re.search(video.bolum.slug+r".*part(-Frag\d+)?$",file):
+                        continue
+                    downloaded += path.getsize(path.join(subdir, file))
+            except FileNotFoundError:
+                continue
+            if not total and not downloaded:
+                continue
+            if total is not None and downloaded > total:
+                total = None
+            callback({
+                "status": "downloading",
+                "downloaded_bytes": downloaded,
+                "total_bytes": total})
+    file_size_thread = Thread(target=custom_hook)
+    file_size_thread.start()
+    video.indir(callback, output)
+    is_finished = True
+    file_size_thread.join()
+    callback({"status": "finished"})
+    del tmp
 
 
 prompt_tema = styles.Style([
