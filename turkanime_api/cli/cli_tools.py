@@ -131,7 +131,7 @@ def indir_aria2c(video, callback, output):
     custom_hook fonksiyonunu bu şekilde yazmak zorunda kaldım
     """
     subdir = path.join(output,(video.bolum.anime.slug if video.bolum.anime else ""))
-    tmp = NamedTemporaryFile()
+    tmp = NamedTemporaryFile(delete=False)
     video.ydl_opts = {
         **video.ydl_opts,
         'external_downloader' : {'default': 'aria2c'},

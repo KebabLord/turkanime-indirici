@@ -1,4 +1,4 @@
-from os import path,system,name
+from os import path,system,name,listdir
 from shutil import move
 import sys
 import tempfile
@@ -108,16 +108,18 @@ class Gereksinimler:
         if file_type == "7z":
             with SevenZipFile(file_path, mode='r') as szip:
                 szip.extractall(path=tmp.name)
-            move( from_, to_)
         elif file_type == "zip":
             with ZipFile(file_path, 'r') as zipf:
                 zipf.extractall(tmp.name)
-            move( from_, to_)
         elif file_type == "exe":
             if is_setup:
                 system(file_path)
             else:
                 move( file_path, to_)
+            return
+        if not path.exists(from_):
+            from_ = path.join(tmp.name, listdir(tmp.name)[0],file_name)
+        move( from_, to_)
 
 
 def gereksinim_kontrol_cli():
