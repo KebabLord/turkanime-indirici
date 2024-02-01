@@ -289,7 +289,8 @@ class Video:
           'retries': 5,
           'fragment_retries': 10,
           'restrictfilenames': True,
-          'nocheckcertificate': True
+          'nocheckcertificate': True,
+          'concurrent_fragment_downloads': 5,
         }
 
 
