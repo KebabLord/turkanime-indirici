@@ -1,10 +1,9 @@
-from os import name,system,path,listdir
+from os import path, getcwd, system, name, listdir
 from tempfile import NamedTemporaryFile
 import re
 from time import sleep
 from threading import Thread
 from prompt_toolkit import styles
-
 from rich.panel import Panel
 from rich.console import Group
 from rich.progress import (
@@ -17,6 +16,31 @@ from rich.progress import (
     TaskProgressColumn,
     TransferSpeedColumn
 )
+from plyer import notification
+from playsound import playsound
+
+def send_notification(title, message):
+    current_os = platform.system()
+    if current_os == "Darwin":
+        system(f'''
+               osascript -e 'display notification "{message}" with title "{title}"'
+               ''')
+    elif current_os == "Windows":
+        from plyer import notification
+        notification.notify(
+            title=title,
+            message=message,
+            app_name='Turkanime İndirici'
+        )
+    elif current_os == "Linux":
+        from plyer import notification
+        notification.notify(
+            title=title,
+            message=message,
+            app_name='Turkanime İndirici'
+        )
+    else:
+        print(f"Bildirim gönderilemiyor: Desteklenmeyen işletim sistemi ({current_os})")
 
 def clear():
     """ Daha kompakt görüntü için her prompt sonrası clear
@@ -174,6 +198,13 @@ def indir_aria2c(video, callback, output):
     file_size_thread.start()
     video.indir(callback, output)
     is_finished = True
+    if (is_finished and file_size_thread.is_alive()):
+        send_notification('İndirme Tamamlandı', 'Anime indirildi.')
+        real_path = path.join(path.expanduser("~"), "TurkAnimu")
+        if path.isdir(".git"):  # Git reposundan çalıştırılıyorsa.
+            real_path = getcwd()
+        playsound(path.join(real_path,"turkanime_api", "sound", "complete.mp3"))
+    file_size_thread.join()
     file_size_thread.join()
     callback({"status": "finished"})
     del tmp

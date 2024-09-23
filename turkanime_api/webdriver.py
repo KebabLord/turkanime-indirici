@@ -34,6 +34,8 @@ def find_firefox_executable():
         "/usr/local/bin/firefox",
         "/usr/bin/firefox-esr",
         "/usr/local/bin/firefox-esr",
+        "/Applications/Firefox.app/Contents/MacOS/firefox",
+        "/Applications/Firefox Developer Edition.app/Contents/MacOS/firefox",
     ]
     for location in possible_locations:
         if path.exists(location):
