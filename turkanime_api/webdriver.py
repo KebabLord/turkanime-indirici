@@ -23,7 +23,7 @@ logging.basicConfig(level=logging.ERROR)
 INIT_URL = "https://turkanime.co/kullanici/anonim"
 
 def find_firefox_executable():
-    """ firefox.exe'yi bilinen konumlarda ara. """
+    """ chrome.exe'yi bilinen konumlarda ara. """
     possible_locations = [
         "C:\\Program Files\\Mozilla Firefox\\firefox.exe",
         "C:\\Program Files (x86)\\Mozilla Firefox\\firefox.exe",
@@ -40,7 +40,7 @@ def find_firefox_executable():
     for location in possible_locations:
         if path.exists(location):
             return location
-    raise SessionNotCreatedException("firefox'un konumu bulunamadı.")
+    raise SessionNotCreatedException("chrome'un konumu bulunamadı.")
 
 
 def create_webdriver(options=None,headless=True,firefox_path=None,preload_ta=True):

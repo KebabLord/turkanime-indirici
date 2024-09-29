@@ -125,7 +125,7 @@ class VidSearchCLI():
         self.progress.update(task_id, completed=completed, description=msg)
 
 
-def indirme_task_cli(bolum,table,dosya):
+def indirme_task_cli(bolum, table, dosya):
     """ Progress barı dinamik olarak güncellerken indirme yapar. """
     vid_cli = VidSearchCLI()
     dl_cli = DownloadCLI()
@@ -134,7 +134,6 @@ def indirme_task_cli(bolum,table,dosya):
             title=bolum.slug,
             border_style="green"))
     table.add_row("")
-    # En iyi çalışan videoyu bul.
     best_video = bolum.best_video(
         by_res=dosya.ayarlar["max resolution"],
         callback=vid_cli.callback)
@@ -146,6 +145,20 @@ def indirme_task_cli(bolum,table,dosya):
         indir_aria2c(best_video, callback=dl_cli.ytdl_callback, output=down_dir)
     else:
         best_video.indir(callback=dl_cli.ytdl_callback, output=down_dir)
+    
+    try:
+        send_notification('İndirme Tamamlandı', 'Anime indirildi.')
+    except Exception as e:
+        print(f"Bildirim gönderilemedi: {e}")
+
+    try:
+        real_path = path.join(path.expanduser("~"), "TurkAnimu")
+        if path.isdir(".git"):
+            real_path = getcwd()
+        playsound(path.join(real_path, "turkanime_api", "sound", "complete.mp3"))
+    except Exception as e:
+        print(f"Ses çalınamadı: {e}")
+
     dosya.set_gecmis(bolum.anime.slug, bolum.slug, "indirildi")
 
 
@@ -197,15 +210,8 @@ def indir_aria2c(video, callback, output):
     file_size_thread = Thread(target=custom_hook)
     file_size_thread.start()
     video.indir(callback, output)
-    is_finished = True
-    if (is_finished and file_size_thread.is_alive()):
-        send_notification('İndirme Tamamlandı', 'Anime indirildi.')
-        real_path = path.join(path.expanduser("~"), "TurkAnimu")
-        if path.isdir(".git"):  # Git reposundan çalıştırılıyorsa.
-            real_path = getcwd()
-        playsound(path.join(real_path,"turkanime_api", "sound", "complete.mp3"))
     file_size_thread.join()
-    file_size_thread.join()
+    is_finished = True        
     callback({"status": "finished"})
     del tmp
 
