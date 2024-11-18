@@ -220,7 +220,7 @@ class TurkanimeGUI(ctk.CTk):
             widget.destroy()
 
         # Configure grid for episode_list_frame
-        self.episode_list_frame.grid_rowconfigure(1, weight=1)
+        self.episode_list_frame.grid_rowconfigure(2, weight=1)
         self.episode_list_frame.grid_columnconfigure(0, weight=1)
 
         # Add Back Button
@@ -388,11 +388,30 @@ class TurkanimeGUI(ctk.CTk):
             messagebox.showwarning("Uyarı", "Zaten bir bölüm oynatılıyor.")
             return
         self.is_playing_episode = True
+
+        # Show loading animation
+        self.loading_window = ctk.CTkToplevel(self)
+        self.loading_window.title("Yükleniyor...")
+        self.loading_window.geometry("300x100")
+        self.loading_window.resizable(False, False)
+        self.loading_window.grab_set()  # Make it modal
+
+        loading_label = ctk.CTkLabel(self.loading_window, text="Bölüm yükleniyor, lütfen bekleyin...")
+        loading_label.pack(pady=10)
+
+        self.loading_progress = ctk.CTkProgressBar(self.loading_window)
+        self.loading_progress.set(0)
+        self.loading_progress.pack(pady=10, padx=20, fill="x")
+        self.loading_progress.start()  # Start indeterminate mode
+
         threading.Thread(target=self._play_video, args=(bolum,), daemon=True).start()
 
     def _play_video(self, bolum):
         try:
             video = bolum.best_video()
+            # Close loading animation before starting video
+            self.after(0, self.close_loading_animation)
+
             if video:
                 video.oynat()
                 # Video playback finished
@@ -407,6 +426,15 @@ class TurkanimeGUI(ctk.CTk):
         except Exception as e:
             self.is_playing_episode = False
             messagebox.showerror("Hata", f"{bolum.title} oynatılırken bir hata oluştu.\n{str(e)}")
+        finally:
+            # Ensure the loading animation is closed
+            self.after(0, self.close_loading_animation)
+
+    def close_loading_animation(self):
+        if hasattr(self, 'loading_window') and self.loading_window.winfo_exists():
+            self.loading_progress.stop()
+            self.loading_window.grab_release()
+            self.loading_window.destroy()
 
     def download_selected_episodes(self):
         if not self.selected_episodes:
