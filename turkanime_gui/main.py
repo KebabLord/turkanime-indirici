@@ -5,6 +5,7 @@ from dosyalar import Dosyalar
 import threading
 from tkinter import messagebox
 import os
+import subprocess  # Add this line
 
 # Add these constants at the top after imports
 PADDING = 10
@@ -99,10 +100,11 @@ class TurkanimeGUI(ctk.CTk):
         self.canvas = ctk.CTkCanvas(self.results_frame, bg=FRAME_COLOR, highlightthickness=0)
         self.canvas.grid(row=0, column=0, sticky="nsew")
 
-        # Bind mouse wheel to both the canvas and the main window
-        self.canvas.bind_all("<MouseWheel>", self._on_mousewheel)
-        self.canvas.bind_all("<Button-4>", self._on_mousewheel)
-        self.canvas.bind_all("<Button-5>", self._on_mousewheel)
+        # Bind mouse wheel events to the canvas
+        self.canvas.bind("<Enter>", lambda _: self.canvas.focus_set())
+        self.canvas.bind("<MouseWheel>", self._on_mousewheel)  # Windows and macOS
+        self.canvas.bind("<Button-4>", self._on_mousewheel)    # Linux scroll up
+        self.canvas.bind("<Button-5>", self._on_mousewheel)    # Linux scroll down
 
         self.scrollbar = ctk.CTkScrollbar(self.results_frame, command=self.canvas.yview)
         self.scrollbar.grid(row=0, column=1, sticky="ns")
@@ -151,6 +153,14 @@ class TurkanimeGUI(ctk.CTk):
         )
         self.next_button.grid(row=0, column=2, padx=PADDING, pady=PADDING)
 
+    def on_closing(self):
+        # Stop all download threads
+        for control in self.download_controls.values():
+            if 'stop_event' in control:
+                control['stop_event'].set()
+        self.driver.quit()
+        self.destroy()  
+
     def on_key_release(self, event):
         # Immediate search on key release
         self.search_anime()
@@ -165,6 +175,20 @@ class TurkanimeGUI(ctk.CTk):
             self.search_results = [(slug, title) for slug, title in self.anime_list if query in title.lower()]
         self.current_page = 0  # Reset to first page after search
         self.update_search_results()
+
+    def _on_mousewheel(self, event):
+        """Handle mouse wheel scrolling"""
+        if event.num == 5 or event.delta == -120 or event.delta == -1:
+            self.canvas.yview_scroll(1, "units")
+        elif event.num == 4 or event.delta == 120 or event.delta == 1:
+            self.canvas.yview_scroll(-1, "units")
+        elif event.delta:
+            # For other platforms
+            self.canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+
+    def _on_canvas_configure(self, event):
+        """Update the scroll region when the canvas is resized"""
+        self.canvas.itemconfig(self.canvas_window, width=event.width)
 
     def update_search_results(self):
         for widget in self.scrollable_frame.winfo_children():
@@ -409,26 +433,51 @@ class TurkanimeGUI(ctk.CTk):
     def _play_video(self, bolum):
         try:
             video = bolum.best_video()
-            # Close loading animation before starting video
-            self.after(0, self.close_loading_animation)
-
             if video:
-                video.oynat()
+                # Get the video URL
+                video_url = video.url
+
+                # Start mpv using subprocess.Popen without '--no-terminal'
+                mpv_command = ['mpv', video_url]
+
+                mpv_process = subprocess.Popen(
+                    mpv_command,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    text=True,
+                    bufsize=1,  # Line buffering
+                    encoding='utf-8',  # Specify encoding
+                    errors='replace'  # Handle decoding errors
+                )
+
+                # Read mpv output line by line
+                for line in iter(mpv_process.stdout.readline, ''):
+                    print(f"mpv output: {line.strip()}")  # Debug output
+                    if "VO:" in line or "AO:" in line:
+                        # Playback has started
+                        # Close loading animation
+                        self.after(0, self.close_loading_animation)
+                        break
+
+                # Wait for mpv process to finish
+                mpv_process.wait()
+
                 # Video playback finished
                 self.is_playing_episode = False
+
                 # Mark episode as watched
                 self.dosyalar.set_gecmis(self.current_anime.slug, bolum.slug, "izlendi")
+
                 # Update the episode list on the main thread
                 self.after(0, self.show_episodes, self.current_anime.slug)
             else:
                 self.is_playing_episode = False
+                self.after(0, self.close_loading_animation)
                 messagebox.showerror("Hata", f"{bolum.title} oynatılamadı.")
         except Exception as e:
             self.is_playing_episode = False
-            messagebox.showerror("Hata", f"{bolum.title} oynatılırken bir hata oluştu.\n{str(e)}")
-        finally:
-            # Ensure the loading animation is closed
             self.after(0, self.close_loading_animation)
+            messagebox.showerror("Hata", f"{bolum.title} oynatılırken bir hata oluştu.\n{str(e)}")
 
     def close_loading_animation(self):
         if hasattr(self, 'loading_window') and self.loading_window.winfo_exists():
@@ -562,14 +611,6 @@ class TurkanimeGUI(ctk.CTk):
             control['pause_button'].configure(text='Devam Et')
             # Signal the download thread to stop
             control['stop_event'].set()
-
-    def on_closing(self):
-        # Stop all download threads
-        for control in self.download_controls.values():
-            if 'stop_event' in control:
-                control['stop_event'].set()
-        self.driver.quit()
-        self.destroy()
 
     def _on_mousewheel(self, event):
         """Handle mouse wheel scrolling"""
