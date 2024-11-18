@@ -14,8 +14,14 @@ class Dosyalar:
             self.load_gecmis()
 
     def load_gecmis(self):
-        with open(self.gereksinimler_path, 'r', encoding='utf-8') as f:
-            self.gecmis = json.load(f)
+        try:
+            with open(self.gereksinimler_path, 'r', encoding='utf-8') as f:
+                self.gecmis = json.load(f)
+                print('Loaded gecmis:', self.gecmis)  # Debug print
+        except json.JSONDecodeError:
+            print('gereksinimler.json is empty or invalid. Recreating...')
+            self.gecmis = {"izlendi": {}, "indirildi": {}}
+            self.save_gecmis()
 
     def save_gecmis(self):
         with open(self.gereksinimler_path, 'w', encoding='utf-8') as f:
@@ -31,4 +37,6 @@ class Dosyalar:
             self.save_gecmis()
 
     def get_gecmis(self, anime_slug, mark_type):
+        print('self.gecmis:', self.gecmis)  # Debug print
+        print('self.gecmis[mark_type]:', self.gecmis.get(mark_type, {}))  # Debug print
         return self.gecmis.get(mark_type, {}).get(anime_slug, [])
