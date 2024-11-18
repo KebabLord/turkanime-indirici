@@ -8,7 +8,7 @@ import os
 import subprocess  # Add this line
 
 # Add these constants at the top after imports
-PADDING = 10
+PADDING = 5
 CORNER_RADIUS = 8
 BUTTON_COLOR = "#1f538d"
 BUTTON_HOVER_COLOR = "#1a4572"
@@ -268,7 +268,7 @@ class TurkanimeGUI(ctk.CTk):
             corner_radius=CORNER_RADIUS,
             border_width=2
         )
-        self.episode_search_entry.grid(row=1, column=0, padx=PADDING, pady=(0, PADDING), sticky="ew")
+        self.episode_search_entry.grid(row=1, column=0, padx=3, pady=(0, PADDING), sticky="ew")
         self.episode_search_entry.bind("<KeyRelease>", self.on_episode_search)
 
         # Scrollable frame for episodes
@@ -451,13 +451,15 @@ class TurkanimeGUI(ctk.CTk):
                 )
 
                 # Read mpv output line by line
-                for line in iter(mpv_process.stdout.readline, ''):
-                    print(f"mpv output: {line.strip()}")  # Debug output
-                    if "VO:" in line or "AO:" in line:
-                        # Playback has started
-                        # Close loading animation
-                        self.after(0, self.close_loading_animation)
-                        break
+                def read_output():
+                    for line in iter(mpv_process.stdout.readline, ''):
+                        print(f"mpv output: {line.strip()}")  # Debug output
+                        if "VO:" in line or "AO:" in line:
+                            # Playback has started
+                            # Close loading animation
+                            self.after(0, self.close_loading_animation)
+
+                threading.Thread(target=read_output, daemon=True).start()
 
                 # Wait for mpv process to finish
                 mpv_process.wait()
@@ -478,6 +480,7 @@ class TurkanimeGUI(ctk.CTk):
             self.is_playing_episode = False
             self.after(0, self.close_loading_animation)
             messagebox.showerror("Hata", f"{bolum.title} oynatılırken bir hata oluştu.\n{str(e)}")
+
 
     def close_loading_animation(self):
         if hasattr(self, 'loading_window') and self.loading_window.winfo_exists():
