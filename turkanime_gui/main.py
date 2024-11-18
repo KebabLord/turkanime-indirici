@@ -255,7 +255,7 @@ class TurkanimeGUI(ctk.CTk):
             widget.destroy()
 
         # Configure grid for episode_list_frame
-        self.episode_list_frame.grid_rowconfigure(2, weight=1)
+        self.episode_list_frame.grid_rowconfigure(1, weight=1)
         self.episode_list_frame.grid_columnconfigure(0, weight=1)
 
         # Header frame for back button and search
