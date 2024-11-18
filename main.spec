@@ -8,7 +8,13 @@ a = Analysis(
     datas = [
     ('gereksinimler.json', '.'),
     ('gecmis.json', '.'),
-    ('ayarlar.json', '.')
+    ('ayarlar.json', '.'),
+    ('turkanime_gui\\dosyalar.py', '.'),
+    ('turkanime_gui\\gui.py', '.'),
+    ('turkanime_api', '.'),
+    ('turkanime_api\\objects.py', '.'),
+    ('turkanime_api\\webdriver.py', '.'),
+    ('turkanime_api\\bypass.py', '.'),
     ],
     hiddenimports=[],
     hookspath=[],
