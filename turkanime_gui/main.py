@@ -1,6 +1,8 @@
 import customtkinter as ctk
 from turkanime_api.objects import Anime
 from turkanime_api.webdriver import create_webdriver
+from dosyalar import Dosyalar
+import threading
 
 ctk.set_appearance_mode("Dark")
 ctk.set_default_color_theme("blue")
@@ -11,13 +13,13 @@ class TurkanimeGUI(ctk.CTk):
         self.title("Turkanime GUI")
         self.geometry("800x600")
 
-        # Initialize the driver using create_webdriver
+        self.dosyalar = Dosyalar()
         self.driver = create_webdriver()
-
-        # Fetch the list of anime
         self.anime_list = Anime.get_anime_listesi(self.driver)
+        self.current_anime = None
 
         self.create_widgets()
+        self.protocol("WM_DELETE_WINDOW", self.on_closing)
 
     def create_widgets(self):
         # Search Frame
@@ -61,11 +63,9 @@ class TurkanimeGUI(ctk.CTk):
         self.update_search_results(results)
 
     def update_search_results(self, results):
-        # Clear previous results
         for widget in self.scrollable_frame.winfo_children():
             widget.destroy()
 
-        # Display new results
         for slug, title in results:
             anime_button = ctk.CTkButton(
                 self.scrollable_frame,
@@ -75,27 +75,45 @@ class TurkanimeGUI(ctk.CTk):
             anime_button.pack(pady=5, fill="x")
 
     def show_episodes(self, slug):
-        anime = Anime(self.driver, slug)
-        episodes = anime.bolumler
+        self.current_anime = Anime(self.driver, slug)
+        episodes = self.current_anime.bolumler
 
-        # Clear previous episodes/results
         for widget in self.scrollable_frame.winfo_children():
             widget.destroy()
 
+        watched_episodes = self.dosyalar.get_gecmis(self.current_anime.slug, "izlendi")
+
         for bolum in episodes:
             episode_title = bolum.title
-            # You can mark watched episodes differently here if you have that data
+
+            if bolum.slug in watched_episodes:
+                display_title = f"{episode_title} ✔"  # Mark as watched
+            else:
+                display_title = episode_title
+
             episode_button = ctk.CTkButton(
                 self.scrollable_frame,
-                text=episode_title,
+                text=display_title,
                 command=lambda b=bolum: self.play_episode(b)
             )
             episode_button.pack(pady=2, fill="x")
 
     def play_episode(self, bolum):
+        # Run video playback in a separate thread to prevent GUI freezing
+        threading.Thread(target=self._play_video, args=(bolum,), daemon=True).start()
+
+    def _play_video(self, bolum):
         video = bolum.best_video()
         if video:
             video.oynat()
+            # Mark episode as watched
+            self.dosyalar.set_gecmis(self.current_anime.slug, bolum.slug, "izlendi")
+            # Update the episode list on the main thread
+            self.after(0, self.show_episodes, self.current_anime.slug)
+
+    def on_closing(self):
+        self.driver.quit()
+        self.destroy()
 
 if __name__ == "__main__":
     app = TurkanimeGUI()
