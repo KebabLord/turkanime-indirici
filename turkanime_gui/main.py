@@ -144,6 +144,21 @@ class TurkanimeGUI(ctk.CTk):
         for widget in self.scrollable_frame.winfo_children():
             widget.destroy()
 
+        # Add Episode Search Bar
+        self.episode_search_entry = ctk.CTkEntry(self.scrollable_frame, width=400, placeholder_text="Bölüm adı ara")
+        self.episode_search_entry.pack(pady=5)
+        self.episode_search_entry.bind("<KeyRelease>", self.on_episode_search)
+
+        # Add Select All Episodes Checkbox
+        self.select_all_var = ctk.BooleanVar()
+        self.select_all_checkbox = ctk.CTkCheckBox(
+            self.scrollable_frame,
+            text="Tüm Bölümleri Seç",
+            variable=self.select_all_var,
+            command=self.on_select_all_episodes
+        )
+        self.select_all_checkbox.pack(pady=5)
+
         # Add Download Button
         self.download_button = ctk.CTkButton(
             self.scrollable_frame,
@@ -157,27 +172,32 @@ class TurkanimeGUI(ctk.CTk):
 
         # Episode Checkboxes
         self.episode_vars = []
+        self.episode_frames = []
         for bolum in episodes:
             episode_frame = ctk.CTkFrame(self.scrollable_frame)
             episode_frame.pack(fill="x", pady=2)
 
             episode_title = bolum.title
 
-            status = ""
+            # Indicate watched and downloaded episodes
+            indicators = ""
+            if bolum.slug in watched_episodes:
+                indicators += "👁"
             if bolum.slug in downloaded_episodes:
-                status = " (İndirildi)"
-            elif bolum.slug in watched_episodes:
-                status = " (İzlendi)"
+                indicators += "⤓"
+
+            display_title = f"{indicators} {episode_title}"
 
             var = ctk.BooleanVar()
             episode_checkbox = ctk.CTkCheckBox(
                 episode_frame,
-                text=episode_title + status,
+                text=display_title,
                 variable=var,
                 command=lambda b=bolum, v=var: self.on_episode_select(b, v)
             )
             episode_checkbox.pack(side="left", padx=5)
             self.episode_vars.append(var)
+            self.episode_frames.append((episode_frame, bolum, var))
 
             # Play Button
             play_button = ctk.CTkButton(
@@ -188,26 +208,37 @@ class TurkanimeGUI(ctk.CTk):
             )
             play_button.pack(side="right", padx=5)
 
-        # Live Search within episodes
-        self.episode_search_entry = ctk.CTkEntry(self.scrollable_frame, width=400, placeholder_text="Bölüm adı ara")
-        self.episode_search_entry.pack(pady=5)
-        self.episode_search_entry.bind("<KeyRelease>", self.on_episode_search)
-
     def on_episode_search(self, event):
         query = self.episode_search_entry.get().lower()
-        for i, bolum in enumerate(self.current_anime.bolumler):
-            episode_frame = self.scrollable_frame.winfo_children()[i + 2]  # +2 to skip the download button and search entry
+        for episode_frame, bolum, var in self.episode_frames:
             if query in bolum.title.lower():
                 episode_frame.pack(fill="x", pady=2)
             else:
                 episode_frame.forget()
 
+    def on_select_all_episodes(self):
+        select_all = self.select_all_var.get()
+        for episode_frame, bolum, var in self.episode_frames:
+            var.set(select_all)
+            if select_all:
+                if bolum not in self.selected_episodes:
+                    self.selected_episodes.append(bolum)
+            else:
+                if bolum in self.selected_episodes:
+                    self.selected_episodes.remove(bolum)
+
     def on_episode_select(self, bolum, var):
         if var.get():
-            self.selected_episodes.append(bolum)
+            if bolum not in self.selected_episodes:
+                self.selected_episodes.append(bolum)
         else:
             if bolum in self.selected_episodes:
                 self.selected_episodes.remove(bolum)
+        # Update select all checkbox state
+        if all(var.get() for _, _, var in self.episode_frames):
+            self.select_all_var.set(True)
+        else:
+            self.select_all_var.set(False)
 
     def play_episode(self, bolum):
         threading.Thread(target=self._play_video, args=(bolum,), daemon=True).start()
@@ -293,6 +324,8 @@ class TurkanimeGUI(ctk.CTk):
             self.progress_bars[bolum.slug].set(1.0)
             # Change pause button to disabled
             self.download_controls[bolum.slug]['pause_button'].configure(state='disabled')
+            # Refresh episode list
+            self.after(0, self.show_episodes, self.current_anime.slug)
         except Exception as e:
             # Handle pause
             if str(e) == "Download paused":
