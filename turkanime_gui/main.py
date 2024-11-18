@@ -3,6 +3,8 @@ from turkanime_api.objects import Anime
 from turkanime_api.webdriver import create_webdriver
 from dosyalar import Dosyalar
 import threading
+from tkinter import messagebox
+import os
 
 ctk.set_appearance_mode("Dark")
 ctk.set_default_color_theme("blue")
@@ -17,6 +19,7 @@ class TurkanimeGUI(ctk.CTk):
         self.driver = create_webdriver()
         self.anime_list = Anime.get_anime_listesi(self.driver)
         self.current_anime = None
+        self.selected_episodes = []
 
         self.create_widgets()
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
@@ -77,29 +80,59 @@ class TurkanimeGUI(ctk.CTk):
     def show_episodes(self, slug):
         self.current_anime = Anime(self.driver, slug)
         episodes = self.current_anime.bolumler
+        self.selected_episodes = []
 
         for widget in self.scrollable_frame.winfo_children():
             widget.destroy()
 
-        watched_episodes = self.dosyalar.get_gecmis(self.current_anime.slug, "izlendi")
+        # Add Download Button
+        self.download_button = ctk.CTkButton(
+            self.scrollable_frame,
+            text="Seçili Bölümleri İndir",
+            command=self.download_selected_episodes
+        )
+        self.download_button.pack(pady=5)
 
+        watched_episodes = self.dosyalar.get_gecmis(self.current_anime.slug, "izlendi")
+        downloaded_episodes = self.dosyalar.get_gecmis(self.current_anime.slug, "indirildi")
+
+        # Episode Checkboxes
+        self.episode_vars = []
         for bolum in episodes:
             episode_title = bolum.title
 
-            if bolum.slug in watched_episodes:
-                display_title = f"{episode_title} ✔"  # Mark as watched
-            else:
-                display_title = episode_title
+            status = ""
+            if bolum.slug in downloaded_episodes:
+                status = " (İndirildi)"
+            elif bolum.slug in watched_episodes:
+                status = " (İzlendi)"
 
-            episode_button = ctk.CTkButton(
+            var = ctk.BooleanVar()
+            episode_checkbox = ctk.CTkCheckBox(
                 self.scrollable_frame,
-                text=display_title,
+                text=episode_title + status,
+                variable=var,
+                command=lambda b=bolum, v=var: self.on_episode_select(b, v)
+            )
+            episode_checkbox.pack(anchor="w")
+            self.episode_vars.append(var)
+
+            # Play Button
+            play_button = ctk.CTkButton(
+                self.scrollable_frame,
+                text="Oynat",
+                width=60,
                 command=lambda b=bolum: self.play_episode(b)
             )
-            episode_button.pack(pady=2, fill="x")
+            play_button.pack(pady=2)
+
+    def on_episode_select(self, bolum, var):
+        if var.get():
+            self.selected_episodes.append(bolum)
+        else:
+            self.selected_episodes.remove(bolum)
 
     def play_episode(self, bolum):
-        # Run video playback in a separate thread to prevent GUI freezing
         threading.Thread(target=self._play_video, args=(bolum,), daemon=True).start()
 
     def _play_video(self, bolum):
@@ -110,6 +143,56 @@ class TurkanimeGUI(ctk.CTk):
             self.dosyalar.set_gecmis(self.current_anime.slug, bolum.slug, "izlendi")
             # Update the episode list on the main thread
             self.after(0, self.show_episodes, self.current_anime.slug)
+
+    def download_selected_episodes(self):
+        if not self.selected_episodes:
+            messagebox.showwarning("Uyarı", "Lütfen indirilecek bölümleri seçin.")
+            return
+
+        # Create a new window to show download progress
+        self.progress_window = ctk.CTkToplevel(self)
+        self.progress_window.title("İndirme Durumu")
+
+        self.progress_bars = {}
+        for bolum in self.selected_episodes:
+            label = ctk.CTkLabel(self.progress_window, text=bolum.title)
+            label.pack()
+            progress = ctk.CTkProgressBar(self.progress_window)
+            progress.set(0)
+            progress.pack(pady=5)
+            self.progress_bars[bolum.slug] = progress
+
+        threading.Thread(target=self._download_episodes, daemon=True).start()
+
+    def _download_episodes(self):
+        for bolum in self.selected_episodes:
+            video = bolum.best_video()
+            if video:
+                # Update progress bar
+                def progress_hook(d):
+                    if d['status'] == 'downloading':
+                        total_bytes = d.get('total_bytes') or d.get('total_bytes_estimate')
+                        downloaded_bytes = d.get('downloaded_bytes', 0)
+                        if total_bytes:
+                            progress = downloaded_bytes / total_bytes
+                            self.progress_bars[bolum.slug].set(progress)
+
+                # Prepare output directory
+                output_dir = os.path.join(os.getcwd(), "Downloads", self.current_anime.slug)
+                os.makedirs(output_dir, exist_ok=True)
+
+                video.indir(callback=progress_hook, output=output_dir)
+                # Mark episode as downloaded
+                self.dosyalar.set_gecmis(self.current_anime.slug, bolum.slug, "indirildi")
+                # Update progress bar to 100%
+                self.progress_bars[bolum.slug].set(1.0)
+            else:
+                messagebox.showerror("Hata", f"{bolum.title} indirilemedi.")
+
+        # Close progress window after downloads complete
+        self.after(0, self.progress_window.destroy)
+        # Refresh episode list
+        self.after(0, self.show_episodes, self.current_anime.slug)
 
     def on_closing(self):
         self.driver.quit()
