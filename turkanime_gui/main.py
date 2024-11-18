@@ -8,12 +8,13 @@ import os
 import subprocess  # Add this line
 
 # Add these constants at the top after imports
-PADDING = 5
-CORNER_RADIUS = 8
-BUTTON_COLOR = "#1f538d"
-BUTTON_HOVER_COLOR = "#1a4572"
-FRAME_COLOR = "#2b2b2b"
-TEXT_COLOR = "#ffffff"
+PADDING = 10
+CORNER_RADIUS = 12
+BUTTON_COLOR = "#3b82f6"  # Modern blue
+BUTTON_HOVER_COLOR = "#2563eb"
+FRAME_COLOR = "#1e1e1e"  # Darker background
+TEXT_COLOR = "#f3f4f6"
+ENTRY_COLOR = "#2d2d2d"
 
 ctk.set_appearance_mode("Dark")
 ctk.set_default_color_theme("blue")
@@ -247,58 +248,52 @@ class TurkanimeGUI(ctk.CTk):
         self.episode_list_frame.grid_rowconfigure(2, weight=1)
         self.episode_list_frame.grid_columnconfigure(0, weight=1)
 
-        # Add Back Button
+        # Header frame for back button and search
+        header_frame = ctk.CTkFrame(self.episode_list_frame, fg_color="transparent")
+        header_frame.grid(row=0, column=0, sticky="ew", padx=PADDING, pady=PADDING)
+        header_frame.grid_columnconfigure(1, weight=1)
+
+        # Modern back button
         self.back_button = ctk.CTkButton(
-            self.episode_list_frame,
-            text="Geri",
-            height=35,
+            header_frame,
+            text="←",  # Using arrow symbol
+            width=50,
+            height=40,
             corner_radius=CORNER_RADIUS,
             fg_color=BUTTON_COLOR,
             hover_color=BUTTON_HOVER_COLOR,
             command=self.back_to_anime_list
         )
-        self.back_button.grid(row=0, column=0, sticky="w", padx=PADDING, pady=PADDING)
+        self.back_button.grid(row=0, column=0, padx=(0, PADDING))
 
-        # Add Episode Search Bar
+        # Modern search entry
         self.episode_search_entry = ctk.CTkEntry(
-            self.episode_list_frame,
-            width=400,
-            height=35,
-            placeholder_text="Bölüm adı ara",
+            header_frame,
+            height=40,
+            placeholder_text="Bölüm ara...",
             corner_radius=CORNER_RADIUS,
-            border_width=2
+            border_width=0,
+            fg_color=ENTRY_COLOR,
+            text_color=TEXT_COLOR,
+            placeholder_text_color="#666666"
         )
-        self.episode_search_entry.grid(row=1, column=0, padx=3, pady=(0, PADDING), sticky="ew")
+        self.episode_search_entry.grid(row=0, column=1, sticky="ew", padx=PADDING)
         self.episode_search_entry.bind("<KeyRelease>", self.on_episode_search)
 
-        # Scrollable frame for episodes
-        self.episode_results_frame = ctk.CTkFrame(self.episode_list_frame, fg_color=FRAME_COLOR)
-        self.episode_results_frame.grid(row=2, column=0, sticky="nsew", padx=PADDING, pady=(0, PADDING))
-        self.episode_list_frame.grid_rowconfigure(2, weight=1)
-
-        # Scrollable Canvas for Episodes
-        self.episode_canvas = ctk.CTkCanvas(self.episode_results_frame, bg=FRAME_COLOR, highlightthickness=0)
-        self.episode_canvas.grid(row=0, column=0, sticky="nsew")
-        self.episode_results_frame.grid_rowconfigure(0, weight=1)
-        self.episode_results_frame.grid_columnconfigure(0, weight=1)
-
-        self.episode_scrollbar = ctk.CTkScrollbar(self.episode_results_frame, command=self.episode_canvas.yview)
-        self.episode_scrollbar.grid(row=0, column=1, sticky="ns")
-        self.episode_canvas.configure(yscrollcommand=self.episode_scrollbar.set)
-
-        self.episode_scrollable_frame = ctk.CTkFrame(self.episode_canvas, fg_color=FRAME_COLOR)
-        self.episode_canvas.create_window((0, 0), window=self.episode_scrollable_frame, anchor="nw")
-        self.episode_scrollable_frame.bind(
-            "<Configure>",
-            lambda e: self.episode_canvas.configure(
-                scrollregion=self.episode_canvas.bbox("all")
-            )
+        # Episode list container
+        episodes_container = ctk.CTkFrame(
+            self.episode_list_frame,
+            fg_color=FRAME_COLOR,
+            corner_radius=CORNER_RADIUS
         )
+        episodes_container.grid(row=1, column=0, sticky="nsew", padx=PADDING, pady=(0, PADDING))
+        episodes_container.grid_columnconfigure(0, weight=1)
+        episodes_container.grid_rowconfigure(0, weight=1)
 
         # Add Select All Episodes Checkbox
         self.select_all_var = ctk.BooleanVar()
         self.select_all_checkbox = ctk.CTkCheckBox(
-            self.episode_scrollable_frame,
+            episodes_container,
             text="Tüm Bölümleri Seç",
             height=30,
             corner_radius=CORNER_RADIUS,
@@ -310,7 +305,7 @@ class TurkanimeGUI(ctk.CTk):
 
         # Style the download button
         self.download_button = ctk.CTkButton(
-            self.episode_scrollable_frame,
+            episodes_container,
             text="Seçili Bölümleri İndir",
             height=40,
             corner_radius=CORNER_RADIUS,
@@ -328,8 +323,8 @@ class TurkanimeGUI(ctk.CTk):
         self.episode_frames = []
         for bolum in episodes:
             episode_frame = ctk.CTkFrame(
-                self.episode_scrollable_frame,
-                fg_color=FRAME_COLOR,
+                episodes_container,
+                fg_color=ENTRY_COLOR,
                 corner_radius=CORNER_RADIUS
             )
             episode_frame.pack(fill="x", pady=5, padx=PADDING)
@@ -357,12 +352,18 @@ class TurkanimeGUI(ctk.CTk):
             self.episode_vars.append(var)
             self.episode_frames.append((episode_frame, bolum, var))
 
-            # Play Button
+            # Update episode frame styling
+            episode_frame.configure(
+                fg_color=ENTRY_COLOR,
+                corner_radius=CORNER_RADIUS
+            )
+            
+            # Modern play button
             play_button = ctk.CTkButton(
                 episode_frame,
-                text="Oynat",
-                width=80,
-                height=32,
+                text="▶",  # Play symbol
+                width=40,
+                height=40,
                 corner_radius=CORNER_RADIUS,
                 fg_color=BUTTON_COLOR,
                 hover_color=BUTTON_HOVER_COLOR,
