@@ -22,10 +22,10 @@ class TurkanimeGUI(ctk.CTk):
         super().__init__()
         self.title("Turkanime GUI")
         self.geometry("1000x800")  # Increased window size
-        
+
         # Configure colors and styling
         self.configure(fg_color="#1a1a1a")  # Darker background
-        
+
         self.dosyalar = Dosyalar()
         self.driver = create_webdriver()
         self.anime_list = Anime.get_anime_listesi(self.driver)
@@ -33,10 +33,26 @@ class TurkanimeGUI(ctk.CTk):
         self.selected_episodes = []
         self.download_threads = {}
         self.download_controls = {}
+        self.is_playing_episode = False  # Flag to prevent multiple episodes playing
 
         self.items_per_page = 20  # Customizable count of anime displayed per page
         self.current_page = 0
         self.search_results = self.anime_list  # Initialize search results with full anime list
+
+        # Create frames for different pages
+        self.anime_list_frame = ctk.CTkFrame(self, fg_color="#1a1a1a")
+        self.anime_list_frame.grid(row=0, column=0, sticky="nsew")
+        self.anime_list_frame.grid_rowconfigure(1, weight=1)
+        self.anime_list_frame.grid_columnconfigure(0, weight=1)
+
+        self.episode_list_frame = ctk.CTkFrame(self, fg_color="#1a1a1a")
+        self.episode_list_frame.grid(row=0, column=0, sticky="nsew")
+        self.episode_list_frame.grid_rowconfigure(1, weight=1)
+        self.episode_list_frame.grid_columnconfigure(0, weight=1)
+        self.episode_list_frame.grid_remove()  # Hide episode list frame initially
+
+        self.grid_rowconfigure(0, weight=1)
+        self.grid_columnconfigure(0, weight=1)
 
         self.create_widgets()
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
@@ -45,12 +61,9 @@ class TurkanimeGUI(ctk.CTk):
         self.update_search_results()
 
     def create_widgets(self):
-        # Configure grid layout for the main window
-        self.grid_rowconfigure(1, weight=1)
-        self.grid_columnconfigure(0, weight=1)
-
+        # Configure grid layout for the anime list frame
         # Search Frame styling
-        self.search_frame = ctk.CTkFrame(self, fg_color=FRAME_COLOR, corner_radius=CORNER_RADIUS)
+        self.search_frame = ctk.CTkFrame(self.anime_list_frame, fg_color=FRAME_COLOR, corner_radius=CORNER_RADIUS)
         self.search_frame.grid(row=0, column=0, sticky="ew", padx=PADDING, pady=PADDING)
         self.search_frame.grid_columnconfigure(1, weight=1)
 
@@ -77,7 +90,7 @@ class TurkanimeGUI(ctk.CTk):
         self.search_button.grid(row=0, column=2, padx=PADDING, pady=PADDING)
 
         # Results Frame styling - Update background color
-        self.results_frame = ctk.CTkFrame(self, fg_color=FRAME_COLOR, corner_radius=CORNER_RADIUS)
+        self.results_frame = ctk.CTkFrame(self.anime_list_frame, fg_color=FRAME_COLOR, corner_radius=CORNER_RADIUS)
         self.results_frame.grid(row=1, column=0, sticky="nsew", padx=PADDING, pady=(0, PADDING))
         self.results_frame.grid_rowconfigure(0, weight=1)
         self.results_frame.grid_columnconfigure(0, weight=1)
@@ -85,12 +98,12 @@ class TurkanimeGUI(ctk.CTk):
         # Scrollable Canvas for Results - Update background and bind mouse wheel
         self.canvas = ctk.CTkCanvas(self.results_frame, bg=FRAME_COLOR, highlightthickness=0)
         self.canvas.grid(row=0, column=0, sticky="nsew")
-        
+
         # Bind mouse wheel to both the canvas and the main window
         self.canvas.bind_all("<MouseWheel>", self._on_mousewheel)
         self.canvas.bind_all("<Button-4>", self._on_mousewheel)
         self.canvas.bind_all("<Button-5>", self._on_mousewheel)
-        
+
         self.scrollbar = ctk.CTkScrollbar(self.results_frame, command=self.canvas.yview)
         self.scrollbar.grid(row=0, column=1, sticky="ns")
         self.canvas.configure(yscrollcommand=self.scrollbar.set)
@@ -103,13 +116,13 @@ class TurkanimeGUI(ctk.CTk):
                 scrollregion=self.canvas.bbox("all")
             )
         )
-        
+
         # Update canvas window configuration
         self.canvas_window = self.canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw", width=self.canvas.winfo_width())
         self.canvas.bind('<Configure>', self._on_canvas_configure)
 
         # Pagination Controls styling
-        self.pagination_frame = ctk.CTkFrame(self, fg_color=FRAME_COLOR, corner_radius=CORNER_RADIUS)
+        self.pagination_frame = ctk.CTkFrame(self.anime_list_frame, fg_color=FRAME_COLOR, corner_radius=CORNER_RADIUS)
         self.pagination_frame.grid(row=2, column=0, pady=PADDING, padx=PADDING, sticky="ew")
         self.pagination_frame.grid_columnconfigure(1, weight=1)
 
@@ -192,31 +205,76 @@ class TurkanimeGUI(ctk.CTk):
             self.update_search_results()
 
     def show_episodes(self, slug):
+        # Hide the anime list frame and show the episode list frame
+        self.anime_list_frame.grid_remove()
+        self.episode_list_frame.grid()
+
         self.current_anime = Anime(self.driver, slug)
         episodes = self.current_anime.bolumler
         self.selected_episodes = []
         self.download_threads = {}
         self.download_controls = {}
 
-        for widget in self.scrollable_frame.winfo_children():
+        # Clear any existing widgets in episode_list_frame
+        for widget in self.episode_list_frame.winfo_children():
             widget.destroy()
 
-        # Style the episode search entry
+        # Configure grid for episode_list_frame
+        self.episode_list_frame.grid_rowconfigure(1, weight=1)
+        self.episode_list_frame.grid_columnconfigure(0, weight=1)
+
+        # Add Back Button
+        self.back_button = ctk.CTkButton(
+            self.episode_list_frame,
+            text="Geri",
+            height=35,
+            corner_radius=CORNER_RADIUS,
+            fg_color=BUTTON_COLOR,
+            hover_color=BUTTON_HOVER_COLOR,
+            command=self.back_to_anime_list
+        )
+        self.back_button.grid(row=0, column=0, sticky="w", padx=PADDING, pady=PADDING)
+
+        # Add Episode Search Bar
         self.episode_search_entry = ctk.CTkEntry(
-            self.scrollable_frame,
+            self.episode_list_frame,
             width=400,
             height=35,
             placeholder_text="Bölüm adı ara",
             corner_radius=CORNER_RADIUS,
             border_width=2
         )
-        self.episode_search_entry.pack(pady=PADDING, padx=PADDING, fill="x")
+        self.episode_search_entry.grid(row=1, column=0, padx=PADDING, pady=(0, PADDING), sticky="ew")
         self.episode_search_entry.bind("<KeyRelease>", self.on_episode_search)
 
-        # Style the select all checkbox
+        # Scrollable frame for episodes
+        self.episode_results_frame = ctk.CTkFrame(self.episode_list_frame, fg_color=FRAME_COLOR)
+        self.episode_results_frame.grid(row=2, column=0, sticky="nsew", padx=PADDING, pady=(0, PADDING))
+        self.episode_list_frame.grid_rowconfigure(2, weight=1)
+
+        # Scrollable Canvas for Episodes
+        self.episode_canvas = ctk.CTkCanvas(self.episode_results_frame, bg=FRAME_COLOR, highlightthickness=0)
+        self.episode_canvas.grid(row=0, column=0, sticky="nsew")
+        self.episode_results_frame.grid_rowconfigure(0, weight=1)
+        self.episode_results_frame.grid_columnconfigure(0, weight=1)
+
+        self.episode_scrollbar = ctk.CTkScrollbar(self.episode_results_frame, command=self.episode_canvas.yview)
+        self.episode_scrollbar.grid(row=0, column=1, sticky="ns")
+        self.episode_canvas.configure(yscrollcommand=self.episode_scrollbar.set)
+
+        self.episode_scrollable_frame = ctk.CTkFrame(self.episode_canvas, fg_color=FRAME_COLOR)
+        self.episode_canvas.create_window((0, 0), window=self.episode_scrollable_frame, anchor="nw")
+        self.episode_scrollable_frame.bind(
+            "<Configure>",
+            lambda e: self.episode_canvas.configure(
+                scrollregion=self.episode_canvas.bbox("all")
+            )
+        )
+
+        # Add Select All Episodes Checkbox
         self.select_all_var = ctk.BooleanVar()
         self.select_all_checkbox = ctk.CTkCheckBox(
-            self.scrollable_frame,
+            self.episode_scrollable_frame,
             text="Tüm Bölümleri Seç",
             height=30,
             corner_radius=CORNER_RADIUS,
@@ -228,7 +286,7 @@ class TurkanimeGUI(ctk.CTk):
 
         # Style the download button
         self.download_button = ctk.CTkButton(
-            self.scrollable_frame,
+            self.episode_scrollable_frame,
             text="Seçili Bölümleri İndir",
             height=40,
             corner_radius=CORNER_RADIUS,
@@ -246,7 +304,7 @@ class TurkanimeGUI(ctk.CTk):
         self.episode_frames = []
         for bolum in episodes:
             episode_frame = ctk.CTkFrame(
-                self.scrollable_frame,
+                self.episode_scrollable_frame,
                 fg_color=FRAME_COLOR,
                 corner_radius=CORNER_RADIUS
             )
@@ -288,13 +346,18 @@ class TurkanimeGUI(ctk.CTk):
             )
             play_button.grid(row=0, column=1, sticky="e", padx=PADDING, pady=PADDING)
 
+    def back_to_anime_list(self):
+        # Hide the episode list frame and show the anime list frame
+        self.episode_list_frame.grid_remove()
+        self.anime_list_frame.grid()
+
     def on_episode_search(self, event):
         query = self.episode_search_entry.get().lower()
         for episode_frame, bolum, var in self.episode_frames:
             if query in bolum.title.lower():
                 episode_frame.pack(fill="x", pady=2)
             else:
-                episode_frame.forget()
+                episode_frame.pack_forget()
 
     def on_select_all_episodes(self):
         select_all = self.select_all_var.get()
@@ -321,16 +384,29 @@ class TurkanimeGUI(ctk.CTk):
             self.select_all_var.set(False)
 
     def play_episode(self, bolum):
+        if self.is_playing_episode:
+            messagebox.showwarning("Uyarı", "Zaten bir bölüm oynatılıyor.")
+            return
+        self.is_playing_episode = True
         threading.Thread(target=self._play_video, args=(bolum,), daemon=True).start()
 
     def _play_video(self, bolum):
-        video = bolum.best_video()
-        if video:
-            video.oynat()
-            # Mark episode as watched
-            self.dosyalar.set_gecmis(self.current_anime.slug, bolum.slug, "izlendi")
-            # Update the episode list on the main thread
-            self.after(0, self.show_episodes, self.current_anime.slug)
+        try:
+            video = bolum.best_video()
+            if video:
+                video.oynat()
+                # Video playback finished
+                self.is_playing_episode = False
+                # Mark episode as watched
+                self.dosyalar.set_gecmis(self.current_anime.slug, bolum.slug, "izlendi")
+                # Update the episode list on the main thread
+                self.after(0, self.show_episodes, self.current_anime.slug)
+            else:
+                self.is_playing_episode = False
+                messagebox.showerror("Hata", f"{bolum.title} oynatılamadı.")
+        except Exception as e:
+            self.is_playing_episode = False
+            messagebox.showerror("Hata", f"{bolum.title} oynatılırken bir hata oluştu.\n{str(e)}")
 
     def download_selected_episodes(self):
         if not self.selected_episodes:
@@ -342,7 +418,7 @@ class TurkanimeGUI(ctk.CTk):
         self.progress_window.title("İndirme Durumu")
         self.progress_window.geometry("600x500")
         self.progress_window.configure(fg_color="#1a1a1a")
-        
+
         # Scrollable frame for progress bars
         self.progress_canvas = ctk.CTkCanvas(self.progress_window)
         self.progress_canvas.grid(row=0, column=0, sticky="nsew")
@@ -431,7 +507,7 @@ class TurkanimeGUI(ctk.CTk):
             if str(e) == "Download paused":
                 pass  # Do nothing, download is paused
             else:
-                messagebox.showerror("Hata", f"{bolum.title} indirilemedi.")
+                messagebox.showerror("Hata", f"{bolum.title} indirilemedi.\n{str(e)}")
 
     def pause_download(self, bolum):
         control = self.download_controls[bolum.slug]
