@@ -1,5 +1,5 @@
-##Qweren not:
-turkanime-indirici'yi forklayıp kendi kullanımım için gui ekledim. belki bir gün mergelenir.
+## Qweren not:
+turkanime-indirici'yi forklayıp kendi kullanımım için gui ekledim. belki bir gün mergelenir. turkanime_gui/main.py çalıştırın.
 
 # TürkAnimu-Cli
 [![GitHub all releases](https://img.shields.io/github/downloads/kebablord/turkanime-indirici/total?style=flat-square)](https://github.com/KebabLord/turkanime-indirici/releases/latest)
