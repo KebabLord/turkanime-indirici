@@ -1,11 +1,13 @@
 import customtkinter as ctk
 from turkanime_api.objects import Anime
 from turkanime_api.webdriver import create_webdriver
-from dosyalar import Dosyalar
+from turkanime_api.cli.dosyalar import Dosyalar
+from turkanime_api.cli.gereksinimler import Gereksinimler, gereksinim_kontrol_cli
 import threading
 from tkinter import messagebox
 import os
-import subprocess  # Add this line
+import subprocess
+import os.path
 
 # Add these constants at the top after imports
 PADDING = 10
@@ -25,15 +27,17 @@ ctk.set_default_color_theme("blue")
 class TurkanimeGUI(ctk.CTk):
     def __init__(self):
         super().__init__()
+        
         self.title("Turkanime GUI")
-        self.geometry("1000x800")  # Increased window size
-
+        self.geometry("1000x800")
+        
         # Configure colors and styling
-        self.configure(fg_color="#1a1a1a")  # Darker background
-
+        self.configure(fg_color="#1a1a1a")
+        
+        # Initialize basic components
         self.dosyalar = Dosyalar()
-        self.driver = create_webdriver()
-        self.anime_list = Anime.get_anime_listesi(self.driver)
+        self.driver = None
+        self.anime_list = None
         self.current_anime = None
         self.selected_episodes = []
         self.download_threads = {}
@@ -44,8 +48,15 @@ class TurkanimeGUI(ctk.CTk):
 
         self.items_per_page = 20
         self.current_page = 0
-        self.search_results = self.anime_list
+        self.search_results = []
 
+        # Create frames
+        self.create_frames()
+        
+        # Initialize dependencies and start application
+        self.after(100, self.initialize_application)
+
+    def create_frames(self):
         # Create frames for different pages
         self.anime_list_frame = ctk.CTkFrame(self, fg_color="#1a1a1a")
         self.anime_list_frame.grid(row=0, column=0, sticky="nsew")
@@ -56,16 +67,99 @@ class TurkanimeGUI(ctk.CTk):
         self.episode_list_frame.grid(row=0, column=0, sticky="nsew")
         self.episode_list_frame.grid_rowconfigure(1, weight=1)
         self.episode_list_frame.grid_columnconfigure(0, weight=1)
-        self.episode_list_frame.grid_remove()  # Hide episode list frame initially
+        self.episode_list_frame.grid_remove()
 
         self.grid_rowconfigure(0, weight=1)
         self.grid_columnconfigure(0, weight=1)
 
-        self.create_widgets()
-        self.protocol("WM_DELETE_WINDOW", self.on_closing)
+    def initialize_application(self):
+        """Initialize the application after ensuring dependencies are installed"""
+        try:
+            # Check and install dependencies
+            if not self.check_dependencies():
+                self.quit()
+                return
 
-        # Show the anime list on launch
-        self.update_search_results()
+            # Initialize webdriver and fetch anime list
+            self.driver = create_webdriver()
+            self.anime_list = Anime.get_anime_listesi(self.driver)
+            self.search_results = self.anime_list
+
+            # Create widgets and show initial results
+            self.create_widgets()
+            self.update_search_results()
+            
+            # Set up window close handler
+            self.protocol("WM_DELETE_WINDOW", self.on_closing)
+
+        except Exception as e:
+            messagebox.showerror("Hata", f"Uygulama başlatılırken bir hata oluştu:\n{str(e)}")
+            self.quit()
+
+    def check_dependencies(self):
+        """Check and install required dependencies"""
+        try:
+            gerek = Gereksinimler()
+            eksikler = gerek.eksikler
+            
+            if eksikler:
+                loading = ctk.CTkToplevel(self)
+                loading.title("Gereksinimler Yükleniyor")
+                loading.geometry("400x150")
+                loading.transient(self)
+                loading.grab_set()
+                
+                status_label = ctk.CTkLabel(loading, text="Gerekli bileşenler indiriliyor...\nBu işlem biraz zaman alabilir.")
+                status_label.pack(pady=20)
+                
+                progress = ctk.CTkProgressBar(loading)
+                progress.pack(pady=10, padx=20, fill="x")
+                progress.set(0)
+                
+                def update_progress(current, total, filename):
+                    if total > 0:
+                        progress.set(current / total)
+                    status_label.configure(text=f"İndiriliyor: {filename}\n{current} / {total} bytes")
+                
+                download_complete = threading.Event()
+                download_success = threading.Event()
+                
+                def download_thread():
+                    try:
+                        fails = gerek.otomatik_indir(
+                            callback=lambda hook: self.after(0, update_progress,
+                                hook.get('current', 0),
+                                hook.get('total', 0),
+                                hook.get('file', '')
+                            )
+                        )
+                        if not fails:
+                            download_success.set()
+                    finally:
+                        download_complete.set()
+                
+                thread = threading.Thread(target=download_thread, daemon=True)
+                thread.start()
+                
+                # Check download status periodically
+                def check_download():
+                    if download_complete.is_set():
+                        loading.destroy()
+                    else:
+                        self.after(100, check_download)
+                
+                self.after(100, check_download)
+                loading.wait_window()
+                
+                if not download_success.is_set():
+                    messagebox.showerror("Hata", "Gerekli bileşenler yüklenemedi.")
+                    return False
+            
+            return True
+            
+        except Exception as e:
+            messagebox.showerror("Hata", f"Bileşenler kontrol edilirken bir hata oluştu:\n{str(e)}")
+            return False
 
     def create_widgets(self):
         # Search Frame styling
@@ -324,8 +418,16 @@ class TurkanimeGUI(ctk.CTk):
         )
         self.download_button.pack(pady=PADDING)
 
-        watched_episodes = self.dosyalar.get_gecmis(self.current_anime.slug, "izlendi")
-        downloaded_episodes = self.dosyalar.get_gecmis(self.current_anime.slug, "indirildi")
+        watched_episodes = []
+        downloaded_episodes = []
+        
+        # Get watched episodes
+        if self.current_anime.slug in self.dosyalar.gecmis["izlendi"]:
+            watched_episodes = self.dosyalar.gecmis["izlendi"][self.current_anime.slug]
+            
+        # Get downloaded episodes
+        if self.current_anime.slug in self.dosyalar.gecmis["indirildi"]:
+            downloaded_episodes = self.dosyalar.gecmis["indirildi"][self.current_anime.slug]
 
         for bolum in episodes:
             episode_frame = ctk.CTkFrame(
@@ -475,17 +577,20 @@ class TurkanimeGUI(ctk.CTk):
                 # Get the video URL
                 video_url = video.url
 
-                # Start mpv using subprocess.Popen without '--no-terminal'
-                mpv_command = ['mpv', video_url]
+                # Use mpv from TurkAnimu directory
+                mpv_path = os.path.join(self.dosyalar.ta_path, "mpv", "mpv.exe") if os.name == "nt" else "mpv"
+                
+                # Start mpv using subprocess.Popen
+                mpv_command = [mpv_path, video_url]
 
                 mpv_process = subprocess.Popen(
                     mpv_command,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.STDOUT,
                     text=True,
-                    bufsize=1,  # Line buffering
-                    encoding='utf-8',  # Specify encoding
-                    errors='replace'  # Handle decoding errors
+                    bufsize=1,
+                    encoding='utf-8',
+                    errors='replace'
                 )
 
                 # Read mpv output line by line
@@ -611,7 +716,22 @@ class TurkanimeGUI(ctk.CTk):
                     self.progress_bars[bolum.slug].set(progress)
 
         try:
-            video.indir(callback=progress_hook, output=output_dir)
+            # Use settings from dosyalar
+            use_aria2c = self.dosyalar.ayarlar.get("aria2c kullan", False)
+            download_path = self.dosyalar.ayarlar.get("indirilenler", ".")
+            
+            # If custom download path is set, use it instead of default
+            if download_path != ".":
+                output_dir = os.path.join(download_path, self.current_anime.slug)
+                os.makedirs(output_dir, exist_ok=True)
+
+            # Download using video.indir which will use the correct downloader
+            video.indir(
+                callback=progress_hook, 
+                output=output_dir,
+                use_aria2c=use_aria2c
+            )
+
             # Mark episode as downloaded
             self.dosyalar.set_gecmis(self.current_anime.slug, bolum.slug, "indirildi")
             # Update progress bar to 100%
