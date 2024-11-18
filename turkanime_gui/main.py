@@ -15,6 +15,9 @@ BUTTON_HOVER_COLOR = "#2563eb"
 FRAME_COLOR = "#1e1e1e"  # Darker background
 TEXT_COLOR = "#f3f4f6"
 ENTRY_COLOR = "#2d2d2d"
+WATCHED_COLOR = "#22c55e"  # Bright green
+DOWNLOADED_COLOR = "#3b82f6"  # Bright blue
+INDICATOR_SIZE = 20
 
 ctk.set_appearance_mode("Dark")
 ctk.set_default_color_theme("blue")
@@ -35,11 +38,13 @@ class TurkanimeGUI(ctk.CTk):
         self.selected_episodes = []
         self.download_threads = {}
         self.download_controls = {}
-        self.is_playing_episode = False  # Flag to prevent multiple episodes playing
+        self.is_playing_episode = False
+        self.episode_vars = []
+        self.episode_frames = []
 
-        self.items_per_page = 20  # Customizable count of anime displayed per page
+        self.items_per_page = 20
         self.current_page = 0
-        self.search_results = self.anime_list  # Initialize search results with full anime list
+        self.search_results = self.anime_list
 
         # Create frames for different pages
         self.anime_list_frame = ctk.CTkFrame(self, fg_color="#1a1a1a")
@@ -231,6 +236,10 @@ class TurkanimeGUI(ctk.CTk):
             self.update_search_results()
 
     def show_episodes(self, slug):
+        # Clear previous episode data
+        self.episode_vars = []
+        self.episode_frames = []
+        
         # Hide the anime list frame and show the episode list frame
         self.anime_list_frame.grid_remove()
         self.episode_list_frame.grid()
@@ -281,15 +290,14 @@ class TurkanimeGUI(ctk.CTk):
         self.episode_search_entry.grid(row=0, column=1, sticky="ew", padx=PADDING)
         self.episode_search_entry.bind("<KeyRelease>", self.on_episode_search)
 
-        # Episode list container
-        episodes_container = ctk.CTkFrame(
+        # Episode list container with scrollbar
+        episodes_container = ctk.CTkScrollableFrame(
             self.episode_list_frame,
             fg_color=FRAME_COLOR,
             corner_radius=CORNER_RADIUS
         )
         episodes_container.grid(row=1, column=0, sticky="nsew", padx=PADDING, pady=(0, PADDING))
         episodes_container.grid_columnconfigure(0, weight=1)
-        episodes_container.grid_rowconfigure(0, weight=1)
 
         # Add Select All Episodes Checkbox
         self.select_all_var = ctk.BooleanVar()
@@ -319,50 +327,76 @@ class TurkanimeGUI(ctk.CTk):
         watched_episodes = self.dosyalar.get_gecmis(self.current_anime.slug, "izlendi")
         downloaded_episodes = self.dosyalar.get_gecmis(self.current_anime.slug, "indirildi")
 
-        # Episode Checkboxes
-        self.episode_vars = []
-        self.episode_frames = []
         for bolum in episodes:
             episode_frame = ctk.CTkFrame(
                 episodes_container,
                 fg_color=ENTRY_COLOR,
-                corner_radius=CORNER_RADIUS
+                corner_radius=CORNER_RADIUS,
+                height=50  # Set fixed height for all frames
             )
             episode_frame.pack(fill="x", pady=5, padx=PADDING)
-            episode_frame.grid_columnconfigure(1, weight=1)
-
-            episode_title = bolum.title
-
-            # Indicate watched and downloaded episodes
-            indicators = ""
-            if bolum.slug in watched_episodes:
-                indicators += "👁"
-            if bolum.slug in downloaded_episodes:
-                indicators += "⤓"
-
-            display_title = f"{indicators} {episode_title}"
-
+            episode_frame.pack_propagate(False)  # Prevent frame from shrinking to fit content
+            
+            # Configure grid columns
+            episode_frame.grid_columnconfigure(2, weight=1)  # Make title expand
+            
+            # Checkbox (now on the left)
             var = ctk.BooleanVar()
             episode_checkbox = ctk.CTkCheckBox(
                 episode_frame,
-                text=display_title,
+                text="",  # Empty text since we'll show title separately
                 variable=var,
+                width=20,
                 command=lambda b=bolum, v=var: self.on_episode_select(b, v)
             )
-            episode_checkbox.grid(row=0, column=0, sticky="w", padx=PADDING, pady=PADDING)
+            episode_checkbox.grid(row=0, column=0, padx=(PADDING, 5), pady=PADDING)
             self.episode_vars.append(var)
-            self.episode_frames.append((episode_frame, bolum, var))
 
-            # Update episode frame styling
-            episode_frame.configure(
-                fg_color=ENTRY_COLOR,
-                corner_radius=CORNER_RADIUS
+            # Indicators frame - always create it even if empty
+            indicator_frame = ctk.CTkFrame(
+                episode_frame,
+                fg_color="transparent",
+                height=40  # Match the height of indicators
             )
-            
-            # Modern play button
+            indicator_frame.grid(row=0, column=1, padx=5, pady=PADDING)
+
+            # Add watched indicator
+            if bolum.slug in watched_episodes:
+                watched_indicator = ctk.CTkLabel(
+                    indicator_frame,
+                    text="👁",
+                    width=INDICATOR_SIZE,
+                    fg_color=WATCHED_COLOR,
+                    corner_radius=CORNER_RADIUS,
+                    text_color=TEXT_COLOR
+                )
+                watched_indicator.pack(side="left", padx=2)
+
+            # Add downloaded indicator
+            if bolum.slug in downloaded_episodes:
+                downloaded_indicator = ctk.CTkLabel(
+                    indicator_frame,
+                    text="⤓",
+                    width=INDICATOR_SIZE,
+                    fg_color=DOWNLOADED_COLOR,
+                    corner_radius=CORNER_RADIUS,
+                    text_color=TEXT_COLOR
+                )
+                downloaded_indicator.pack(side="left", padx=2)
+
+            # Episode title
+            title_label = ctk.CTkLabel(
+                episode_frame,
+                text=bolum.title,
+                anchor="w",  # Align text to the left
+                text_color=TEXT_COLOR
+            )
+            title_label.grid(row=0, column=2, sticky="ew", padx=5, pady=PADDING)
+
+            # Play button
             play_button = ctk.CTkButton(
                 episode_frame,
-                text="▶",  # Play symbol
+                text="▶",
                 width=40,
                 height=40,
                 corner_radius=CORNER_RADIUS,
@@ -370,7 +404,9 @@ class TurkanimeGUI(ctk.CTk):
                 hover_color=BUTTON_HOVER_COLOR,
                 command=lambda b=bolum: self.play_episode(b)
             )
-            play_button.grid(row=0, column=1, sticky="e", padx=PADDING, pady=PADDING)
+            play_button.grid(row=0, column=3, sticky="e", padx=PADDING, pady=PADDING)
+
+            self.episode_frames.append((episode_frame, bolum, var))
 
     def back_to_anime_list(self):
         # Hide the episode list frame and show the anime list frame
