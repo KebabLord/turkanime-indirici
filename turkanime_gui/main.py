@@ -63,76 +63,65 @@ class TurkanimeGUI(ctk.CTk):
         self.update_search_results()
 
     def create_widgets(self):
-        # Configure grid layout for the anime list frame
         # Search Frame styling
         self.search_frame = ctk.CTkFrame(self.anime_list_frame, fg_color=FRAME_COLOR, corner_radius=CORNER_RADIUS)
         self.search_frame.grid(row=0, column=0, sticky="ew", padx=PADDING, pady=PADDING)
-        self.search_frame.grid_columnconfigure(1, weight=1)
+        self.search_frame.grid_columnconfigure(0, weight=1)
+        self.search_frame.grid_columnconfigure(1, weight=0)  # For dropdown
 
+        # Modern search entry
         self.search_entry = ctk.CTkEntry(
             self.search_frame,
             placeholder_text="Anime adı girin",
-            height=35,
+            height=40,
             corner_radius=CORNER_RADIUS,
-            border_width=2
+            border_width=0,
+            fg_color=ENTRY_COLOR,
+            text_color=TEXT_COLOR,
+            placeholder_text_color="#666666"
         )
-        self.search_entry.grid(row=0, column=1, padx=PADDING, pady=PADDING, sticky="ew")
-        self.search_entry.bind("<Return>", lambda event: self.search_anime())
+        self.search_entry.grid(row=0, column=0, padx=PADDING, pady=PADDING, sticky="ew")
         self.search_entry.bind("<KeyRelease>", self.on_key_release)
 
-        self.search_button = ctk.CTkButton(
+        # Items per page dropdown
+        self.items_options = ["10", "20", "50", "100"]
+        self.items_dropdown = ctk.CTkOptionMenu(
             self.search_frame,
-            text="Ara",
-            height=35,
+            values=self.items_options,
+            command=self.change_items_per_page,
+            width=100,
+            height=40,
             corner_radius=CORNER_RADIUS,
             fg_color=BUTTON_COLOR,
-            hover_color=BUTTON_HOVER_COLOR,
-            command=self.search_anime
+            button_color=BUTTON_HOVER_COLOR,
+            button_hover_color=BUTTON_HOVER_COLOR,
         )
-        self.search_button.grid(row=0, column=2, padx=PADDING, pady=PADDING)
+        self.items_dropdown.grid(row=0, column=1, padx=PADDING, pady=PADDING)
+        self.items_dropdown.set("20")  # Default value
 
-        # Results Frame styling - Update background color
-        self.results_frame = ctk.CTkFrame(self.anime_list_frame, fg_color=FRAME_COLOR, corner_radius=CORNER_RADIUS)
+        # Results Frame
+        self.results_frame = ctk.CTkScrollableFrame(
+            self.anime_list_frame,
+            fg_color=FRAME_COLOR,
+            corner_radius=CORNER_RADIUS
+        )
         self.results_frame.grid(row=1, column=0, sticky="nsew", padx=PADDING, pady=(0, PADDING))
-        self.results_frame.grid_rowconfigure(0, weight=1)
-        self.results_frame.grid_columnconfigure(0, weight=1)
-
-        # Scrollable Canvas for Results - Update background and bind mouse wheel
-        self.canvas = ctk.CTkCanvas(self.results_frame, bg=FRAME_COLOR, highlightthickness=0)
-        self.canvas.grid(row=0, column=0, sticky="nsew")
-
-        # Bind mouse wheel events to the canvas
-        self.canvas.bind("<Enter>", lambda _: self.canvas.focus_set())
-        self.canvas.bind("<MouseWheel>", self._on_mousewheel)  # Windows and macOS
-        self.canvas.bind("<Button-4>", self._on_mousewheel)    # Linux scroll up
-        self.canvas.bind("<Button-5>", self._on_mousewheel)    # Linux scroll down
-
-        self.scrollbar = ctk.CTkScrollbar(self.results_frame, command=self.canvas.yview)
-        self.scrollbar.grid(row=0, column=1, sticky="ns")
-        self.canvas.configure(yscrollcommand=self.scrollbar.set)
-
-        # Update scrollable frame background
-        self.scrollable_frame = ctk.CTkFrame(self.canvas, fg_color=FRAME_COLOR)
-        self.scrollable_frame.bind(
-            "<Configure>",
-            lambda e: self.canvas.configure(
-                scrollregion=self.canvas.bbox("all")
-            )
-        )
-
-        # Update canvas window configuration
-        self.canvas_window = self.canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw", width=self.canvas.winfo_width())
-        self.canvas.bind('<Configure>', self._on_canvas_configure)
+        
+        # Configure grid weights
+        self.anime_list_frame.grid_rowconfigure(1, weight=1)
+        self.anime_list_frame.grid_columnconfigure(0, weight=1)
 
         # Pagination Controls styling
         self.pagination_frame = ctk.CTkFrame(self.anime_list_frame, fg_color=FRAME_COLOR, corner_radius=CORNER_RADIUS)
         self.pagination_frame.grid(row=2, column=0, pady=PADDING, padx=PADDING, sticky="ew")
         self.pagination_frame.grid_columnconfigure(1, weight=1)
 
+        # Modern pagination buttons
         self.prev_button = ctk.CTkButton(
             self.pagination_frame,
-            text="Önceki",
-            height=35,
+            text="←",  # Arrow symbol
+            width=50,
+            height=40,
             corner_radius=CORNER_RADIUS,
             fg_color=BUTTON_COLOR,
             hover_color=BUTTON_HOVER_COLOR,
@@ -140,13 +129,18 @@ class TurkanimeGUI(ctk.CTk):
         )
         self.prev_button.grid(row=0, column=0, padx=PADDING, pady=PADDING)
 
-        self.page_label = ctk.CTkLabel(self.pagination_frame, text=f"Sayfa {self.current_page + 1}")
+        self.page_label = ctk.CTkLabel(
+            self.pagination_frame,
+            text="Sayfa 1 / 1",
+            text_color=TEXT_COLOR
+        )
         self.page_label.grid(row=0, column=1, padx=PADDING, pady=PADDING)
 
         self.next_button = ctk.CTkButton(
             self.pagination_frame,
-            text="Sonraki",
-            height=35,
+            text="→",  # Arrow symbol
+            width=50,
+            height=40,
             corner_radius=CORNER_RADIUS,
             fg_color=BUTTON_COLOR,
             hover_color=BUTTON_HOVER_COLOR,
@@ -192,7 +186,8 @@ class TurkanimeGUI(ctk.CTk):
         self.canvas.itemconfig(self.canvas_window, width=event.width)
 
     def update_search_results(self):
-        for widget in self.scrollable_frame.winfo_children():
+        # Clear existing results
+        for widget in self.results_frame.winfo_children():
             widget.destroy()
 
         results = self.search_results
@@ -204,17 +199,23 @@ class TurkanimeGUI(ctk.CTk):
 
         for slug, title in paginated_results:
             anime_button = ctk.CTkButton(
-                self.scrollable_frame,
+                self.results_frame,
                 text=title,
+                height=40,
+                corner_radius=CORNER_RADIUS,
+                fg_color=ENTRY_COLOR,
+                hover_color=BUTTON_HOVER_COLOR,
                 command=lambda s=slug: self.show_episodes(s)
             )
-            anime_button.pack(pady=5, fill="x")
+            anime_button.pack(pady=5, fill="x", padx=PADDING)
 
         # Update pagination label
         total_pages = len(results) // self.items_per_page + (1 if len(results) % self.items_per_page > 0 else 0)
         if total_pages == 0:
-            total_pages = 1  # Avoid division by zero
+            total_pages = 1
         self.page_label.configure(text=f"Sayfa {self.current_page + 1} / {total_pages}")
+        
+        # Update button states
         self.prev_button.configure(state="normal" if self.current_page > 0 else "disabled")
         self.next_button.configure(state="normal" if self.current_page < total_pages - 1 else "disabled")
 
@@ -626,6 +627,11 @@ class TurkanimeGUI(ctk.CTk):
     def _on_canvas_configure(self, event):
         """Update the scroll region when the canvas is resized"""
         self.canvas.itemconfig(self.canvas_window, width=event.width)
+
+    def change_items_per_page(self, choice):
+        self.items_per_page = int(choice)
+        self.current_page = 0  # Reset to first page
+        self.update_search_results()
 
 if __name__ == "__main__":
     app = TurkanimeGUI()
