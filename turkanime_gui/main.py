@@ -34,52 +34,58 @@ class TurkanimeGUI(ctk.CTk):
         self.update_search_results()
 
     def create_widgets(self):
+        # Configure grid layout for the main window
+        self.grid_rowconfigure(1, weight=1)
+        self.grid_columnconfigure(0, weight=1)
+
         # Search Frame
         self.search_frame = ctk.CTkFrame(self)
-        self.search_frame.pack(pady=10, fill="x")
+        self.search_frame.grid(row=0, column=0, sticky="ew", padx=10, pady=10)
+        self.search_frame.grid_columnconfigure(1, weight=1)
 
-        self.search_entry = ctk.CTkEntry(self.search_frame, width=400, placeholder_text="Anime adı girin")
-        self.search_entry.pack(side="left", padx=10, fill="x", expand=True)
+        self.search_entry = ctk.CTkEntry(self.search_frame, placeholder_text="Anime adı girin")
+        self.search_entry.grid(row=0, column=1, padx=10, sticky="ew")
         self.search_entry.bind("<Return>", lambda event: self.search_anime())
         self.search_entry.bind("<KeyRelease>", self.on_key_release)
 
         self.search_button = ctk.CTkButton(self.search_frame, text="Ara", command=self.search_anime)
-        self.search_button.pack(side="left", padx=10)
+        self.search_button.grid(row=0, column=2, padx=10)
 
         # Results Frame
         self.results_frame = ctk.CTkFrame(self)
-        self.results_frame.pack(fill="both", expand=True)
+        self.results_frame.grid(row=1, column=0, sticky="nsew")
+        self.results_frame.grid_rowconfigure(0, weight=1)
+        self.results_frame.grid_columnconfigure(0, weight=1)
 
         # Scrollable Canvas for Results
         self.canvas = ctk.CTkCanvas(self.results_frame)
+        self.canvas.grid(row=0, column=0, sticky="nsew")
         self.scrollbar = ctk.CTkScrollbar(self.results_frame, command=self.canvas.yview)
-        self.scrollable_frame = ctk.CTkFrame(self.canvas)
+        self.scrollbar.grid(row=0, column=1, sticky="ns")
+        self.canvas.configure(yscrollcommand=self.scrollbar.set)
 
+        self.scrollable_frame = ctk.CTkFrame(self.canvas)
         self.scrollable_frame.bind(
             "<Configure>",
             lambda e: self.canvas.configure(
                 scrollregion=self.canvas.bbox("all")
             )
         )
-
         self.canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
-        self.canvas.configure(yscrollcommand=self.scrollbar.set)
-
-        self.canvas.pack(side="left", fill="both", expand=True)
-        self.scrollbar.pack(side="right", fill="y")
 
         # Pagination Controls
         self.pagination_frame = ctk.CTkFrame(self)
-        self.pagination_frame.pack(pady=5)
+        self.pagination_frame.grid(row=2, column=0, pady=5)
+        self.pagination_frame.grid_columnconfigure(1, weight=1)
 
         self.prev_button = ctk.CTkButton(self.pagination_frame, text="Önceki", command=self.prev_page)
-        self.prev_button.pack(side="left", padx=5)
+        self.prev_button.grid(row=0, column=0, padx=5)
 
         self.page_label = ctk.CTkLabel(self.pagination_frame, text=f"Sayfa {self.current_page + 1}")
-        self.page_label.pack(side="left", padx=5)
+        self.page_label.grid(row=0, column=1, padx=5)
 
         self.next_button = ctk.CTkButton(self.pagination_frame, text="Sonraki", command=self.next_page)
-        self.next_button.pack(side="left", padx=5)
+        self.next_button.grid(row=0, column=2, padx=5)
 
     def on_key_release(self, event):
         # Immediate search on key release
@@ -146,7 +152,7 @@ class TurkanimeGUI(ctk.CTk):
 
         # Add Episode Search Bar
         self.episode_search_entry = ctk.CTkEntry(self.scrollable_frame, width=400, placeholder_text="Bölüm adı ara")
-        self.episode_search_entry.pack(pady=5)
+        self.episode_search_entry.pack(pady=5, fill="x")
         self.episode_search_entry.bind("<KeyRelease>", self.on_episode_search)
 
         # Add Select All Episodes Checkbox
@@ -176,6 +182,7 @@ class TurkanimeGUI(ctk.CTk):
         for bolum in episodes:
             episode_frame = ctk.CTkFrame(self.scrollable_frame)
             episode_frame.pack(fill="x", pady=2)
+            episode_frame.grid_columnconfigure(1, weight=1)
 
             episode_title = bolum.title
 
@@ -195,7 +202,7 @@ class TurkanimeGUI(ctk.CTk):
                 variable=var,
                 command=lambda b=bolum, v=var: self.on_episode_select(b, v)
             )
-            episode_checkbox.pack(side="left", padx=5)
+            episode_checkbox.grid(row=0, column=0, sticky="w", padx=5)
             self.episode_vars.append(var)
             self.episode_frames.append((episode_frame, bolum, var))
 
@@ -206,7 +213,7 @@ class TurkanimeGUI(ctk.CTk):
                 width=60,
                 command=lambda b=bolum: self.play_episode(b)
             )
-            play_button.pack(side="right", padx=5)
+            play_button.grid(row=0, column=1, sticky="e", padx=5)
 
     def on_episode_search(self, event):
         query = self.episode_search_entry.get().lower()
@@ -260,23 +267,44 @@ class TurkanimeGUI(ctk.CTk):
         # Create a new window to show download progress
         self.progress_window = ctk.CTkToplevel(self)
         self.progress_window.title("İndirme Durumu")
+        self.progress_window.geometry("500x400")
+        self.progress_window.grid_rowconfigure(0, weight=1)
+        self.progress_window.grid_columnconfigure(0, weight=1)
+
+        # Scrollable frame for progress bars
+        self.progress_canvas = ctk.CTkCanvas(self.progress_window)
+        self.progress_canvas.grid(row=0, column=0, sticky="nsew")
+        self.progress_scrollbar = ctk.CTkScrollbar(self.progress_window, command=self.progress_canvas.yview)
+        self.progress_scrollbar.grid(row=0, column=1, sticky="ns")
+        self.progress_canvas.configure(yscrollcommand=self.progress_scrollbar.set)
+
+        self.progress_frame = ctk.CTkFrame(self.progress_canvas)
+        self.progress_canvas.create_window((0, 0), window=self.progress_frame, anchor="nw")
+
+        self.progress_frame.bind(
+            "<Configure>",
+            lambda e: self.progress_canvas.configure(
+                scrollregion=self.progress_canvas.bbox("all")
+            )
+        )
 
         self.progress_bars = {}
         for bolum in self.selected_episodes:
-            frame = ctk.CTkFrame(self.progress_window)
+            frame = ctk.CTkFrame(self.progress_frame)
             frame.pack(fill="x", pady=5)
+            frame.grid_columnconfigure(1, weight=1)
 
             label = ctk.CTkLabel(frame, text=bolum.title)
-            label.pack(side="left")
+            label.grid(row=0, column=0, padx=5, sticky="w")
 
             progress = ctk.CTkProgressBar(frame)
             progress.set(0)
-            progress.pack(side="left", fill="x", expand=True, padx=5)
+            progress.grid(row=0, column=1, padx=5, sticky="ew")
             self.progress_bars[bolum.slug] = progress
 
             pause_button = ctk.CTkButton(frame, text="Duraklat", width=70,
                                          command=lambda b=bolum: self.pause_download(b))
-            pause_button.pack(side="right", padx=5)
+            pause_button.grid(row=0, column=2, padx=5)
             self.download_controls[bolum.slug] = {'paused': False, 'pause_button': pause_button}
 
         threading.Thread(target=self._download_episodes, daemon=True).start()
