@@ -1,7 +1,7 @@
 # TürkAnimu-Cli
 [![GitHub all releases](https://img.shields.io/github/downloads/kebablord/turkanime-indirici/total?style=flat-square)](https://github.com/KebabLord/turkanime-indirici/releases/latest)
-[![GitHub release (latest by date)](https://img.shields.io/github/v/release/kebablord/turkanime-indirici?style=flat-square)](https://github.com/kebablord/turkanime-indirici/releases/latest/download/turkanimu.exe)
 [![Downloads](https://static.pepy.tech/personalized-badge/turkanime-cli?period=total&units=international_system&left_color=grey&right_color=orange&left_text=Pip%20Installs)](https://pepy.tech/project/turkanime-cli)
+[![GitHub release (latest by date)](https://img.shields.io/github/v/release/kebablord/turkanime-indirici?style=flat-square)](https://github.com/kebablord/turkanime-indirici/releases/latest/download/turkanimu.exe)
 [![Pypi version](https://img.shields.io/pypi/v/turkanime-cli?style=flat-square)](https://pypi.org/project/turkanime-cli/)
 
 Türkanime için video oynatıcı, indirici ve kütüphane. İtinayla her bölümü indirir & oynatır.
@@ -54,10 +54,16 @@ Vidmoly  Dailymotion  Uqload  MP4upload
 Daha fazlası için [wiki sayfasını](https://github.com/KebabLord/turkanime-indirici/wiki/Herhangi-bir-uygulamay%C4%B1-system-path'%C4%B1na-ekleme) ziyaret edebilirsiniz.
 Script'in çalışabilmesi için bilgisayarınızda firefox kurulu olmalıdır. Cloudflare korumasını aşabilmenin şimdilik tek yolu bu.
 
-### Yapılacaklar:
+## Diğer Türkçe Anime indirici Projeleri
+Aşağıdaki projeler de farklı sitelerden anime indirmeyi ve izlemeyi mümkün kılıyor, her birinin kendi avantajları var, göz atmanızı öneririm.
+- [AniTR-cli](https://github.com/xeyossr/anitr-cli): AniTR üstünden Go ile yazılmış terminal tabanlı anime indirici, Arch linux AUR reposunda da mevcut 
+- [AnimeciX-Desktop](https://github.com/CaptainSP/animecix-desktop): AnimeciX üstünden anime indirici ve oynatıcı, electron ile yaratılmış güzel bir gui sunuyor
+- [Turkanime-indiriciGUI](https://github.com/qweeren/turkanime-indirici/tree/master): Bu script'e Tkinter ile gui yaratılmış fork
+
+## Yapılacaklar:
+ - [ ] Selenium'dan kurtulma
  - [ ] İndirme bitimi aksiyonları: bildirim veya bilgisayar kapatma.
  - [ ] Gui versiyon
- - [ ] Selenium'dan kurtulma
  - [x] ~~Maximum çözünürlüğe ulaş.~~
  - [x] ~~Youtube-dl yerine yt-dlp'ye geçilmeli.~~
  - [x] ~~Yeni sürüm var mı uygulama açılışında kontrol et.~~
@@ -70,3 +76,4 @@ Script'in çalışabilmesi için bilgisayarınızda firefox kurulu olmalıdır. 
  - [x] ~~Prompt kütüphanesi olarak berbat durumda olan PyInquirer'den Questionary'e geçilecek.~~
  - [x] ~~Arama sonuçları da http talepleriyle getirilecek.~~
  - [x] ~~Fansub seçme özelliği tekrar eklenecek.~~
+
