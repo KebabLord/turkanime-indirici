@@ -56,7 +56,7 @@ Script'in çalışabilmesi için bilgisayarınızda firefox kurulu olmalıdır. 
 
 ## Diğer Türkçe Anime indirici Projeleri
 Aşağıdaki projeler de farklı sitelerden anime indirmeyi ve izlemeyi mümkün kılıyor, her birinin kendi avantajları var, göz atmanızı öneririm.
-- [AniTR-cli](https://github.com/xeyossr/anitr-cli): AniTR üstünden Go ile yazılmış terminal tabanlı anime indirici, Arch linux AUR reposunda da mevcut 
+- [AniTR-cli](https://github.com/xeyossr/anitr-cli): Go ile yazılmış terminal tabanlı anime oynatıcı, Arch linux AUR reposunda da mevcut 
 - [AnimeciX-Desktop](https://github.com/CaptainSP/animecix-desktop): AnimeciX üstünden anime indirici ve oynatıcı, electron ile yaratılmış güzel bir gui sunuyor
 - [Turkanime-indiriciGUI](https://github.com/qweeren/turkanime-indirici/tree/master): Bu script'e Tkinter ile gui yaratılmış fork
 
@@ -76,4 +76,5 @@ Aşağıdaki projeler de farklı sitelerden anime indirmeyi ve izlemeyi mümkün
  - [x] ~~Prompt kütüphanesi olarak berbat durumda olan PyInquirer'den Questionary'e geçilecek.~~
  - [x] ~~Arama sonuçları da http talepleriyle getirilecek.~~
  - [x] ~~Fansub seçme özelliği tekrar eklenecek.~~
+
 
