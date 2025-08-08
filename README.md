@@ -1,3 +1,6 @@
+## Qweren not:
+turkanime-indirici'yi forklayıp kendi kullanımım için gui ekledim. belki bir gün mergelenir. turkanime_gui/main.py çalıştırın.
+
 # TürkAnimu-Cli
 [![GitHub all releases](https://img.shields.io/github/downloads/kebablord/turkanime-indirici/total?style=flat-square)](https://github.com/KebabLord/turkanime-indirici/releases/latest)
 [![Downloads](https://static.pepy.tech/personalized-badge/turkanime-cli?period=total&units=international_system&left_color=grey&right_color=orange&left_text=Pip%20Installs)](https://pepy.tech/project/turkanime-cli)
