@@ -7,6 +7,11 @@ from appdirs import user_cache_dir
 from Crypto.Cipher import AES
 
 
+"""
+Videoların gerçek URL'lerini decryptleyen fonksiyonlar
+örn: eyJjdCI6IldXUmRNWFdCMG15T253dXUmRNWFd3V -> https://dv97.sibnet.ru/15/80/112314.mp4
+"""
+
 def obtain_key(driver) -> bytes:
     """
     Şifreli iframe url'sini decryptlemek için gerekli anahtarı döndürür. 
@@ -80,7 +85,7 @@ def decrypt_cipher(key: bytes, data: bytes) -> str:
 
 
 def get_real_url(driver, url_cipher: str, cache=True) -> str:
-    """ obtain_key & decrypt_cipher fonksiyonlarını kombine eden parolayı cache'leyen fonksiyon. """
+    """ Videonun gerçek url'sini decrypt'le, parolayı da cache'le. """
     cache_file = os.path.join(user_cache_dir(),"turkanimu_key.cache")
     url_cipher = url_cipher.encode()
 
@@ -89,8 +94,8 @@ def get_real_url(driver, url_cipher: str, cache=True) -> str:
         with open(cache_file,"r",encoding="utf-8") as f:
             cached_key = f.read().strip().encode()
             plaintext = decrypt_cipher(cached_key,url_cipher)
-            if plaintext:
-                return plaintext
+        if plaintext:
+            return plaintext
 
     # Cache'lenmiş key işe yaramadıysa, yeni key'i edin ve decryptlemeyi dene.
     key = obtain_key(driver)
@@ -102,3 +107,96 @@ def get_real_url(driver, url_cipher: str, cache=True) -> str:
         with open(cache_file,"w",encoding="utf-8") as f:
             f.write(key.decode("utf-8"))
     return plaintext
+
+
+
+
+"""
+TürkAnime'nin kendi player'larından url çıkartan fonksiyonlar (Alucard, Bankai, Amaterasu vs.)
+örn: http://turkanime.co/sources/UW1EN2VPcExLUXpiaDRqcnV0d -> https://alucard.stream/cdn/playlist/3S3CtAJxAZ
+"""
+
+PLAYERJS_URL = "/js/player.js"
+PLAYERJS_CSRF = None
+
+def decrypt_jsjiamiv7(ciphertext, key):
+    """
+    jsjiamiv7 obfuscator ile şifrelenmiş bi cipher'ı decryptleyen fonksiyon
+    - Cipher nedense non-standart bir alfabeyle translate edilmiş, onu normal base64 alfabesine çevir
+    - Sonra base64 decode eyle
+    - Sonra RC4 (KSA + PRGA) algoritması ile şifreyi çöz https://en.wikipedia.org/wiki/RC4
+    - Galiba bu internette ilk. v5, v6 decode'layan buldum da, v7 decodelayan proje bulamadım.
+    """
+    _CUSTOM = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789+/"
+    _STD    = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+    _TRANSLATE = str.maketrans(_CUSTOM, _STD)
+    t = ciphertext.translate(_TRANSLATE)
+    t += "=" * (-len(t) % 4)
+    data = b64decode(t).decode("utf-8")
+
+    S = list(range(256))
+    j = 0
+    klen = len(key)
+    # KSA
+    for i in range(256):
+        j = (j + S[i] + ord(key[i % klen])) & 0xff
+        S[i], S[j] = S[j], S[i]
+    # PRGA
+    i = j = 0
+    out = []
+    for ch in data:
+        i = (i + 1) & 0xff
+        j = (j + S[i]) & 0xff
+        S[i], S[j] = S[j], S[i]
+        out.append(chr(ord(ch) ^ S[(S[i] + S[j]) & 0xff]))
+    return "".join(out)
+
+
+def obtain_csrf(driver):
+    """
+    /js/player.js dosyasındaki jsjiamiv7 ile şifrelenmiş csrf tokeni edin.
+    - regex ile key'i çıkar ve ciphertext olabilecek bütün text'leri çıkar
+    - bütün adayları key ile decryptlemeyi dene, başarılı çıkan sonuç csrf tokenidir.
+    """
+    res = driver.execute_script(f"return $.get('{PLAYERJS_URL}')")
+    # Key'i çıkar
+    key = re.findall(r"csrf-token':[^\n\)]+'([^']+)'\)", res, re.IGNORECASE)
+    # Bütün Ciphertext adaylarını çıkar
+    candidates = re.findall(r"'([a-zA-Z\d\+\/]{96,156})',",res)
+    assert key and candidates
+    key = key[0]
+
+    # Hepsini decrypt'lemeyi dene, başarılı olanı döndür
+    decrypted_list = [decrypt_jsjiamiv7(ct,key) for ct in candidates]
+    return next((i for i in decrypted_list if re.search("^[a-zA-Z/\+]+$",i)), None)
+
+
+def unmask_real_url(driver, url_mask):
+    """ TürkAnime'nin kendi playerlarının url maskesini çözer. """
+    global PLAYERJS_CSRF
+    assert "turkanime" in url_mask
+    if PLAYERJS_CSRF is None:
+        try:
+            PLAYERJS_CSRF = obtain_csrf(driver)
+            if PLAYERJS_CSRF is None:
+                raise LookupError
+        except:
+            print("ERROR: CSRF bulunamadı.")
+            return url_mask
+
+    MASK = url_mask.split("/player/")[1]
+    res = driver.execute_script(F"""
+      return $.ajax({{
+        url: "/sources/{MASK}/false",
+        method: "GET",
+        headers: {{"Csrf-Token": "{PLAYERJS_CSRF}" }}
+      }});
+    """)
+
+    try:
+        url = res["response"]["sources"][-1]["file"]
+        if url.startswith("//"):
+            url = "https:" + url
+    except:
+        return url_mask
+    return url

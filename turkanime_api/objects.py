@@ -12,19 +12,20 @@ import re
 import json
 import yt_dlp
 import requests
-from .bypass import get_real_url
+from .bypass import get_real_url, unmask_real_url
 
 # Çalıştığı bilinen playerlar ve öncelikleri
 SUPPORTED = [
-    "GDRIVE",
-    "GPLUS",
-    "MP4UPLOAD",
     "YADISK",
     "MAIL",
+    "AMATERASU(BETA)",
+    "HDVID",
     "ODNOKLASSNIKI",
-    "VK",
+    "GDRIVE",
+    "MP4UPLOAD",
     "DAILYMOTION",
     "SIBNET",
+    "VK",
     "VIDMOLY",
     "YOURUPLOAD",
     "SENDVID",
@@ -194,7 +195,8 @@ class Bolum:
         # Yalnızca tek bir fansub varsa
         if not re.search(".*birden fazla grup",self.html):
             fansub = re.findall(r"</span> ([^\\<>]*)</button>.*?iframe",self.html)[0]
-            vids=re.findall(r"(ajax\/videosec&b=[A-Za-z0-9]+&v=.*?)'.*?<\/span> ?(.*?)<\/button",self.html)
+            vids = re.findall(r"/embed/#/url/(.*?)\?status=0\".*?</span> ([^ ]*?) ?</button>", self.html)
+            vids += re.findall(r"(ajax\/videosec&b=[A-Za-z0-9]+&v=.*?)'.*?<\/span> ?(.*?)<\/button",self.html)
             for vpath,player in vids:
                 self._videos.append(Video(self,vpath,player,fansub))
         # Fansublar da parse'lanacaksa
@@ -202,14 +204,16 @@ class Bolum:
             fansubs = re.findall(r"(ajax\/videosec&.*?)'.*?<\/span> ?(.*?)<\/a>",self.html)
             for path,fansub in fansubs:
                 src = self.driver.execute_script(f'return $.get("{path}")')
-                vids=re.findall(r"(ajax\/videosec&b=[A-Za-z0-9]+&v=.*?)'.*?<\/span> ?(.*?)<\/button",src)
+                vids = re.findall(r"/embed/#/url/(.*?)\?status=0\".*?</span> ([^ ]*?) ?</button>", src)
+                vids += re.findall(r"(ajax\/videosec&b=[A-Za-z0-9]+&v=.*?)'.*?<\/span> ?(.*?)<\/button",src)
                 for vpath,player in vids:
                     self._videos.append(Video(self,vpath,player,fansub))
         # Fansubları parselamaksızın tüm videoları getir
         else:
             allpath = re.findall(r"(ajax\/videosec&b=[A-Za-z0-9]+.*?)&[fv]=.*?'.*?<\/span>",self.html)[0]
             src = self.driver.execute_script(f'return $.get("{allpath}")')
-            vids=re.findall(r"(ajax\/videosec&b=[A-Za-z0-9]+&v=.*?)'.*?<\/span> ?(.*?)<\/button",src)
+            vids = re.findall(r"/embed/#/url/(.*?)\?status=0\".*?</span> ([^ ]*?) ?</button>", src)
+            vids += re.findall(r"(ajax\/videosec&b=[A-Za-z0-9]+&v=.*?)'.*?<\/span> ?(.*?)<\/button",src)
             for vpath,player in vids:
                 self._videos.append(Video(self,vpath,player))
         return self._videos
@@ -297,13 +301,18 @@ class Video:
     @property
     def url(self):
         if self._url is None:
-            src = self.bolum.driver.execute_script(f"return $.get('{self.path}')")
-            # şifreli iframe'in encryption parametreleri: base64('{"ct":*,"iv":*,"s":*}')
-            cipher = re.findall(r"\/embed\/#\/url\/(.*?)\?status",src)[0]
+            if "/" in self.path:
+                src = self.bolum.driver.execute_script(f"return $.get('{self.path}')")
+                cipher = re.findall(r"\/embed\/#\/url\/(.*?)\?status",src)[0]
+            else: # Zaten seçili video ise
+                cipher = self.path
             plaintext = get_real_url(self.bolum.driver,cipher)
             # "\\/\\/fembed.com\\/v\\/0d1e8ilg"  -->  "https://fembed.com/v/0d1e8ilg"
             self._url = "https:"+json.loads(plaintext)
             self._url = self._url.replace("uqload.io","uqload.com") # .com mirror'unu kullan
+            if "turkanime" in self._url: # Alucard, Amaterasu, Bankai, HDVID
+                self._url = unmask_real_url(self.bolum.driver, self._url)
+                self.is_working = False if "turkanime" in self._url else True
         return self._url
 
     @property
@@ -316,6 +325,8 @@ class Video:
             # false-pozitifleri önlemek için.
             if info and info.get("video_ext") == "html":
                 info = None
+            if self.player in ["HDVID", "AMATERASU(BETA)"] and "direct" in info:
+                del info["direct"]
             self._info = info or {}
         return self._info
 
@@ -349,6 +360,8 @@ class Video:
         assert self.is_supported, "Bu player desteklenmiyor."
         if self._is_working is None:
             try:
+                if "turkanime" in self.url:
+                    raise LookupError
                 self._is_working = self.info not in (None, {})
             except:
                 self._is_working = False
