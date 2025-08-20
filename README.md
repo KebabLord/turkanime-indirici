@@ -20,10 +20,8 @@ Tüm metodları görmek için [dökümantasyona](https://github.com/KebabLord/tu
 ```py
 """ Bu API'yı kullanmak bu kadar kolay """
 >>> import turkanime_api as ta
-# Webdriver'ı başlat
->>> driver = ta.create_webdriver()
 # Anime objesini yarat
->>> anime = ta.Anime(driver,"non-non-biyori")
+>>> anime = ta.Anime("non-non-biyori")
 >>> print(anime.info)
 {'Anime Türü': ['Okul', 'Yaşamdan Kesitler', 'Seinen', 'Komedi'],
  'Başlama Tarihi': '08 Ekim 2013, Salı',
@@ -61,9 +59,9 @@ Aşağıdaki projeler de farklı sitelerden anime indirmeyi ve izlemeyi mümkün
 - [Turkanime-indiriciGUI](https://github.com/qweeren/turkanime-indirici/tree/master): Bu script'e Tkinter ile gui yaratılmış fork
 
 ## Yapılacaklar:
- - [ ] Selenium'dan kurtulma
  - [ ] İndirme bitimi aksiyonları: bildirim veya bilgisayar kapatma.
  - [ ] Gui versiyon
+ - [x] ~~Selenium'dan kurtulma~~
  - [x] ~~Maximum çözünürlüğe ulaş.~~
  - [x] ~~Youtube-dl yerine yt-dlp'ye geçilmeli.~~
  - [x] ~~Yeni sürüm var mı uygulama açılışında kontrol et.~~

@@ -8,10 +8,9 @@ from rich import print as rprint
 from rich.table import Table
 from rich.live import Live
 import questionary as qa
-from selenium.common.exceptions import WebDriverException
 from easygui import diropenbox
 
-from ..webdriver import create_webdriver,elementi_bekle
+from ..bypass import fetch
 from ..objects import Anime, Bolum
 from .dosyalar import Dosyalar
 from .gereksinimler import gereksinim_kontrol_cli
@@ -45,7 +44,7 @@ def eps_to_choices(liste,mark_type):
     return choices, recent
 
 
-def menu_loop(driver):
+def menu_loop():
     """ Ana menü interaktif navigasyonu """
     while True:
         clear()
@@ -65,7 +64,7 @@ def menu_loop(driver):
             # Seriyi seç.
             try:
                 with CliStatus("Anime listesi getiriliyor.."):
-                    animeler = Anime.get_anime_listesi(driver)
+                    animeler = Anime.get_anime_listesi()
                 seri_ismi = qa.autocomplete(
                     'Animeyi yazın',
                     choices = [n for s,n in animeler],
@@ -74,7 +73,7 @@ def menu_loop(driver):
                 if seri_ismi is None:
                     continue
                 seri_slug = [s for s,n in animeler if n==seri_ismi][0]
-                anime = Anime(driver,seri_slug)
+                anime = Anime(seri_slug)
             except (KeyError,IndexError):
                 rprint("[red][strong]Aradığınız anime bulunamadı.[/strong][red]")
                 sleep(1.5)
@@ -217,22 +216,19 @@ def main():
     # Gereksinimleri kontrol et
     gereksinim_kontrol_cli()
 
-    # Selenium'u başlat.
-    with CliStatus("Driver başlatılıyor.."):
-        driver = create_webdriver(preload_ta=False)
-
     # Script herhangi bir sebepten dolayı sonlandırıldığında.
     def kapat():
-        with CliStatus("Driver kapatılıyor.."):
-            driver.quit()
+        with CliStatus("Kapatılıyor.."):
+            sleep(1.5) # Şimdilik placeholder
     atexit.register(kapat)
 
     # Türkanime'ye bağlan.
     try:
         with CliStatus("Türkanime'ye bağlanılıyor.."):
-            driver.get("https://turkanime.co/kullanici/anonim")
-            elementi_bekle(".navbar-nav",driver)
-    except (ConnectionError,WebDriverException):
+            res = fetch(None)
+        if res != "200":
+            raise ConnectionError
+    except (ConnectionError):
         rprint("[red][strong]TürkAnime'ye ulaşılamıyor.[/strong][red]")
         sys.exit(1)
 
@@ -240,7 +236,7 @@ def main():
     clear()
     rprint("[green]!)[/green] Üst menülere dönmek için Ctrl+C kullanabilirsiniz.\n")
     sleep(1.7)
-    menu_loop(driver)
+    menu_loop()
 
 
 if __name__ == '__main__':

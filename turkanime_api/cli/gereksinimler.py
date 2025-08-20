@@ -14,7 +14,7 @@ from .dosyalar import Dosyalar
 from .cli_tools import CliStatus,DownloadCLI
 
 DL_URL = "https://raw.githubusercontent.com/KebabLord/turkanime-indirici/master/gereksinimler.json"
-DEPENDS = ["geckodriver","yt-dlp","mpv","aria2c"]
+DEPENDS = ["yt-dlp","mpv","aria2c"]
 
 NOT_WORKING = -1
 MISSING = 0

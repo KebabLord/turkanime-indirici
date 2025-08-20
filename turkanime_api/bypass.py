@@ -6,13 +6,35 @@ from hashlib import md5
 from appdirs import user_cache_dir
 from Crypto.Cipher import AES
 
+from curl_cffi import requests
+session = None
+BASE_URL = "https://turkanime.co/"
+
+def fetch(path, headers={}): # HTTP GET Request
+    global session, BASE_URL
+
+    # Init: Çerezleri cart curt oluştur, yeni domain geldiyse yönlendir.
+    if session is None:
+        session = requests.Session(impersonate="firefox", allow_redirects=True)
+        res = session.get(BASE_URL)
+        assert res.status_code == 200
+        BASE_URL = res.url
+        BASE_URL = BASE_URL[:-1] if BASE_URL.endswith('/') else BASE_URL
+        if path is None:
+            return str(res.status_code)
+
+    path = path if path.startswith("/") else "/" + path
+    headers["X-Requested-With"] = "XMLHttpRequest"
+
+    # GET request'i yolla
+    return session.get(BASE_URL + path, headers=headers).text
 
 """
 Videoların gerçek URL'lerini decryptleyen fonksiyonlar
 örn: eyJjdCI6IldXUmRNWFdCMG15T253dXUmRNWFd3V -> https://dv97.sibnet.ru/15/80/112314.mp4
 """
 
-def obtain_key(driver) -> bytes:
+def obtain_key() -> bytes:
     """
     Şifreli iframe url'sini decryptlemek için gerekli anahtarı döndürür. 
     Javascript dosyalarının isimleri ve anahtar, periyodik olarak değiştiğinden,
@@ -23,8 +45,7 @@ def obtain_key(driver) -> bytes:
     - Bu iki dosyadan içinde "decrypt" ifadesi geçeni seç
     - Bir liste olarak obfuscate edilmiş bu javascript dosyasından şifreyi edin.
     """
-    def fetch(path):
-        return driver.execute_script(f"return $.get('{path}')")
+
     try:
         # İlk javascript dosyasını ve importladığı dosyaları bul.
         js1 = fetch(
@@ -84,7 +105,7 @@ def decrypt_cipher(key: bytes, data: bytes) -> str:
 
 
 
-def get_real_url(driver, url_cipher: str, cache=True) -> str:
+def get_real_url(url_cipher: str, cache=True) -> str:
     """ Videonun gerçek url'sini decrypt'le, parolayı da cache'le. """
     cache_file = os.path.join(user_cache_dir(),"turkanimu_key.cache")
     url_cipher = url_cipher.encode()
@@ -98,7 +119,7 @@ def get_real_url(driver, url_cipher: str, cache=True) -> str:
             return plaintext
 
     # Cache'lenmiş key işe yaramadıysa, yeni key'i edin ve decryptlemeyi dene.
-    key = obtain_key(driver)
+    key = obtain_key()
     plaintext = decrypt_cipher(key,url_cipher)
     if not plaintext:
         raise ValueError("Embed URLsinin şifresi çözülemedi.")
@@ -152,13 +173,13 @@ def decrypt_jsjiamiv7(ciphertext, key):
     return "".join(out)
 
 
-def obtain_csrf(driver):
+def obtain_csrf():
     """
     /js/player.js dosyasındaki jsjiamiv7 ile şifrelenmiş csrf tokeni edin.
     - regex ile key'i çıkar ve ciphertext olabilecek bütün text'leri çıkar
     - bütün adayları key ile decryptlemeyi dene, başarılı çıkan sonuç csrf tokenidir.
     """
-    res = driver.execute_script(f"return $.get('{PLAYERJS_URL}')")
+    res = fetch(PLAYERJS_URL)
     # Key'i çıkar
     key = re.findall(r"csrf-token':[^\n\)]+'([^']+)'\)", res, re.IGNORECASE)
     # Bütün Ciphertext adaylarını çıkar
@@ -171,13 +192,13 @@ def obtain_csrf(driver):
     return next((i for i in decrypted_list if re.search("^[a-zA-Z/\+]+$",i)), None)
 
 
-def unmask_real_url(driver, url_mask):
+def unmask_real_url(url_mask):
     """ TürkAnime'nin kendi playerlarının url maskesini çözer. """
     global PLAYERJS_CSRF
     assert "turkanime" in url_mask
     if PLAYERJS_CSRF is None:
         try:
-            PLAYERJS_CSRF = obtain_csrf(driver)
+            PLAYERJS_CSRF = obtain_csrf()
             if PLAYERJS_CSRF is None:
                 raise LookupError
         except:
@@ -185,16 +206,11 @@ def unmask_real_url(driver, url_mask):
             return url_mask
 
     MASK = url_mask.split("/player/")[1]
-    res = driver.execute_script(F"""
-      return $.ajax({{
-        url: "/sources/{MASK}/false",
-        method: "GET",
-        headers: {{"Csrf-Token": "{PLAYERJS_CSRF}" }}
-      }});
-    """)
+    headers = {"Csrf-Token": PLAYERJS_CSRF, "cf_clearance": "dull"}
+    res = fetch(f"/sources/{MASK}/false",headers)
 
     try:
-        url = res["response"]["sources"][-1]["file"]
+        url = json.loads(res)["response"]["sources"][-1]["file"]
         if url.startswith("//"):
             url = "https:" + url
     except:

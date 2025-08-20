@@ -1,5 +1,5 @@
 """ Örnek:
->>> ani = Anime(driver,"non-non-biyori")
+>>> ani = Anime("non-non-biyori")
 >>> bol3 = ani.bolumler[2]
 >>> vid1 = bol3.videos[0]
 >>> vid1.oynat()
@@ -11,8 +11,7 @@ import subprocess as sp
 import re
 import json
 import yt_dlp
-import requests
-from .bypass import get_real_url, unmask_real_url
+from .bypass import get_real_url, unmask_real_url, fetch
 
 # Çalıştığı bilinen playerlar ve öncelikleri
 SUPPORTED = [
@@ -60,8 +59,7 @@ class Anime:
     - info: Anime sayfasından parse'lanan özet,kategori,stüdyo gibi meta bilgileri içeren dict.
     - parse_fansubs: Bolum objesi yaratılırken fansubları da parse'lamasını belirt.
     """
-    def __init__(self,driver,slug,parse_fansubs=True):
-        self.driver = driver
+    def __init__(self,slug,parse_fansubs=True):
         self.slug = slug
         self.title = None
         self.anime_id = 0
@@ -84,7 +82,7 @@ class Anime:
 
     def fetch_info(self):
         """Anime detay sayfasını ayrıştır."""
-        src = self.driver.execute_script(f"return $.get('/anime/{self.slug}')")
+        src = fetch(f'/anime/{self.slug}')
         twitmeta = re.findall(r'twitter.image" content="(.*?serilerb/(.*?)\.jpg)"',src)[0]
         self.info["Resim"], self.anime_id = twitmeta
         if not self.title:
@@ -108,13 +106,13 @@ class Anime:
     def get_bolum_listesi(self):
         """ Anime bölümlerinin [(slug,isim),] formatında listesi. """
         anime_id = self.anime_id
-        src = self.driver.execute_script(f"return $.get('/ajax/bolumler&animeId={anime_id}')")
+        src = fetch(f'/ajax/bolumler&animeId={anime_id}')
         return re.findall(r'\/video\/(.*?)\\?".*?title=.*?"(.*?)\\?"',src)
 
     @staticmethod
-    def get_anime_listesi(driver):
+    def get_anime_listesi():
         """ Anime serilerinin [(slug,isim),] formatında listesi. """
-        src = driver.execute_script("return $.get('/ajax/tamliste')")
+        src = fetch("/ajax/tamliste")
         return re.findall(r'\/anime\/(.*?)".*?animeAdi">(.*?)<',src)
 
     @property
@@ -124,7 +122,6 @@ class Anime:
             for slug,title in self.get_bolum_listesi():
                 self._bolumler.append(
                     Bolum(
-                        self.driver,
                         slug=slug,
                         title=title,
                         anime=self,
@@ -144,10 +141,9 @@ class Bolum:
     - anime: Bölümün ait olduğu anime'nin objesi, eğer tanımlanmadıysa erişildiğinde yaratılır.
     - parse_fansubs: Fansubları da parse'la. Fazladan fansub sayısı kadar istek gönderir.
     """
-    def __init__(self,driver,slug,anime=None,title=None,parse_fansubs=True):
+    def __init__(self,slug,anime=None,title=None,parse_fansubs=True):
         if "http" == slug[:4]:
             slug = slug.split("/")[-1]
-        self.driver = driver
         self.slug = slug
         self.parse_fansubs = parse_fansubs
         self._title = title
@@ -159,7 +155,7 @@ class Bolum:
     @property
     def html(self):
         if self._html is None:
-            self._html = self.driver.execute_script(f'return $.get("/video/{self.slug}")')
+            self._html = fetch(f"/video/{self.slug}")
         return self._html
 
     @property
@@ -203,7 +199,7 @@ class Bolum:
         elif self.parse_fansubs:
             fansubs = re.findall(r"(ajax\/videosec&.*?)'.*?<\/span> ?(.*?)<\/a>",self.html)
             for path,fansub in fansubs:
-                src = self.driver.execute_script(f'return $.get("{path}")')
+                src = fetch(path)
                 vids = re.findall(r"/embed/#/url/(.*?)\?status=0\".*?</span> ([^ ]*?) ?</button>", src)
                 vids += re.findall(r"(ajax\/videosec&b=[A-Za-z0-9]+&v=.*?)'.*?<\/span> ?(.*?)<\/button",src)
                 for vpath,player in vids:
@@ -211,7 +207,7 @@ class Bolum:
         # Fansubları parselamaksızın tüm videoları getir
         else:
             allpath = re.findall(r"(ajax\/videosec&b=[A-Za-z0-9]+.*?)&[fv]=.*?'.*?<\/span>",self.html)[0]
-            src = self.driver.execute_script(f'return $.get("{allpath}")')
+            src = fetch(allpath)
             vids = re.findall(r"/embed/#/url/(.*?)\?status=0\".*?</span> ([^ ]*?) ?</button>", src)
             vids += re.findall(r"(ajax\/videosec&b=[A-Za-z0-9]+&v=.*?)'.*?<\/span> ?(.*?)<\/button",src)
             for vpath,player in vids:
@@ -302,16 +298,16 @@ class Video:
     def url(self):
         if self._url is None:
             if "/" in self.path:
-                src = self.bolum.driver.execute_script(f"return $.get('{self.path}')")
+                src = fetch(self.path)
                 cipher = re.findall(r"\/embed\/#\/url\/(.*?)\?status",src)[0]
             else: # Zaten seçili video ise
                 cipher = self.path
-            plaintext = get_real_url(self.bolum.driver,cipher)
+            plaintext = get_real_url(cipher)
             # "\\/\\/fembed.com\\/v\\/0d1e8ilg"  -->  "https://fembed.com/v/0d1e8ilg"
             self._url = "https:"+json.loads(plaintext)
             self._url = self._url.replace("uqload.io","uqload.com") # .com mirror'unu kullan
             if "turkanime" in self._url: # Alucard, Amaterasu, Bankai, HDVID
-                self._url = unmask_real_url(self.bolum.driver, self._url)
+                self._url = unmask_real_url(self._url)
                 self.is_working = False if "turkanime" in self._url else True
         return self._url
 
@@ -344,13 +340,6 @@ class Video:
                 elif "format_id" in formats[0]:
                     fid = formats[0].get("format_id")
                     res = {"sd":480, "hd":720, "fhd": 1080, "hq":2160}.get(fid)
-            if not res and self.player == "MP4UPLOAD":
-                try:
-                    v_id = self.info.get("id").split("embed-")[1]
-                    r = requests.get(f"https://www.mp4upload.com/{v_id}?method_free=Free+Download")
-                    res = int(re.findall(r"infoname.*?<span.*?x (\d+)<",r.text)[0])
-                except:
-                    pass
             self._resolution = res or 0
         return self._resolution
 

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "turkanime-cli"
-version = "8.3.0"
+version = "9.0.0"
 description = "Türkanime video oynatıcı ve indirici"
 authors = ["Junicchi <junicchi@waifu.club>"]
 readme = "README.md"
@@ -10,11 +10,11 @@ keywords = ["turkanime","turk","anime","downloader"]
 
 classifiers = [
     "Environment :: Console",
-    "Programming Language :: Python :: 3.7",
-    "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11"
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12"
+    "Programming Language :: Python :: 3.13"
 ]
 
 packages = [
@@ -22,17 +22,15 @@ packages = [
 ]
 
 [tool.poetry.dependencies]
-python = ">=3.7,<4"
-selenium = ">=4.2.0"
-yt_dlp = "*"
-bs4 = ">=0.0.1"
+python = ">=3.9,<4"
+yt-dlp = { version = "*", extras = ["default", "curl-cffi"] }
+curl-cffi = ">=0.13"
 pycryptodome = "*"
 appdirs = "*"
 questionary = "*"
 py7zr = "*"
 rich = ">=13.0.0"
 easygui = ">=0.98.2"
-requests = "*"
 
 [tool.poetry.dev-dependencies]
 
