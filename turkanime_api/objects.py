@@ -10,13 +10,17 @@ from tempfile import NamedTemporaryFile
 import subprocess as sp
 import re
 import json
-import yt_dlp
-from .bypass import get_real_url, unmask_real_url, fetch
+from yt_dlp import YoutubeDL
+from yt_dlp.networking.impersonate import ImpersonateTarget
+
+from .bypass import get_real_url, unmask_real_url, fetch, get_alucard_m3u8
 
 # Çalıştığı bilinen playerlar ve öncelikleri
 SUPPORTED = [
     "YADISK",
     "MAIL",
+    "ALUCARD(BETA)",
+    "PIXELDRAIN",
     "AMATERASU(BETA)",
     "HDVID",
     "ODNOKLASSNIKI",
@@ -292,7 +296,8 @@ class Video:
           'nocheckcertificate': True,
           'concurrent_fragment_downloads': 5,
         }
-
+        if self.player == "ALUCARD(BETA)":
+            self.ydl_opts['impersonate'] = ImpersonateTarget("chrome")
 
     @property
     def url(self):
@@ -315,15 +320,19 @@ class Video:
     def info(self):
         if self._info is None:
             assert self.is_supported, "Bu player desteklenmiyor."
-            with yt_dlp.YoutubeDL(self.ydl_opts) as ydl:
+            with YoutubeDL(self.ydl_opts) as ydl:
                 raw_info = ydl.extract_info(self.url, download=False)
                 info = ydl.sanitize_info(raw_info)
-            # false-pozitifleri önlemek için.
-            if info and info.get("video_ext") == "html":
-                info = None
-            if self.player in ["HDVID", "AMATERASU(BETA)"] and "direct" in info:
+            if not info:
+                self._info = {}
+                return self._info
+            # nedense mpv direct=True ise oynatmıyor
+            if "direct" in info:
                 del info["direct"]
-            self._info = info or {}
+            # false-pozitifleri önlemek için.
+            if info.get("video_ext") == "html":
+                info = None
+            self._info = info
         return self._info
 
     @property
@@ -368,11 +377,10 @@ class Video:
         opts = self.ydl_opts.copy()
         if callback:
             opts['progress_hooks'] = [callback]
-        #if output:
         opts['outtmpl'] = {'default': output + r'.%(ext)s'}
         with NamedTemporaryFile("w",delete=False) as tmp:
             json.dump(self.info, tmp)
-        with yt_dlp.YoutubeDL(opts) as ydl:
+        with YoutubeDL(opts) as ydl:
             ydl.download_with_info_file(tmp.name)
         remove(tmp.name)
 
@@ -389,6 +397,12 @@ class Video:
             "--ytdl-raw-options=load-info-json=" + tmp.name,
             "ytdl://" + self.bolum.slug # Kaldığın yerden devam etmenin çalışması için.
         ]
+
+        if self.player == "ALUCARD(BETA)":
+            cmd += ["--demuxer-lavf-o=protocol_whitelist=[file,tcp,tls,https],http_keep_alive=0,http_persistent=0"]
+            cmd += ["--cache=yes", get_alucard_m3u8(self.url) ]
+            del cmd[4]
+
         if dakika_hatirla:
             mpv_opts.append("--save-position-on-quit")
         if izlerken_kaydet:

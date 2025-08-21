@@ -18,12 +18,12 @@ from base64 import b64decode
 import json
 from hashlib import md5
 from appdirs import user_cache_dir
+from tempfile import NamedTemporaryFile
 from Crypto.Cipher import AES
-
 from curl_cffi import requests
+
 session = None
 BASE_URL = "https://turkanime.co/"
-
 
 def fetch(path, headers={}):
     """Curl-cffi kullanarak HTTP/3 ve Firefox TLS Fingerprint Impersonation
@@ -231,3 +231,13 @@ def unmask_real_url(url_mask):
     except:
         return url_mask
     return url
+
+
+def get_alucard_m3u8(url):
+    """ MPV'nin video'yu oynatabilmesi için en yüksek çözünürlüklü alucard m3u8 stream'i indir"""
+    res = session.get(url)
+    m3u8_url = re.findall("https://.*",res.text)[-1]
+    res = session.get(m3u8_url)
+    with NamedTemporaryFile(suffix=".m3u8", delete=False) as m3u8:
+        m3u8.write(res.text.encode())
+    return m3u8.name

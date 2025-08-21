@@ -27,9 +27,9 @@
 
 #### Desteklenen kaynaklar:
 ```
-Sibnet  OK.ru  HDVID  VK  Sendvid  Mail
-Amaterasu  Alucard  Myvi  Drive Yandisk
-Vidmoly  Dailymotion  Uqload  MP4upload
+Sibnet  Odnoklassinki  HDVID  Myvi Sendvid  Mail
+Amaterasu   Alucard   PixelDrain   VK  MP4upload
+Vidmoly   Dailymotion   Yandisk   Uqload   Drive
 ```
 
 

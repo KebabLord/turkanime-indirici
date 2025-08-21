@@ -118,9 +118,11 @@ def indirme_task_cli(bolum,table,dosya):
         # TODO: hata mesajı gösterilmeli
         return
     down_dir = dosya.ayarlar["indirilenler"]
-    if dosya.ayarlar.get("aria2c kullan"):
+    if best_video.player != "ALUCARD(BETA)" and dosya.ayarlar.get("aria2c kullan"):
+        # Aria2C Hızlandırıcı İle Videoyu indir
         indir_aria2c(best_video, callback=dl_cli.ytdl_callback, output=down_dir)
     else:
+        # Yt-dlp ile Videoyu indir
         best_video.indir(callback=dl_cli.ytdl_callback, output=down_dir)
     dosya.set_gecmis(bolum.anime.slug, bolum.slug, "indirildi")
 
