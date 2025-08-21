@@ -1,3 +1,17 @@
+"""
+BYPASS Modülü, TürkAnime'deki şifreyle saklanan elementlerini çözmek
+ve firewall'i kandirmak için gerekli fonksiyonlari / rutinleri içerir.
+
+- Fetch(url)->str                   Firefox TLS & HTTP/3 taklitli GET Request fonksiyonu
+
+- obtain_key()->bytes               TürkAnime'nin iframe şifrelerken kullandigi AES anahtari bulur
+- decrypt_cipher(key, data)->str    CryptoJS.AES.decrypt python implementasyonu
+- get_real_url(cipher)->str         TürkAnime'nin iframe şifresini çözüp gerçek video URL'sini getir
+
+- decrypt_jsjiamiv7(cipher, key):   Reverse jsjiamiv7 -> decodeURIComponent(base64(RC4(KSA + PRGA)))
+- obtain_csrf()->str                TürkAnime'nin encrypted tuttuğu csrf tokeni bul, decryptle,getir
+- unmask_real_url(masked_url):      Alucard, Bankai, Amaterasu, HDVID url maskesini çöz.
+"""
 import os
 import re
 from base64 import b64decode
@@ -10,24 +24,25 @@ from curl_cffi import requests
 session = None
 BASE_URL = "https://turkanime.co/"
 
-def fetch(path, headers={}): # HTTP GET Request
-    global session, BASE_URL
 
+def fetch(path, headers={}):
+    """Curl-cffi kullanarak HTTP/3 ve Firefox TLS Fingerprint Impersonation
+       eyleyerek GET request atmak IUAM aktif olmadigi sürece CF'yi bypassliyor. """
+    global session, BASE_URL
     # Init: Çerezleri cart curt oluştur, yeni domain geldiyse yönlendir.
     if session is None:
         session = requests.Session(impersonate="firefox", allow_redirects=True)
         res = session.get(BASE_URL)
-        assert res.status_code == 200
+        assert res.status_code == 200, ConnectionError
         BASE_URL = res.url
         BASE_URL = BASE_URL[:-1] if BASE_URL.endswith('/') else BASE_URL
-        if path is None:
-            return str(res.status_code)
-
+    if path is None:
+        return ""
+    # Get request'i yolla
     path = path if path.startswith("/") else "/" + path
     headers["X-Requested-With"] = "XMLHttpRequest"
-
-    # GET request'i yolla
     return session.get(BASE_URL + path, headers=headers).text
+
 
 """
 Videoların gerçek URL'lerini decryptleyen fonksiyonlar

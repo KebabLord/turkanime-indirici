@@ -225,10 +225,8 @@ def main():
     # Türkanime'ye bağlan.
     try:
         with CliStatus("Türkanime'ye bağlanılıyor.."):
-            res = fetch(None)
-        if res != "200":
-            raise ConnectionError
-    except (ConnectionError):
+            res = fetch(None) # Create Session
+    except (ConnectionError, AssertionError):
         rprint("[red][strong]TürkAnime'ye ulaşılamıyor.[/strong][red]")
         sys.exit(1)
 
