@@ -598,7 +598,25 @@ def run():
     import os
     # PATH'e uygulama dizinini ekle (mpv, yt-dlp, aria2c için)
     sep = ";" if os.name == "nt" else ":"
-    os.environ["PATH"] = os.environ.get("PATH", "") + sep + Dosyalar().ta_path + sep
+    path_parts = [os.environ.get("PATH", "")]
+    # Kullanıcı app verisi
+    path_parts.append(Dosyalar().ta_path)
+    # PyInstaller içindeysek _MEIPASS/bin
+    try:
+        import sys as _sys
+        _meipass = getattr(_sys, "_MEIPASS", None)
+        if _meipass:
+            path_parts.append(os.path.join(_meipass, "bin"))
+    except Exception:
+        pass
+    # Geliştirme ortamında proje kökü altındaki bin
+    try:
+        root_bin = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "bin")
+        if os.path.isdir(root_bin):
+            path_parts.append(root_bin)
+    except Exception:
+        pass
+    os.environ["PATH"] = sep.join([p for p in path_parts if p])
 
     app = QtWidgets.QApplication(sys.argv)
     # Tutarlı, modern bir görünüm

@@ -29,19 +29,31 @@ jobs:
           New-Item -ItemType Directory -Force -Path bin | Out-Null
           # Download helpers
           Invoke-WebRequest -Uri "https://www.7-zip.org/a/7zr.exe" -OutFile "7zr.exe"
-          # yt-dlp
-          Invoke-WebRequest -Uri "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe" -OutFile "bin/yt-dlp.exe"
-          # aria2c
-          Invoke-WebRequest -Uri "https://github.com/aria2/aria2/releases/download/release-1.37.0/aria2-1.37.0-win-64bit-build1.zip" -OutFile "aria2.zip"
+
+          # yt-dlp (standalone exe)
+          curl.exe -L -o bin/yt-dlp.exe "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe"
+
+          # aria2c (zip)
+          curl.exe -L -o aria2.zip "https://github.com/aria2/aria2/releases/download/release-1.37.0/aria2-1.37.0-win-64bit-build1.zip"
           Expand-Archive -LiteralPath aria2.zip -DestinationPath tmp_aria2
           $aria2Dir = Get-ChildItem -Recurse -Path tmp_aria2 -Filter aria2c.exe | Select-Object -First 1 | Split-Path -Parent
           Copy-Item -Recurse -Force "$aria2Dir\*" "bin\"
-          # mpv (x64)
-          Invoke-WebRequest -Uri "https://master.dl.sourceforge.net/project/mpv-player-windows/64bit/mpv-x86_64-20231231-git-abc2a74.7z" -OutFile "mpv.7z"
+
+          # mpv (x64) — pinned build from SourceForge download endpoint; use curl -L to follow redirects
+          $mpvUrl = "https://sourceforge.net/projects/mpv-player-windows/files/64bit/mpv-x86_64-20231231-git-abc2a74.7z/download"
+          curl.exe -L -o mpv.7z $mpvUrl
           ./7zr.exe x mpv.7z -obin -y | Out-Null
-          # Ensure mpv.exe is present
           $mpvExe = Get-ChildItem -Recurse -Path bin -Filter mpv.exe | Select-Object -First 1
           if (-not $mpvExe) { throw "mpv.exe not found after extraction" }
+
+          # ffmpeg essentials (zip) — copy ffmpeg.exe & ffprobe.exe
+          curl.exe -L -o ffmpeg.zip "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip"
+          Expand-Archive -LiteralPath ffmpeg.zip -DestinationPath tmp_ffmpeg
+          $ffmpegExe = Get-ChildItem -Recurse -Path tmp_ffmpeg -Filter ffmpeg.exe | Select-Object -First 1
+          $ffprobeExe = Get-ChildItem -Recurse -Path tmp_ffmpeg -Filter ffprobe.exe | Select-Object -First 1
+          if (-not $ffmpegExe) { throw "ffmpeg.exe not found after extraction" }
+          Copy-Item -Force $ffmpegExe.FullName bin/
+          if ($ffprobeExe) { Copy-Item -Force $ffprobeExe.FullName bin/ }
 
       - name: Build single EXE with PyInstaller
         shell: pwsh
