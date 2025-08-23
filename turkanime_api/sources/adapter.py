@@ -7,16 +7,37 @@ from tempfile import NamedTemporaryFile
 from os.path import join
 import subprocess as sp
 import re
+import unicodedata
 
 from yt_dlp import YoutubeDL
 
 from .animecix import _video_streams
 
 
+def _slugify(text: str) -> str:
+    """Basit ve güvenli bir slug üretici: ASCII'ye indirger, boşlukları '-' yapar, gereksizleri temizler."""
+    if not text:
+        return ""
+    # Unicode -> ASCII transliterasyon
+    t = unicodedata.normalize("NFKD", str(text))
+    t = t.encode("ascii", "ignore").decode("ascii")
+    t = t.lower()
+    t = re.sub(r"\s+", "-", t)
+    t = re.sub(r"[^a-z0-9\-]", "-", t)
+    t = re.sub(r"-+", "-", t).strip("-")
+    return t[:80]
+
+
 @dataclass
 class AdapterAnime:
     slug: str
     title: str
+
+    def __post_init__(self):
+        # Eğer slug sayı/ID ise ya da boşsa, başlıktan güvenli bir slug üret.
+        raw = (self.slug or "").strip()
+        if not raw or raw.isdigit() or not re.search(r"[a-zA-Z]", raw):
+            self.slug = _slugify(self.title)
 
 
 class AdapterVideo:
@@ -159,9 +180,8 @@ class AdapterBolum:
         self.url = url
         self._title = title
         self.anime = anime
-        # Basit, güvenli slug
-        safe = re.sub(r"[^a-z0-9\-]+", "-", title.lower().replace(" ", "-"))[:60]
-        self.slug = f"cix-{safe}"
+        # TürkAnime ile uyumlu: animeadı-bolumadı (klasör: anime.slug, dosya adı: animeadı-bolumadı)
+        self.slug = _slugify(f"{anime.title}-{title}" if anime else title)
 
     @property
     def title(self):

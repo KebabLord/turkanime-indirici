@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from typing import List, Dict, Any, Optional, Tuple
 import json
 import re
-from urllib.parse import urlparse, parse_qs
+from urllib.parse import urlparse, parse_qs, quote, urlsplit, urlunsplit
 
 import urllib.request
 
@@ -22,16 +22,21 @@ VIDEO_PLAYERS = ["tau-video.xyz", "sibnet"]
 
 
 def _http_get(url: str) -> bytes:
-    req = urllib.request.Request(url, headers=HEADERS)
+    # Non-ASCII pathleri ASCII'ye uygun hale getirmek için yüzde-encode et
+    sp = urlsplit(url)
+    safe_path = quote(sp.path, safe="/:%@")
+    # Query kısmı zaten ASCII ise aynen kullan; aksi durumda çağıran taraf urlencode etmelidir
+    safe_url = urlunsplit((sp.scheme, sp.netloc, safe_path, sp.query, sp.fragment))
+    req = urllib.request.Request(safe_url, headers=HEADERS)
     with urllib.request.urlopen(req) as resp:
         return resp.read()
 
 
 def search_animecix(query: str) -> List[Tuple[str, str]]:
-    # Türkçe karakter normalize ve boşluk -> -
-    q = query
-    q = q.replace(" ", "-")
-    url = f"{BASE_URL}secure/search/{q}?type=&limit=20"
+    # Boşluk -> '-' ve non-ASCII karakterleri encode et
+    q = (query or "").strip().replace(" ", "-")
+    q_enc = quote(q, safe="-")
+    url = f"{BASE_URL}secure/search/{q_enc}?type=&limit=20"
     data = json.loads(_http_get(url))
     results = []
     res = data.get("results") or []
@@ -77,7 +82,8 @@ def _video_streams(embed_path: str) -> List[Dict[str, str]]:
     # BASE_URL + embed path'e gidip yönlendirilmiş URL'den player id/vid al
     import http.client
     import ssl
-    full = f"{BASE_URL}{embed_path}"
+    # Embed path non-ASCII içerebilir; güvenle encode et
+    full = f"{BASE_URL}{quote(embed_path, safe='/:?=&')}"
     # Basit urllib ile final URL
     resp = urllib.request.urlopen(urllib.request.Request(full, headers=HEADERS))
     final_url = resp.geturl()

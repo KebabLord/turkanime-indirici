@@ -64,6 +64,14 @@ class DownloadCLI():
                     completed=completed,
                     total=total)
         if hook["status"] == "error":
+            # aria2c fallback veya hata mesajını bir kerelik yaz
+            msg = hook.get("message")
+            if msg:
+                try:
+                    from rich import print as rprint
+                    rprint(f"[red]Hata:[/red] {msg}")
+                except Exception:
+                    pass
             if self.progress.tasks:
                 # TODO: hata mesajı gösterilmeli
                 self.progress.tasks.pop(0)
@@ -118,13 +126,19 @@ def indirme_task_cli(bolum,table,dosya):
         # TODO: hata mesajı gösterilmeli
         return
     down_dir = dosya.ayarlar["indirilenler"]
-    if best_video.player != "ALUCARD(BETA)" and dosya.ayarlar.get("aria2c kullan"):
-        # Aria2C Hızlandırıcı İle Videoyu indir
-        indir_aria2c(best_video, callback=dl_cli.ytdl_callback, output=down_dir)
-    else:
-        # Yt-dlp ile Videoyu indir
-        best_video.indir(callback=dl_cli.ytdl_callback, output=down_dir)
-    dosya.set_gecmis(bolum.anime.slug, bolum.slug, "indirildi")
+    success = False
+    try:
+        if best_video.player != "ALUCARD(BETA)" and dosya.ayarlar.get("aria2c kullan"):
+            # Aria2C Hızlandırıcı ile indir (fallback içerir)
+            success = bool(indir_aria2c(best_video, callback=dl_cli.ytdl_callback, output=down_dir))
+        else:
+            # Yt-dlp ile İndir
+            best_video.indir(callback=dl_cli.ytdl_callback, output=down_dir)
+            success = True
+    except Exception:
+        success = False
+    if success:
+        dosya.set_gecmis(bolum.anime.slug, bolum.slug, "indirildi")
 
 
 def indir_aria2c(video, callback, output):
@@ -134,12 +148,31 @@ def indir_aria2c(video, callback, output):
     """
     subdir = path.join(output,(video.bolum.anime.slug if video.bolum.anime else ""))
     tmp = NamedTemporaryFile(delete=False)
+    # aria2c mevcut mu? yoksa direkt yt-dlp ile indir
+    try:
+        from shutil import which as _which
+        if not _which('aria2c'):
+            video.indir(callback, output)
+            return True
+    except Exception:
+        video.indir(callback, output)
+        return True
+
+    old_opts = dict(video.ydl_opts)
     video.ydl_opts = {
         **video.ydl_opts,
         'external_downloader' : {'default': 'aria2c'},
         'external_downloader_args': {'aria2c': [
-            '--quiet','--file-allocation=none',
-            '--log='+tmp.name,'--log-level=info']}
+            '--quiet',
+            '--file-allocation=none',
+            '--allow-overwrite=true',
+            '--auto-file-renaming=false',
+            '--check-certificate=false',
+            '--min-split-size=1M',
+            '--max-connection-per-server=16',
+            '--summary-interval=0',
+            '--log='+tmp.name,
+            '--log-level=info']}
     }
     is_finished = False
     def custom_hook():
@@ -158,8 +191,13 @@ def indir_aria2c(video, callback, output):
             # Calculate downloaded bytes from part files.
             downloaded = 0
             try:
+                slug = re.escape(video.bolum.slug)
                 for file in listdir(subdir):
-                    if not re.search(video.bolum.slug+r".*part(-Frag\d+)?$",file):
+                    # slug ile başlayan gerçek çıktı veya parça dosyaları
+                    if not re.match(rf"^{slug}\." , file):
+                        continue
+                    if file.endswith('.aria2'):
+                        # aria2 kontrol dosyası, boyuta eklenmez
                         continue
                     downloaded += path.getsize(path.join(subdir, file))
             except FileNotFoundError:
@@ -174,11 +212,49 @@ def indir_aria2c(video, callback, output):
                 "total_bytes": total})
     file_size_thread = Thread(target=custom_hook)
     file_size_thread.start()
-    video.indir(callback, output)
-    is_finished = True
-    file_size_thread.join()
-    callback({"status": "finished"})
-    del tmp
+    def _last_log_line():
+        try:
+            with open(tmp.name, encoding="utf-8", errors="ignore") as fp:
+                lines = [ln.strip() for ln in fp.readlines()]
+            for ln in reversed(lines):
+                if ln:
+                    return ln
+        except Exception:
+            pass
+        return None
+
+    ok = False
+    try:
+        video.indir(callback, output)
+        ok = True
+    except Exception as _e:
+        # aria2c başarısız olduysa fallback: yt-dlp ile indir
+        is_finished = True
+        file_size_thread.join()
+        last_ln = _last_log_line()
+        try:
+            payload = {"status": "error"}
+            if last_ln:
+                payload["message"] = last_ln
+            callback(payload)
+        except Exception:
+            pass
+        # external_downloader ayarlarını kaldır
+        video.ydl_opts = old_opts
+        # Yeniden indir (yt-dlp native)
+        try:
+            video.indir(callback, output)
+            ok = True
+        except Exception:
+            ok = False
+    else:
+        is_finished = True
+        file_size_thread.join()
+        callback({"status": "finished"})
+        ok = True
+    finally:
+        del tmp
+    return ok
 
 
 prompt_tema = styles.Style([

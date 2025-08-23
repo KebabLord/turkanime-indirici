@@ -67,6 +67,11 @@ class DownloadWorker(QtCore.QRunnable):
                 def hook(h):
                     # İlerleme bilgilerini topla
                     st = h.get("status")
+                    # aria2c hata mesajı varsa GUI loguna da düş
+                    if st == "error":
+                        msg = h.get("message")
+                        if msg:
+                            self.signals.progress.emit(f"{bolum.slug}: aria2c hata: {msg}")
                     cur = h.get("downloaded_bytes") or h.get("downloaded")
                     tot = h.get("total_bytes") or h.get("total_bytes_estimate") or h.get("total")
                     eta = h.get("eta")
@@ -114,19 +119,33 @@ class DownloadWorker(QtCore.QRunnable):
                         "eta": eta,
                     })
 
+                success = False
                 if best_video.player != "ALUCARD(BETA)" and dosya.ayarlar.get("aria2c kullan"):
-                    indir_aria2c(best_video, callback=hook, output=down_dir)
+                    try:
+                        success = bool(indir_aria2c(best_video, callback=hook, output=down_dir))
+                    except Exception:
+                        # Güvenli geri dönüş: yt-dlp ile devam et
+                        try:
+                            best_video.indir(callback=hook, output=down_dir)
+                            success = True
+                        except Exception:
+                            success = False
                 else:
-                    best_video.indir(callback=hook, output=down_dir)
-                dosya.set_gecmis(bolum.anime.slug, bolum.slug, "indirildi")
+                    try:
+                        best_video.indir(callback=hook, output=down_dir)
+                        success = True
+                    except Exception:
+                        success = False
+                if success:
+                    dosya.set_gecmis(bolum.anime.slug, bolum.slug, "indirildi")
                 # Tamamlandı sinyali
                 self.signals.progress_item.emit({
                     "slug": bolum.slug,
                     "title": bolum.title,
-                    "status": "tamamlandı",
+                    "status": ("tamamlandı" if success else "hata"),
                     "downloaded": last.get("b"),
                     "total": last.get("b"),
-                    "percent": 100,
+                    "percent": (100 if success else None),
                     "speed": None,
                     "eta": 0,
                 })
@@ -258,7 +277,7 @@ class EpisodesWorker(QtCore.QRunnable):
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("TürkAnimu")
+        self.setWindowTitle("TürkAnimu Gui by @barkeser2002")
         self.resize(1100, 720)
 
         # App icon

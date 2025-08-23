@@ -188,17 +188,19 @@ def menu_loop():
         elif islem == "Kaynak seç":
             ds = Dosyalar()
             kay = _norm_source(ds.ayarlar.get("kaynak", "turkanime"))
-            sec = qa.select(
+            # Questionary sürümleri arasında Choice(name,value) ile default eşleşmesi sorun çıkarabiliyor.
+            # Bu yüzden düz string seçenekler kullanıp başlıktan koda map ediyoruz.
+            secenekler = ["TürkAnime", "AnimeciX (deneysel)"]
+            varsayilan = _source_title(kay)  # "TürkAnime" veya "AnimeciX (deneysel)"
+            sec_title = qa.select(
                 "Kaynak seç",
-                choices=[
-                    qa.Choice("TürkAnime", "turkanime"),
-                    qa.Choice("AnimeciX (deneysel)", "animecix"),
-                ],
-                default=_source_title(kay),
+                choices=secenekler,
+                default=varsayilan,
                 style=prompt_tema,
                 instruction="Yukarı/Aşağı • Enter",
             ).ask()
-            if sec:
+            if sec_title:
+                sec = _norm_source(sec_title)
                 ds.set_ayar("kaynak", sec)
 
         elif islem == "Ayarlar":
