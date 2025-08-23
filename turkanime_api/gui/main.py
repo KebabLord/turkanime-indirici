@@ -3,6 +3,7 @@ from __future__ import annotations
 from PyQt6 import QtCore, QtGui, QtWidgets
 from typing import Optional, List
 import sys
+import os
 import concurrent.futures as cf
 
 from turkanime_api.objects import Anime, Bolum
@@ -134,6 +135,33 @@ class DownloadWorker(QtCore.QRunnable):
             self.signals.error.emit(str(e))
 
 
+def _resource_path(rel_path: str) -> str:
+    """PyInstaller tek-dosya ve geliştirme ortamında kaynak yolu çözer.
+
+    - Çalışma zamanı (_MEIPASS) içinde: docs klasörü Analysis.datas ile köke kopyalanır.
+      boot.py ve spec, docs/TurkAnimu.ico'yu datas'a ekliyor; bu yüzden _MEIPASS/docs/... bekleriz.
+    - Geliştirme sırasında: proje kökü altındaki göreli yol kullanılır.
+    """
+    try:
+        base = getattr(sys, "_MEIPASS", None)
+        if base and os.path.isdir(base):
+            cand = os.path.join(base, rel_path)
+            if os.path.exists(cand):
+                return cand
+    except Exception:
+        pass
+    # Proje kökü: bu dosyanın 3 üstü
+    try:
+        root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+        cand = os.path.join(root, rel_path)
+        if os.path.exists(cand):
+            return cand
+    except Exception:
+        pass
+    # Son çare: göreli yol
+    return rel_path
+
+
 class VideoFindWorker(QtCore.QRunnable):
     """Bölüm için en uygun videoyu bulur ve sonucu döndürür."""
 
@@ -169,7 +197,9 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # App icon
         try:
-            self.setWindowIcon(QtGui.QIcon("docs/TurkAnimu.ico"))
+            icon_path = _resource_path(os.path.join('docs', 'TurkAnimu.ico'))
+            if os.path.exists(icon_path):
+                self.setWindowIcon(QtGui.QIcon(icon_path))
         except Exception:
             pass
 
@@ -619,6 +649,13 @@ def run():
     os.environ["PATH"] = sep.join([p for p in path_parts if p])
 
     app = QtWidgets.QApplication(sys.argv)
+    # Uygulama simgesi (genel)
+    try:
+        _icon_path = _resource_path(os.path.join('docs', 'TurkAnimu.ico'))
+        if os.path.exists(_icon_path):
+            app.setWindowIcon(QtGui.QIcon(_icon_path))
+    except Exception:
+        pass
     # Tutarlı, modern bir görünüm
     app.setStyle("Fusion")
     palette = app.palette()
