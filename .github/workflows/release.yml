@@ -61,18 +61,39 @@ jobs:
         run: |
           python -m PyInstaller pyinstaller.spec
 
+      - name: Build CLI (PyInstaller)
+        shell: bash
+        run: |
+          if [[ "$RUNNER_OS" == "Windows" ]]; then SEP=';'; else SEP=':'; fi
+          python -m PyInstaller \
+            --noconfirm \
+            --name turkanime-cli \
+            --onefile \
+            --console \
+            --hidden-import yt_dlp \
+            --hidden-import curl_cffi \
+            --hidden-import Crypto \
+            --add-data "gereksinimler.json${SEP}." \
+            turkanime_api/cli/__main__.py
+
       - name: Rename artifact per OS
         shell: bash
         run: |
           if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
             mv dist/turkanime-gui.exe dist/turkanime-gui-windows.exe
             certutil -hashfile dist/turkanime-gui-windows.exe MD5 > dist/turkanime-gui-windows.exe.md5 || echo "md5 skipped"
+            if [[ -f dist/turkanime-cli.exe ]]; then mv dist/turkanime-cli.exe dist/turkanime-cli-windows.exe; fi
+            if [[ -f dist/turkanime-cli-windows.exe ]]; then certutil -hashfile dist/turkanime-cli-windows.exe MD5 > dist/turkanime-cli-windows.exe.md5 || echo "md5 skipped"; fi
           elif [[ "${{ matrix.os }}" == "ubuntu-latest" ]]; then
             mv dist/turkanime-gui dist/turkanime-gui-linux
             md5sum dist/turkanime-gui-linux > dist/turkanime-gui-linux.md5 || echo "md5 skipped"
+            if [[ -f dist/turkanime-cli ]]; then mv dist/turkanime-cli dist/turkanime-cli-linux; fi
+            if [[ -f dist/turkanime-cli-linux ]]; then md5sum dist/turkanime-cli-linux > dist/turkanime-cli-linux.md5 || echo "md5 skipped"; fi
           else
             mv dist/turkanime-gui dist/turkanime-gui-macos
             md5 -r dist/turkanime-gui-macos > dist/turkanime-gui-macos.md5 || echo "md5 skipped"
+            if [[ -f dist/turkanime-cli ]]; then mv dist/turkanime-cli dist/turkanime-cli-macos; fi
+            if [[ -f dist/turkanime-cli-macos ]]; then md5 -r dist/turkanime-cli-macos > dist/turkanime-cli-macos.md5 || echo "md5 skipped"; fi
           fi
 
       - name: Upload artifact
@@ -83,6 +104,9 @@ jobs:
             dist/turkanime-gui-windows.exe
             dist/turkanime-gui-linux
             dist/turkanime-gui-macos
+            dist/turkanime-cli-windows.exe
+            dist/turkanime-cli-linux
+            dist/turkanime-cli-macos
           if-no-files-found: ignore
 
   release:
