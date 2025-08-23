@@ -47,6 +47,15 @@ def eps_to_choices(liste, mark_type):
     return choices, recent
 
 
+def _norm_source(val: str) -> str:
+    s = str(val or "").lower()
+    return "animecix" if "animecix" in s else "turkanime"
+
+
+def _source_title(code: str) -> str:
+    return "AnimeciX (deneysel)" if _norm_source(code) == "animecix" else "TürkAnime"
+
+
 def menu_loop():
     """ Ana menü interaktif navigasyonu """
     while True:
@@ -63,7 +72,7 @@ def menu_loop():
         if "Anime" in islem:
             # Seriyi seç
             try:
-                kay = Dosyalar().ayarlar.get("kaynak", "turkanime")
+                kay = _norm_source(Dosyalar().ayarlar.get("kaynak", "turkanime"))
                 if kay == "animecix":
                     q = qa.text("AnimeciX: aramak için yazın", style=prompt_tema).ask(kbi_msg="")
                     if not q:
@@ -178,14 +187,14 @@ def menu_loop():
 
         elif islem == "Kaynak seç":
             ds = Dosyalar()
-            kay = ds.ayarlar.get("kaynak", "turkanime")
+            kay = _norm_source(ds.ayarlar.get("kaynak", "turkanime"))
             sec = qa.select(
                 "Kaynak seç",
                 choices=[
                     qa.Choice("TürkAnime", "turkanime"),
                     qa.Choice("AnimeciX (deneysel)", "animecix"),
                 ],
-                default=kay,
+                default=_source_title(kay),
                 style=prompt_tema,
                 instruction="Yukarı/Aşağı • Enter",
             ).ask()
