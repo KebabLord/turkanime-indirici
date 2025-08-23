@@ -18,7 +18,7 @@ def _prepare_qt_env():
 
 def main():
     _prepare_qt_env()
-    from . import main as gui_main
+    from turkanime_api.gui import main as gui_main
     gui_main.run()
 
 
