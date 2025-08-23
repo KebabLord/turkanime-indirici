@@ -7,3 +7,4 @@ turkanime_api/__pycache__/*
 .vscode/*
 build/*
 dist/*
+turkanime_api/gui/__pycache__/*
