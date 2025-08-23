@@ -11,6 +11,8 @@ from turkanime_api.bypass import fetch
 from turkanime_api.cli.dosyalar import Dosyalar
 from turkanime_api.cli.cli_tools import VidSearchCLI, indir_aria2c
 from turkanime_api.cli.gereksinimler import Gereksinimler
+from turkanime_api.sources.animecix import CixAnime, search_animecix
+from turkanime_api.sources.adapter import AdapterAnime, AdapterBolum
 
 
 class WorkerSignals(QtCore.QObject):
@@ -48,7 +50,10 @@ class DownloadWorker(QtCore.QRunnable):
                     "speed": None,
                     "eta": None,
                 })
-                best_video = bolum.best_video(by_res=dosya.ayarlar.get("max resolution", True))
+                best_video = bolum.best_video(
+                    by_res=dosya.ayarlar.get("max resolution", True),
+                    early_subset=dosya.ayarlar.get("1080p aday sayısı", 8),
+                )
                 if not best_video:
                     self.signals.error_item.emit({
                         "slug": bolum.slug,
@@ -177,6 +182,7 @@ class VideoFindWorker(QtCore.QRunnable):
             vid_cli = VidSearchCLI()
             best = self.bolum.best_video(
                 by_res=dosya.ayarlar.get("max resolution", True),
+                early_subset=dosya.ayarlar.get("1080p aday sayısı", 8),
                 callback=vid_cli.callback,
             )
             if not best:
@@ -185,6 +191,66 @@ class VideoFindWorker(QtCore.QRunnable):
             self.signals.progress.emit("Video bulundu")
             self.signals.success.emit()
             self.signals.found.emit(best)
+        except Exception as e:
+            self.signals.error.emit(str(e))
+
+
+class SearchWorker(QtCore.QRunnable):
+    """Kaynağa göre arama yapan worker."""
+
+    def __init__(self, source: str, query: str):
+        super().__init__()
+        self.source = source
+        self.query = query
+        self.signals = WorkerSignals()
+
+    @QtCore.pyqtSlot()
+    def run(self):
+        try:
+            results = []
+            q = (self.query or "").strip()
+            if not q:
+                self.signals.found.emit([])
+                return
+            if self.source == "TürkAnime":
+                all_list = Anime.get_anime_listesi()
+                for slug, name in all_list:
+                    if q.lower() in (name or "").lower():
+                        results.append({"source": "TürkAnime", "slug": slug, "title": name})
+            else:
+                for _id, name in search_animecix(q):
+                    results.append({"source": "AnimeciX", "id": int(_id), "title": name})
+            self.signals.found.emit(results)
+        except Exception as e:
+            self.signals.error.emit(str(e))
+
+
+class EpisodesWorker(QtCore.QRunnable):
+    """Seçilen anime için bölüm listesini yükler."""
+
+    def __init__(self, anime_item: dict):
+        super().__init__()
+        self.anime_item = anime_item
+        self.signals = WorkerSignals()
+
+    @QtCore.pyqtSlot()
+    def run(self):
+        try:
+            src = self.anime_item.get("source")
+            out_items = []
+            if src == "TürkAnime":
+                ani = Anime(self.anime_item.get("slug"))
+                bolumler = ani.bolumler
+                for b in bolumler:
+                    out_items.append({"title": b.title, "obj": b})
+            else:
+                cix = CixAnime(id=int(self.anime_item.get("id")), title=self.anime_item.get("title"))
+                cix_eps = cix.episodes
+                ada = AdapterAnime(slug=str(cix.id), title=cix.title)
+                for e in cix_eps:
+                    ab = AdapterBolum(url=e.url, title=e.title, anime=ada)
+                    out_items.append({"title": e.title, "obj": ab})
+            self.signals.found.emit(out_items)
         except Exception as e:
             self.signals.error.emit(str(e))
 
@@ -208,21 +274,24 @@ class MainWindow(QtWidgets.QMainWindow):
         # Ana widget -> TabWidget
         self.tabs = QtWidgets.QTabWidget()
         self.setCentralWidget(self.tabs)
-
         # Keşfet sekmesi
         page_main = QtWidgets.QWidget()
-        main = QtWidgets.QVBoxLayout(page_main)
+        main_layout = QtWidgets.QVBoxLayout(page_main)
 
         # Üst: arama ve aksiyonlar
         top_bar = QtWidgets.QHBoxLayout()
         self.searchEdit = QtWidgets.QLineEdit()
         self.searchEdit.setPlaceholderText("Anime ara…")
+        # Kaynak seçimi
+        self.cmbSource = QtWidgets.QComboBox()
+        self.cmbSource.addItems(["TürkAnime", "AnimeciX"])
         self.btnSearch = QtWidgets.QPushButton("Ara")
         self.btnSettings = QtWidgets.QPushButton("Ayarlar")
         top_bar.addWidget(self.searchEdit, 1)
+        top_bar.addWidget(self.cmbSource)
         top_bar.addWidget(self.btnSearch)
         top_bar.addWidget(self.btnSettings)
-        main.addLayout(top_bar)
+        main_layout.addLayout(top_bar)
 
         # Orta: listeler
         splitter = QtWidgets.QSplitter()
@@ -243,7 +312,7 @@ class MainWindow(QtWidgets.QMainWindow):
         splitter.addWidget(self.lstBolum)
 
         splitter.setSizes([350, 750])
-        main.addWidget(splitter, 1)
+        main_layout.addWidget(splitter, 1)
 
         # Alt: eylem düğmeleri
         actions = QtWidgets.QHBoxLayout()
@@ -251,7 +320,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.btnDownload = QtWidgets.QPushButton("İndir")
         actions.addWidget(self.btnPlay)
         actions.addWidget(self.btnDownload)
-        main.addLayout(actions)
+        main_layout.addLayout(actions)
 
         # Durum çubuğu
         self.status = QtWidgets.QStatusBar()
@@ -275,6 +344,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # İndirme satır indeksleri
         self._dl_rows = {}  # slug -> row index
+        self._selection_token = 0  # anime seçimi için yarış durumunu yönet
 
         # Sinyaller
         self.btnSearch.clicked.connect(self.on_search)
@@ -283,6 +353,16 @@ class MainWindow(QtWidgets.QMainWindow):
         self.btnPlay.clicked.connect(self.on_play_selected)
         self.btnDownload.clicked.connect(self.on_download_selected)
         self.btnSettings.clicked.connect(self.on_open_settings)
+        self.cmbSource.currentTextChanged.connect(self.on_source_changed)
+
+        # Varsayılan kaynağı ayarlardan yükle
+        try:
+            kay = self.dosya.ayarlar.get("kaynak", "TürkAnime")
+            idx = self.cmbSource.findText(kay)
+            if idx >= 0:
+                self.cmbSource.setCurrentIndex(idx)
+        except Exception:
+            pass
 
         # Başlarken gereksinimleri kontrol et (bloklamasın diye iş parçacığında çalıştır)
         QtCore.QTimer.singleShot(100, self.check_requirements_async)
@@ -332,75 +412,71 @@ class MainWindow(QtWidgets.QMainWindow):
         fut.add_done_callback(_done)
 
     def on_search(self):
-        query = self.searchEdit.text().strip().lower()
+        query = self.searchEdit.text().strip()
         if not query:
             return
-        self.message("Anime listesi getiriliyor…")
-
-        def _load():
-            return Anime.get_anime_listesi()
-
-        pool = cf.ThreadPoolExecutor(max_workers=1)
-        fut = pool.submit(_load)
-
-        def _done(_):
+        self.message("Aranıyor…")
+        worker = SearchWorker(self.cmbSource.currentText(), query)
+        worker.signals.error.connect(lambda m: self.message(m, error=True))
+        def _populate(res_list):
             try:
-                all_list = fut.result()
+                self.lstAnime.clear()
+                for it in res_list:
+                    item = QtWidgets.QListWidgetItem(it.get("title") or "")
+                    item.setData(QtCore.Qt.ItemDataRole.UserRole, it)
+                    self.lstAnime.addItem(item)
+                if self.lstAnime.count() == 0:
+                    self.message("Sonuç bulunamadı")
+                else:
+                    self.message(f"{self.lstAnime.count()} sonuç")
             except Exception as e:
                 self.message(str(e), error=True)
-                return
-            self.lstAnime.clear()
-            for slug, name in all_list:
-                if query in name.lower():
-                    item = QtWidgets.QListWidgetItem(name)
-                    item.setData(QtCore.Qt.ItemDataRole.UserRole, slug)
-                    self.lstAnime.addItem(item)
-            if self.lstAnime.count() == 0:
-                self.message("Sonuç bulunamadı")
-            else:
-                self.message(f"{self.lstAnime.count()} sonuç")
-        fut.add_done_callback(_done)
+        worker.signals.found.connect(_populate)
+        self.pool.start(worker)
 
     def on_anime_selected(self):
         items = self.lstAnime.selectedItems()
         if not items:
             return
-        slug = items[0].data(QtCore.Qt.ItemDataRole.UserRole)
+        anime_item = items[0].data(QtCore.Qt.ItemDataRole.UserRole)
+        # Yarışları önlemek için token artır
+        self._selection_token += 1
+        token = self._selection_token
         self.message("Bölümler yükleniyor…")
-
-        def _load():
-            anime = Anime(slug)
-            return anime.bolumler
-
-        pool = cf.ThreadPoolExecutor(max_workers=1)
-        fut = pool.submit(_load)
-
-        def _done(_):
+        worker = EpisodesWorker(anime_item)
+        worker.signals.error.connect(lambda m: self.message(m, error=True))
+        def _populate(bol_list):
+            # Token eşleşmesi
+            if token != self._selection_token:
+                return
             try:
-                bolumler = fut.result()
+                self.lstBolum.clear()
+                dosya = Dosyalar()
+                gecmis = dosya.gecmis
+                izlenen = gecmis.get("izlendi", {})
+                indirilen = gecmis.get("indirildi", {})
+                anime_slug = None
+                if bol_list:
+                    obj0 = bol_list[0].get("obj")
+                    anime_slug = getattr(getattr(obj0, 'anime', None), 'slug', None)
+                for ent in bol_list:
+                    bol = ent.get("obj")
+                    text = ent.get("title") or getattr(bol, 'title', "Bölüm")
+                    marks = []
+                    if anime_slug and anime_slug in izlenen and bol.slug in izlenen[anime_slug]:
+                        marks.append("●")
+                    if anime_slug and anime_slug in indirilen and bol.slug in indirilen[anime_slug]:
+                        marks.append("↓")
+                    if marks:
+                        text += "  " + " ".join(marks)
+                    item = QtWidgets.QListWidgetItem(text)
+                    item.setData(QtCore.Qt.ItemDataRole.UserRole, bol)
+                    self.lstBolum.addItem(item)
+                self.message(f"{self.lstBolum.count()} bölüm yüklendi")
             except Exception as e:
                 self.message(str(e), error=True)
-                return
-            self.lstBolum.clear()
-            dosya = Dosyalar()
-            gecmis = dosya.gecmis
-            izlenen = gecmis.get("izlendi", {})
-            indirilen = gecmis.get("indirildi", {})
-            anime_slug = bolumler[0].anime.slug if bolumler else ""
-            for bol in bolumler:
-                text = bol.title
-                marks = []
-                if anime_slug in izlenen and bol.slug in izlenen[anime_slug]:
-                    marks.append("●")
-                if anime_slug in indirilen and bol.slug in indirilen[anime_slug]:
-                    marks.append("↓")
-                if marks:
-                    text += "  " + " ".join(marks)
-                item = QtWidgets.QListWidgetItem(text)
-                item.setData(QtCore.Qt.ItemDataRole.UserRole, bol)
-                self.lstBolum.addItem(item)
-            self.message(f"{self.lstBolum.count()} bölüm yüklendi")
-        fut.add_done_callback(_done)
+        worker.signals.found.connect(_populate)
+        self.pool.start(worker)
 
     def _get_selected_bolumler(self) -> List[Bolum]:
         return [i.data(QtCore.Qt.ItemDataRole.UserRole) for i in self.lstBolum.selectedItems()]
@@ -456,6 +532,15 @@ class MainWindow(QtWidgets.QMainWindow):
     def on_open_settings(self):
         d = SettingsDialog(self)
         d.exec()
+
+    def on_source_changed(self, text: str):
+        try:
+            self.dosya.set_ayar("kaynak", text)
+        except Exception:
+            pass
+        # Liste temizle
+        self.lstAnime.clear()
+        self.lstBolum.clear()
 
     # --- İndirme tablosu yardımcıları ---
     def _ensure_dl_row(self, bolum: Bolum):
@@ -559,6 +644,15 @@ class SettingsDialog(QtWidgets.QDialog):
         self.dosya = Dosyalar()
         a = self.dosya.ayarlar
 
+        self.cmbSource = QtWidgets.QComboBox()
+        self.cmbSource.addItems(["TürkAnime", "AnimeciX"])
+        try:
+            idx = self.cmbSource.findText(a.get("kaynak", "TürkAnime"))
+            if idx >= 0:
+                self.cmbSource.setCurrentIndex(idx)
+        except Exception:
+            pass
+
         self.chkManuel = QtWidgets.QCheckBox()
         self.chkManuel.setChecked(a.get("manuel fansub", False))
 
@@ -575,6 +669,10 @@ class SettingsDialog(QtWidgets.QDialog):
         self.chkMaxRes = QtWidgets.QCheckBox()
         self.chkMaxRes.setChecked(a.get("max resolution", True))
 
+        self.spinEarlySubset = QtWidgets.QSpinBox()
+        self.spinEarlySubset.setRange(1, 32)
+        self.spinEarlySubset.setValue(a.get("1080p aday sayısı", 8))
+
         self.chkRememberMin = QtWidgets.QCheckBox()
         self.chkRememberMin.setChecked(a.get("dakika hatirla", True))
 
@@ -590,11 +688,13 @@ class SettingsDialog(QtWidgets.QDialog):
         wRow.setLayout(btnRow)
 
         layout.addRow("İndirilenler klasörü:", wRow)
+        layout.addRow("Kaynak:", self.cmbSource)
         layout.addRow("İzlerken kaydet:", self.chkSaveWhileWatch)
         layout.addRow("Manuel fansub seçimi:", self.chkManuel)
         layout.addRow("İzlendi/İndirildi ikonu:", self.chkWatchedIcon)
         layout.addRow("Paralel indirme sayısı:", self.spinParallel)
         layout.addRow("Maksimum çözünürlük:", self.chkMaxRes)
+        layout.addRow("1080p aday sayısı:", self.spinEarlySubset)
         layout.addRow("Kaldığın dakikayı hatırla:", self.chkRememberMin)
         layout.addRow("Aria2c kullan:", self.chkAria2)
 
@@ -618,9 +718,11 @@ class SettingsDialog(QtWidgets.QDialog):
         self.dosya.set_ayar("izlendi ikonu", self.chkWatchedIcon.isChecked())
         self.dosya.set_ayar("paralel indirme sayisi", int(self.spinParallel.value()))
         self.dosya.set_ayar("max resolution", self.chkMaxRes.isChecked())
+        self.dosya.set_ayar("1080p aday sayısı", int(self.spinEarlySubset.value()))
         self.dosya.set_ayar("dakika hatirla", self.chkRememberMin.isChecked())
         self.dosya.set_ayar("aria2c kullan", self.chkAria2.isChecked())
         self.dosya.set_ayar("indirilenler", self.txtDownloads.text())
+        self.dosya.set_ayar("kaynak", self.cmbSource.currentText())
         self.accept()
 
 

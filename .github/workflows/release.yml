@@ -66,10 +66,13 @@ jobs:
         run: |
           if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
             mv dist/turkanime-gui.exe dist/turkanime-gui-windows.exe
+            certutil -hashfile dist/turkanime-gui-windows.exe MD5 > dist/turkanime-gui-windows.exe.md5 || echo "md5 skipped"
           elif [[ "${{ matrix.os }}" == "ubuntu-latest" ]]; then
             mv dist/turkanime-gui dist/turkanime-gui-linux
+            md5sum dist/turkanime-gui-linux > dist/turkanime-gui-linux.md5 || echo "md5 skipped"
           else
             mv dist/turkanime-gui dist/turkanime-gui-macos
+            md5 -r dist/turkanime-gui-macos > dist/turkanime-gui-macos.md5 || echo "md5 skipped"
           fi
 
       - name: Upload artifact

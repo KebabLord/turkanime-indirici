@@ -21,6 +21,7 @@ python -m PyInstaller pyinstaller.spec
 Notlar:
 - Proje kökünde `bin/` klasörü varsa içeriği paketlenir (mpv, aria2c, ffmpeg, yt-dlp vb.). CI yalnızca Windows’ta bu klasörü otomatik hazırlar.
 - Uygulama simgesi `docs/TurkAnimu.ico` dosyasından yüklenir.
+ - İsteğe bağlı doğrulama: `dist/` altındaki çıktılar için MD5 özetini oluşturmak isterseniz Windows’ta `docs/hash_dist_md5.bat` betiğini çalıştırabilirsiniz. CLI build betiği (`docs/build_exe.bat`) MD5 dosyalarını otomatik üretir.
 
 ## Çalıştırma
 

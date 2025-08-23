@@ -41,6 +41,10 @@ echo compiled.py yaratiliyor..
 echo EXE derleniyor..
 pyinstaller --noconfirm --onefile --console --icon "docs\TurkAnimu.ico" --name "TurkAnimu" --version-file versionfile.txt "compiled.py" && (
   echo Hersey yolunda gitti, calistirilabilir dosya: dist/TurkAnimu.exe
+  for %%F in (dist\*.exe) do (
+    certutil -hashfile "%%F" MD5 > "%%F.md5"
+    echo MD5 olusturuldu: %%F.md5
+  )
 )
 
 echo.
