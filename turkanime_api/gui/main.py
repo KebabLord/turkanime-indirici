@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from PyQt6 import QtCore, QtGui, QtWidgets
-from typing import Optional, List
+from typing import List
 import sys
 import os
 import concurrent.futures as cf
+from PyQt6 import QtCore, QtGui, QtWidgets
 
 from turkanime_api.objects import Anime, Bolum
 from turkanime_api.bypass import fetch
@@ -500,7 +500,7 @@ class MainWindow(QtWidgets.QMainWindow):
             # Boyut
             def mb(x):
                 return int(x/1024/1024) if isinstance(x,(int,float)) else None
-            size_text = "";
+            size_text = ""
             mcur, mtot = mb(cur), mb(tot)
             if mcur is not None and mtot is not None:
                 size_text = f"{mcur} / {mtot} MB"
@@ -625,7 +625,6 @@ class SettingsDialog(QtWidgets.QDialog):
 
 
 def run():
-    import os
     # PATH'e uygulama dizinini ekle (mpv, yt-dlp, aria2c için)
     sep = ";" if os.name == "nt" else ":"
     path_parts = [os.environ.get("PATH", "")]
@@ -633,8 +632,7 @@ def run():
     path_parts.append(Dosyalar().ta_path)
     # PyInstaller içindeysek _MEIPASS/bin
     try:
-        import sys as _sys
-        _meipass = getattr(_sys, "_MEIPASS", None)
+        _meipass = getattr(sys, "_MEIPASS", None)
         if _meipass:
             path_parts.append(os.path.join(_meipass, "bin"))
     except Exception:

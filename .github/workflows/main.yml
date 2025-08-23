@@ -13,6 +13,9 @@ jobs:
           pip install --upgrade pyOpenSSL;
           grep -v py7zr requirements.txt > req2.txt;
           pip install -r req2.txt;
+          # GUI bağımlılıkları (PyQt6) da yüklensin ki import hataları yaşanmasın
+          if [ -f requirements-gui.txt ]; then pip install -r requirements-gui.txt; else pip install PyQt6; fi;
           pylint --ignored-modules py7zr -E **/*.py &&
           pylint --ignored-modules py7zr turkanime_api/ --fail-under 8.2 &&
-          pylint --ignored-modules py7zr turkanime.py --fail-under 9.2
+          # turkanime.py yoksa bu adımı atla
+          if [ -f turkanime.py ]; then pylint --ignored-modules py7zr turkanime.py --fail-under 9.2; fi

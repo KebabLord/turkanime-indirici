@@ -25,7 +25,7 @@ Notlar:
 ## Çalıştırma
 
 Derlenmiş ikiliyi doğrudan çalıştırın:
-- Windows: `dist/turkanime-gui-windows.exe`
+- Windows: `dist/turkanime-gui.exe`
 - Linux: `dist/turkanime-gui-linux`
 - macOS: `dist/turkanime-gui-macos`
 
