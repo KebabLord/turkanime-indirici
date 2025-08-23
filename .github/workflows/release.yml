@@ -1,0 +1,175 @@
+name: Build and Release GUI
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  build:
+    name: Build (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        shell: bash
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-gui.txt
+          pip install pyinstaller
+
+      - name: Prepare embedded runtime (Windows only)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path bin | Out-Null
+          Invoke-WebRequest -Uri "https://www.7-zip.org/a/7zr.exe" -OutFile "7zr.exe"
+          # yt-dlp
+          curl.exe -L -o bin/yt-dlp.exe "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe"
+          # aria2c
+          curl.exe -L -o aria2.zip "https://github.com/aria2/aria2/releases/download/release-1.37.0/aria2-1.37.0-win-64bit-build1.zip"
+          Expand-Archive -LiteralPath aria2.zip -DestinationPath tmp_aria2
+          $aria2Dir = Get-ChildItem -Recurse -Path tmp_aria2 -Filter aria2c.exe | Select-Object -First 1 | Split-Path -Parent
+          Copy-Item -Recurse -Force "$aria2Dir\*" "bin\"
+          # mpv
+          $mpvUrl = "https://sourceforge.net/projects/mpv-player-windows/files/64bit/mpv-x86_64-20231231-git-abc2a74.7z/download"
+          curl.exe -L -o mpv.7z $mpvUrl
+          ./7zr.exe x mpv.7z -obin -y | Out-Null
+          $mpvExe = Get-ChildItem -Recurse -Path bin -Filter mpv.exe | Select-Object -First 1
+          if (-not $mpvExe) { throw "mpv.exe not found after extraction" }
+          # ffmpeg
+          curl.exe -L -o ffmpeg.zip "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip"
+          Expand-Archive -LiteralPath ffmpeg.zip -DestinationPath tmp_ffmpeg
+          $ffmpegExe = Get-ChildItem -Recurse -Path tmp_ffmpeg -Filter ffmpeg.exe | Select-Object -First 1
+          $ffprobeExe = Get-ChildItem -Recurse -Path tmp_ffmpeg -Filter ffprobe.exe | Select-Object -First 1
+          if (-not $ffmpegExe) { throw "ffmpeg.exe not found after extraction" }
+          Copy-Item -Force $ffmpegExe.FullName bin/
+          if ($ffprobeExe) { Copy-Item -Force $ffprobeExe.FullName bin/ }
+
+      - name: Build with PyInstaller (spec)
+        shell: bash
+        run: |
+          python -m PyInstaller pyinstaller.spec
+
+      - name: Build CLI (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller pyinstaller_versionfile
+
+          Remove-Item -Force version_generator.py -ErrorAction Ignore
+          Add-Content -Path version_generator.py -Value "import pyinstaller_versionfile"
+          Add-Content -Path version_generator.py -Value "from turkanime_api.cli.version import __version__"
+          Add-Content -Path version_generator.py -Value ""
+          Add-Content -Path version_generator.py -Value "pyinstaller_versionfile.create_versionfile("
+          Add-Content -Path version_generator.py -Value "    output_file='versionfile.txt',"
+          Add-Content -Path version_generator.py -Value "    version=__version__,"
+          Add-Content -Path version_generator.py -Value "    company_name='TurkAnimu Dev',"
+          Add-Content -Path version_generator.py -Value "    file_description='Anime İndirici & Oynatıcı',"
+          Add-Content -Path version_generator.py -Value "    internal_name='TurkAnimu',"
+          Add-Content -Path version_generator.py -Value "    legal_copyright='© KebabLord, All rights reserved.',"
+          Add-Content -Path version_generator.py -Value "    original_filename='TurkAnimu.exe',"
+          Add-Content -Path version_generator.py -Value "    product_name='TurkAnimu İndirici'"
+          Add-Content -Path version_generator.py -Value ")"
+          python version_generator.py
+
+          Remove-Item -Force compiled.py -ErrorAction Ignore
+          Add-Content -Path compiled.py -Value 'from turkanime_api.cli.__main__ import main'
+          Add-Content -Path compiled.py -Value 'if __name__ == "__main__":'
+          Add-Content -Path compiled.py -Value '    main()'
+
+          pyinstaller --noconfirm --onefile --console `
+            --icon "docs\TurkAnimu.ico" `
+            --name "TurkAnimu" `
+            --version-file versionfile.txt `
+            --hidden-import yt_dlp `
+            --hidden-import curl_cffi `
+            --hidden-import Crypto `
+            --add-data "gereksinimler.json;." `
+            compiled.py
+
+      - name: Build CLI (Linux/macOS)
+        if: matrix.os != 'windows-latest'
+        shell: bash
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          python -m pip install pyinstaller
+          printf '%s\n' \
+            'from turkanime_api.cli.__main__ import main' \
+            'if __name__ == "__main__":' \
+            '    main()' > compiled.py
+          python -m PyInstaller \
+            --noconfirm \
+            --name turkanime-cli \
+            --onefile \
+            --console \
+            --hidden-import yt_dlp \
+            --hidden-import curl_cffi \
+            --hidden-import Crypto \
+            --add-data "gereksinimler.json:." \
+            compiled.py
+
+      - name: Rename artifact per OS
+        shell: bash
+        run: |
+          if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
+            mv dist/turkanime-gui.exe dist/turkanime-gui-windows.exe
+            certutil -hashfile dist/turkanime-gui-windows.exe MD5 > dist/turkanime-gui-windows.exe.md5 || echo "md5 skipped"
+            if [[ -f dist/TurkAnimu.exe ]]; then mv dist/TurkAnimu.exe dist/turkanime-cli-windows.exe; elif [[ -f dist/turkanime-cli.exe ]]; then mv dist/turkanime-cli.exe dist/turkanime-cli-windows.exe; fi
+            if [[ -f dist/turkanime-cli-windows.exe ]]; then certutil -hashfile dist/turkanime-cli-windows.exe MD5 > dist/turkanime-cli-windows.exe.md5 || echo "md5 skipped"; fi
+          elif [[ "${{ matrix.os }}" == "ubuntu-latest" ]]; then
+            mv dist/turkanime-gui dist/turkanime-gui-linux
+            md5sum dist/turkanime-gui-linux > dist/turkanime-gui-linux.md5 || echo "md5 skipped"
+            if [[ -f dist/turkanime-cli ]]; then mv dist/turkanime-cli dist/turkanime-cli-linux; fi
+            if [[ -f dist/turkanime-cli-linux ]]; then md5sum dist/turkanime-cli-linux > dist/turkanime-cli-linux.md5 || echo "md5 skipped"; fi
+          else
+            mv dist/turkanime-gui dist/turkanime-gui-macos
+            md5 -r dist/turkanime-gui-macos > dist/turkanime-gui-macos.md5 || echo "md5 skipped"
+            if [[ -f dist/turkanime-cli ]]; then mv dist/turkanime-cli dist/turkanime-cli-macos; fi
+            if [[ -f dist/turkanime-cli-macos ]]; then md5 -r dist/turkanime-cli-macos > dist/turkanime-cli-macos.md5 || echo "md5 skipped"; fi
+          fi
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: turkanime-gui-${{ matrix.os }}
+          path: |
+            dist/turkanime-gui-windows.exe
+            dist/turkanime-gui-linux
+            dist/turkanime-gui-macos
+            dist/turkanime-cli-windows.exe
+            dist/turkanime-cli-linux
+            dist/turkanime-cli-macos
+          if-no-files-found: ignore
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: turkanime-gui-*
+          path: dist
+          merge-multiple: true
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/**
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

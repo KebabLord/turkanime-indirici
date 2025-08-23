@@ -38,7 +38,8 @@ class Dosyalar:
             "paralel indirme sayisi" : 3,
             "max resolution" : True,
             "dakika hatirla" : True,
-            "aria2c kullan" : False
+            "aria2c kullan" : False,
+            "kaynak": "turkanime"
         }
         # Gerekli dosyalar eğer daha önce yaratılmadıysa yarat.
         if not path.isdir(".git") and not path.isdir(self.ta_path):
