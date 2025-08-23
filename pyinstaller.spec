@@ -11,7 +11,7 @@ pyqt6_all = collect_all('PyQt6')
 pyqt6_qt_all = collect_all('PyQt6.Qt6')
 
 a = Analysis([
-    'turkanime_api/gui/main.py',
+    'turkanime_api/gui/boot.py',
 ],
              pathex=[],
              binaries=pyqt6_all[1] + pyqt6_qt_all[1],

@@ -58,7 +58,7 @@ jobs:
       - name: Build single EXE with PyInstaller
         shell: pwsh
         run: |
-          python -m PyInstaller --noconfirm --name turkanime-gui --onefile --windowed --icon "docs/TurkAnimu.ico" --add-data "docs/TurkAnimu.ico;docs" --add-data "gereksinimler.json;." --add-data "bin;bin" --hidden-import yt_dlp --hidden-import curl_cffi --hidden-import Crypto --hidden-import PyQt6 turkanime_api/gui/main.py
+          python -m PyInstaller pyinstaller.spec
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
