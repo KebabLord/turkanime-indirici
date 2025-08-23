@@ -61,10 +61,56 @@ jobs:
         run: |
           python -m PyInstaller pyinstaller.spec
 
-      - name: Build CLI (PyInstaller)
+      - name: Build CLI (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller pyinstaller_versionfile
+
+          Remove-Item -Force version_generator.py -ErrorAction Ignore
+          Add-Content -Path version_generator.py -Value "import pyinstaller_versionfile"
+          Add-Content -Path version_generator.py -Value "from turkanime_api.cli.version import __version__"
+          Add-Content -Path version_generator.py -Value ""
+          Add-Content -Path version_generator.py -Value "pyinstaller_versionfile.create_versionfile("
+          Add-Content -Path version_generator.py -Value "    output_file='versionfile.txt',"
+          Add-Content -Path version_generator.py -Value "    version=__version__,"
+          Add-Content -Path version_generator.py -Value "    company_name='TurkAnimu Dev',"
+          Add-Content -Path version_generator.py -Value "    file_description='Anime İndirici & Oynatıcı',"
+          Add-Content -Path version_generator.py -Value "    internal_name='TurkAnimu',"
+          Add-Content -Path version_generator.py -Value "    legal_copyright='© KebabLord, All rights reserved.',"
+          Add-Content -Path version_generator.py -Value "    original_filename='TurkAnimu.exe',"
+          Add-Content -Path version_generator.py -Value "    product_name='TurkAnimu İndirici'"
+          Add-Content -Path version_generator.py -Value ")"
+          python version_generator.py
+
+          Remove-Item -Force compiled.py -ErrorAction Ignore
+          Add-Content -Path compiled.py -Value 'from turkanime_api.cli.__main__ import main'
+          Add-Content -Path compiled.py -Value 'if __name__ == "__main__":'
+          Add-Content -Path compiled.py -Value '    main()'
+
+          pyinstaller --noconfirm --onefile --console `
+            --icon "docs\TurkAnimu.ico" `
+            --name "TurkAnimu" `
+            --version-file versionfile.txt `
+            --hidden-import yt_dlp `
+            --hidden-import curl_cffi `
+            --hidden-import Crypto `
+            --add-data "gereksinimler.json;." `
+            compiled.py
+
+      - name: Build CLI (Linux/macOS)
+        if: matrix.os != 'windows-latest'
         shell: bash
         run: |
-          if [[ "$RUNNER_OS" == "Windows" ]]; then SEP=';'; else SEP=':'; fi
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          python -m pip install pyinstaller
+          printf '%s\n' \
+            'from turkanime_api.cli.__main__ import main' \
+            'if __name__ == "__main__":' \
+            '    main()' > compiled.py
           python -m PyInstaller \
             --noconfirm \
             --name turkanime-cli \
@@ -73,8 +119,8 @@ jobs:
             --hidden-import yt_dlp \
             --hidden-import curl_cffi \
             --hidden-import Crypto \
-            --add-data "gereksinimler.json${SEP}." \
-            turkanime_api/cli/__main__.py
+            --add-data "gereksinimler.json:." \
+            compiled.py
 
       - name: Rename artifact per OS
         shell: bash
@@ -82,7 +128,7 @@ jobs:
           if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
             mv dist/turkanime-gui.exe dist/turkanime-gui-windows.exe
             certutil -hashfile dist/turkanime-gui-windows.exe MD5 > dist/turkanime-gui-windows.exe.md5 || echo "md5 skipped"
-            if [[ -f dist/turkanime-cli.exe ]]; then mv dist/turkanime-cli.exe dist/turkanime-cli-windows.exe; fi
+            if [[ -f dist/TurkAnimu.exe ]]; then mv dist/TurkAnimu.exe dist/turkanime-cli-windows.exe; elif [[ -f dist/turkanime-cli.exe ]]; then mv dist/turkanime-cli.exe dist/turkanime-cli-windows.exe; fi
             if [[ -f dist/turkanime-cli-windows.exe ]]; then certutil -hashfile dist/turkanime-cli-windows.exe MD5 > dist/turkanime-cli-windows.exe.md5 || echo "md5 skipped"; fi
           elif [[ "${{ matrix.os }}" == "ubuntu-latest" ]]; then
             mv dist/turkanime-gui dist/turkanime-gui-linux
