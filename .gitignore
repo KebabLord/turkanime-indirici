@@ -1,2 +1,9 @@
 geckodriver.log
 log
+ayarlar.json
+gecmis.json
+turkanime_api/cli/__pycache__/*
+turkanime_api/__pycache__/*
+.vscode/*
+build/*
+dist/*

@@ -1,0 +1,73 @@
+name: Build and Release GUI
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Prepare embedded runtime (mpv, aria2c, yt-dlp)
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path bin | Out-Null
+          # Download helpers
+          Invoke-WebRequest -Uri "https://www.7-zip.org/a/7zr.exe" -OutFile "7zr.exe"
+          # yt-dlp
+          Invoke-WebRequest -Uri "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe" -OutFile "bin/yt-dlp.exe"
+          # aria2c
+          Invoke-WebRequest -Uri "https://github.com/aria2/aria2/releases/download/release-1.37.0/aria2-1.37.0-win-64bit-build1.zip" -OutFile "aria2.zip"
+          Expand-Archive -LiteralPath aria2.zip -DestinationPath tmp_aria2
+          $aria2Dir = Get-ChildItem -Recurse -Path tmp_aria2 -Filter aria2c.exe | Select-Object -First 1 | Split-Path -Parent
+          Copy-Item -Recurse -Force "$aria2Dir\*" "bin\"
+          # mpv (x64)
+          Invoke-WebRequest -Uri "https://master.dl.sourceforge.net/project/mpv-player-windows/64bit/mpv-x86_64-20231231-git-abc2a74.7z" -OutFile "mpv.7z"
+          ./7zr.exe x mpv.7z -obin -y | Out-Null
+          # Ensure mpv.exe is present
+          $mpvExe = Get-ChildItem -Recurse -Path bin -Filter mpv.exe | Select-Object -First 1
+          if (-not $mpvExe) { throw "mpv.exe not found after extraction" }
+
+      - name: Build single EXE with PyInstaller
+        shell: pwsh
+        run: |
+          python -m PyInstaller --noconfirm --name turkanime-gui --onefile --windowed --icon "docs/TurkAnimu.ico" --add-data "docs/TurkAnimu.ico;docs" --add-data "gereksinimler.json;." --add-data "bin;bin" --hidden-import yt_dlp --hidden-import curl_cffi --hidden-import Crypto --hidden-import PyQt6 turkanime_api/gui/main.py
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: turkanime-gui-windows
+          path: dist/turkanime-gui.exe
+
+  release:
+    needs: build-windows
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: turkanime-gui-windows
+          path: dist
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/turkanime-gui.exe
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
