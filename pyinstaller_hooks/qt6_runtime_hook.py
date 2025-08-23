@@ -1,24 +1,28 @@
-# Ensure Qt plugin path is set so that Qt can find its platform plugins (e.g., qwindows.dll)
 import os, sys
-from PyQt6 import QtCore
 
-# Add PyInstaller temp dir Qt plugins and bundled plugins to QT_PLUGIN_PATH
-paths = []
+# Configure Qt plugin and bin paths before any PyQt6 import occurs.
 meipass = getattr(sys, "_MEIPASS", None)
+qt_plugin_paths = []
+qt_bin_paths = []
 if meipass:
-    paths.append(os.path.join(meipass, 'PyQt6', 'Qt6', 'plugins'))
-    paths.append(os.path.join(meipass, 'qt6_plugins'))
-# Also add package plugin dirs when running unpackaged
-try:
-    import PyQt6
-    base = os.path.dirname(PyQt6.__file__)
-    paths.append(os.path.join(base, 'Qt6', 'plugins'))
-except Exception:
-    pass
+    qt6_root = os.path.join(meipass, 'PyQt6', 'Qt6')
+    qt_plugin_paths.append(os.path.join(qt6_root, 'plugins'))
+    qt_bin_paths.append(os.path.join(qt6_root, 'bin'))
 
+# Export QT_PLUGIN_PATH
 cur = os.environ.get('QT_PLUGIN_PATH', '')
-os.environ['QT_PLUGIN_PATH'] = os.pathsep.join([p for p in [cur, *paths] if p])
+os.environ['QT_PLUGIN_PATH'] = os.pathsep.join([p for p in [cur, *qt_plugin_paths] if p])
 
-# Force platform to windows when on Windows
+# Export platform plugin path explicitly if present
+for base in qt_plugin_paths:
+    p = os.path.join(base, 'platforms')
+    if os.path.isdir(p):
+        os.environ.setdefault('QT_QPA_PLATFORM_PLUGIN_PATH', p)
+        break
+
+# Ensure Qt6/bin is on PATH for dependent DLL resolution
+if qt_bin_paths:
+    os.environ['PATH'] = os.pathsep.join([os.environ.get('PATH', ''), *qt_bin_paths])
+
 if os.name == 'nt':
     os.environ.setdefault('QT_QPA_PLATFORM', 'windows')
