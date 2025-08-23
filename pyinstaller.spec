@@ -9,6 +9,7 @@ hiddenimports = collect_submodules('yt_dlp') + collect_submodules('curl_cffi') +
 # Collect PyQt6 data/binaries to avoid missing Qt DLLs/plugins
 pyqt6_all = collect_all('PyQt6')
 pyqt6_qt_all = collect_all('PyQt6.Qt6')
+bin_data = [('bin', 'bin')] if os.path.isdir('bin') else []
 
 a = Analysis([
     'turkanime_api/gui/boot.py',
@@ -18,8 +19,7 @@ a = Analysis([
              datas=[
                  ('docs/TurkAnimu.ico', 'docs'),
                  ('gereksinimler.json', '.'),
-                 ('bin', 'bin'),
-             ] + pyqt6_all[0] + pyqt6_qt_all[0],
+             ] + bin_data + pyqt6_all[0] + pyqt6_qt_all[0],
              hiddenimports=hiddenimports + pyqt6_all[2] + pyqt6_qt_all[2],
              hookspath=[],
              hooksconfig={},
@@ -33,8 +33,10 @@ pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 
 exe = EXE(pyz,
           a.scripts,
+          a.binaries,
+          a.zipfiles,
+          a.datas,
           [],
-          exclude_binaries=True,
           name='turkanime-gui',
           debug=False,
           bootloader_ignore_signals=False,
@@ -42,12 +44,3 @@ exe = EXE(pyz,
           upx=False,
           console=False,
           icon='docs/TurkAnimu.ico')
-
-coll = COLLECT(exe,
-               a.binaries,
-               a.zipfiles,
-               a.datas,
-               strip=False,
-               upx=False,
-               upx_exclude=[],
-               name='turkanime-gui')
