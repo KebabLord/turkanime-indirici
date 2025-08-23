@@ -8,3 +8,4 @@ turkanime_api/__pycache__/*
 build/*
 dist/*
 turkanime_api/gui/__pycache__/*
+turkanime_api/sources/__pycache__/*
