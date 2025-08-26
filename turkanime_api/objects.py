@@ -218,7 +218,7 @@ class Bolum:
                 self._videos.append(Video(self,vpath,player))
         return self._videos
 
-    def best_video(self, by_res=True, by_fansub=None, default_res=600, callback=lambda x:None):
+    def best_video(self, by_res=True, by_fansub=None, default_res=600, callback=lambda x:None, early_subset: int = 8):
         """
         Parametrelerde belirtilmiş en ideal videoyu tespit edip döndürür.
 
@@ -244,6 +244,24 @@ class Bolum:
         # Seçilmiş fansub'un videolarını öncelikli tut
         if by_fansub:
             vids = sorted(vids, key = lambda x: x.fansub != by_fansub)
+
+        # 1080p seçim hızlandırma: çözünürlükleri paralel önbellekle
+        # İlk etapta oyuncu önceliğine göre ilk N adayın çözünürlüklerini önceden hesapla
+        if by_res and vids:
+            try:
+                import concurrent.futures as _cf
+                n = max(1, int(early_subset or 1))
+                subset = vids[:n]
+                with _cf.ThreadPoolExecutor(max_workers=min(n, len(subset))) as _ex:
+                    list(_ex.map(lambda v: getattr(v, 'resolution'), subset))
+                # Eğer 1080+ bulunan varsa doğrudan onu al
+                cands = [v for v in subset if (v.resolution or default_res) >= 1080 and v.is_working]
+                if cands:
+                    pick = sorted(cands, key=lambda v: SUPPORTED.index(v.player))[0]
+                    callback({"current": len(vids), "total": len(vids), "player": pick.player, "status": "çalışıyor"})
+                    return pick
+            except Exception:
+                pass
 
         for i,vid in enumerate(vids.copy(),start=1):
             hook_dict = {**hook_dict, "current": i, "player": vid.player}
@@ -349,7 +367,30 @@ class Video:
                 elif "format_id" in formats[0]:
                     fid = formats[0].get("format_id")
                     res = {"sd":480, "hd":720, "fhd": 1080, "hq":2160}.get(fid)
+                else:
+                    # Ek fallback: vcodec isimlerinden veya tbr'den yaklaşık çözünürlük tahmini
+                    try:
+                        t = max(formats, key=lambda x: (x.get("height") or 0, x.get("tbr") or 0))
+                        res = t.get("height") or (720 if (t.get("tbr") or 0) > 1500 else 480)
+                    except Exception:
+                        res = None
             self._resolution = res or 0
+            # Son çare: mpv ile çözünürlük oku
+            if not self._resolution:
+                try:
+                    cmd = [
+                        "mpv", "--no-config", "--no-audio", "--no-video",
+                        "--frames=1", "--really-quiet",
+                        "--term-playing-msg=${video-params/w}x${video-params/h}",
+                        self.url,
+                    ]
+                    _res = sp.run(cmd, text=True, stdout=sp.PIPE, stderr=sp.PIPE, timeout=10)
+                    out = (_res.stdout or "") + (_res.stderr or "")
+                    mm = re.findall(r"(\d{3,4})x(\d{3,4})", out)
+                    if mm:
+                        self._resolution = int(mm[-1][1])
+                except Exception:
+                    pass
         return self._resolution
 
     @property

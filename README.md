@@ -91,3 +91,22 @@ Aşağıdaki projeler de farklı sitelerden anime indirmeyi ve izlemeyi mümkün
 
 
 
+## Doğrulama (MD5 Hash)
+
+Windows:
+
+```powershell
+./docs/hash_dist_md5.bat ./dist/turkanime-gui-windows.exe
+```
+
+Linux/macOS:
+
+```bash
+./scripts/hash_md5.sh ./dist/turkanime-gui-linux   # Linux ikilisi için
+./scripts/hash_md5.sh ./dist/turkanime-gui-macos   # macOS ikilisi için
+```
+
+Not: CI yayınlarında .md5 dosyaları da ekli olarak gelir.
+
+
+

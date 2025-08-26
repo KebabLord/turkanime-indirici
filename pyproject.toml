@@ -31,6 +31,12 @@ questionary = "*"
 py7zr = "*"
 rich = ">=13.0.0"
 easygui = ">=0.98.2"
+# PyQt6 bazı Linux/musl ve yeni Python kombinasyonlarında tekerlek yayınlamayabilir.
+# Bu nedenle opsiyonel yapıyoruz; GUI isteyenler extras ile kurabilir.
+PyQt6 = { version = ">=6.5", optional = true }
+
+[tool.poetry.extras]
+gui = ["PyQt6>=6.5"]
 
 [tool.poetry.dev-dependencies]
 
@@ -44,3 +50,4 @@ build-backend = "poetry.core.masonry.api"
 #   poetry build; poetry install; poetry publish
 
 turkanime = 'turkanime_api.cli.__main__:main'
+turkanime-gui = 'turkanime_api.gui.main:run'
