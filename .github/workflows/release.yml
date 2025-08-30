@@ -41,10 +41,10 @@ jobs:
 
       - name: Download mpv (Windows)
         run: |
-          Invoke-WebRequest -Uri "https://nightly.link/mpv-player/mpv/workflows/build/master/mpv-x86_64-pc-windows-msvc.zip" -OutFile "mpv.zip"
-          Expand-Archive -Path "mpv.zip" -DestinationPath "mpv_temp"
+          Invoke-WebRequest -Uri "https://github.com/shinchiro/mpv-winbuild-cmake/releases/download/20231231/mpv-x86_64-20231231-git-abc2a74.7z" -OutFile "mpv.7z"
+          & "C:\Program Files\7-Zip\7z.exe" x "mpv.7z" -o"mpv_temp" -y
           Copy-Item "mpv_temp\mpv.exe" -Destination "bin\mpv.exe"
-          Remove-Item "mpv.zip" -Force
+          Remove-Item "mpv.7z" -Force
           Remove-Item "mpv_temp" -Recurse -Force
 
       - name: Build executable
