@@ -270,8 +270,8 @@ def main():
         rprint("[red][strong]Güncelleme kontrol edilemedi.[/strong][red]")
         sleep(3)
 
-    # Gereksinimleri kontrol et
-    gereksinim_kontrol_cli()
+    # Gereksinimleri kontrol et (embed edilmiş araçlar kullanılıyor)
+    # gereksinim_kontrol_cli()
 
     # Script kapanışında
     def kapat():

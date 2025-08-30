@@ -8,7 +8,7 @@ hiddenimports = collect_submodules('yt_dlp') + collect_submodules('curl_cffi') +
 bin_data = [('bin', 'bin')] if os.path.isdir('bin') else []
 
 a = Analysis([
-    'turkanime_api/gui/boot.py',
+    'turkanime_api/gui/main.py',
 ],
              pathex=[],
              binaries=[],

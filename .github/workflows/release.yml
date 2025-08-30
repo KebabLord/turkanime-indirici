@@ -23,9 +23,23 @@ jobs:
         pip install -r requirements-gui.txt
         pip install pyinstaller
 
+    - name: Download embedded tools
+      run: |
+        New-Item -ItemType Directory -Force -Path bin
+        # Download yt-dlp
+        Invoke-WebRequest -Uri "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe" -OutFile "bin/yt-dlp.exe"
+        # Download mpv
+        Invoke-WebRequest -Uri "https://master.dl.sourceforge.net/project/mpv-player-windows/64bit/mpv-x86_64-20231231-git-abc2a74.7z" -OutFile "mpv.7z"
+        & "C:\Program Files\7-Zip\7z.exe" x mpv.7z -obin -y
+        Move-Item "bin/mpv.exe" "bin/mpv.exe"
+        # Download aria2c
+        Invoke-WebRequest -Uri "https://github.com/aria2/aria2/releases/download/release-1.37.0/aria2-1.37.0-win-64bit-build1.zip" -OutFile "aria2.zip"
+        Expand-Archive aria2.zip -DestinationPath .
+        Move-Item "aria2-1.37.0-win-64bit-build1/aria2c.exe" "bin/aria2c.exe"
+
     - name: Build Windows executable
       run: |
-        pyinstaller --onefile --windowed --name turkanime-gui-windows --icon docs/TurkAnimu.ico turkanime_api/gui/main.py
+        pyinstaller pyinstaller.spec --name turkanime-gui-windows
 
     - name: Upload Windows build
       uses: actions/upload-artifact@v4
@@ -46,7 +60,7 @@ jobs:
     - name: Install system dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y libgtk-3-dev libgirepository1.0-dev
+        sudo apt-get install -y libgtk-3-dev libgirepository1.0-dev p7zip-full
 
     - name: Install Python dependencies
       run: |
@@ -54,15 +68,26 @@ jobs:
         pip install -r requirements-gui.txt
         pip install pyinstaller
 
+    - name: Download embedded tools
+      run: |
+        mkdir -p bin
+        # Download yt-dlp
+        wget -O bin/yt-dlp https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp
+        chmod +x bin/yt-dlp
+        # Download mpv
+        wget -O mpv.tar.xz https://github.com/mpv-player/mpv/releases/download/v0.37.0/mpv-0.37.0-x86_64-static.tar.xz
+        tar -xf mpv.tar.xz
+        cp mpv-0.37.0-x86_64-static/mpv bin/mpv
+        chmod +x bin/mpv
+        # Download aria2c
+        wget -O aria2.tar.xz https://github.com/aria2/aria2/releases/download/release-1.37.0/aria2-1.37.0-linux-gnu-64bit-build1.tar.xz
+        tar -xf aria2.tar.xz
+        cp aria2-1.37.0-linux-gnu-64bit-build1/aria2c bin/aria2c
+        chmod +x bin/aria2c
+
     - name: Build Linux executable
       run: |
-        pyinstaller --onefile --name turkanime-gui-linux turkanime_api/gui/main.py
-
-    - name: Upload Linux build
-      uses: actions/upload-artifact@v4
-      with:
-        name: turkanime-gui-linux
-        path: dist/turkanime-gui-linux
+        pyinstaller pyinstaller.spec --name turkanime-gui-linux
 
   build-macos:
     runs-on: macos-latest
@@ -80,9 +105,26 @@ jobs:
         pip install -r requirements-gui.txt
         pip install pyinstaller
 
+    - name: Download embedded tools
+      run: |
+        mkdir -p bin
+        # Download yt-dlp
+        curl -L -o bin/yt-dlp https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp
+        chmod +x bin/yt-dlp
+        # Download mpv
+        curl -L -o mpv.tar.xz https://github.com/mpv-player/mpv/releases/download/v0.37.0/mpv-0.37.0-macos-12-x86_64.tar.xz
+        tar -xf mpv.tar.xz
+        cp mpv-0.37.0-macos-12-x86_64/mpv bin/mpv
+        chmod +x bin/mpv
+        # Download aria2c
+        curl -L -o aria2.tar.xz https://github.com/aria2/aria2/releases/download/release-1.37.0/aria2-1.37.0-osx-darwin.tar.xz
+        tar -xf aria2.tar.xz
+        cp aria2-1.37.0-osx-darwin/aria2c bin/aria2c
+        chmod +x bin/aria2c
+
     - name: Build macOS executable
       run: |
-        pyinstaller --onefile --name turkanime-gui-macos turkanime_api/gui/main.py
+        pyinstaller pyinstaller.spec --name turkanime-gui-macos
 
     - name: Upload macOS build
       uses: actions/upload-artifact@v4
@@ -90,187 +132,8 @@ jobs:
         name: turkanime-gui-macos
         path: dist/turkanime-gui-macos
 
-  build-android:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4
-
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.10'
-
-    - name: Install system dependencies
-      run: |
-        wget http://security.ubuntu.com/ubuntu/pool/universe/n/ncurses/libtinfo5_6.3-2ubuntu0.1_amd64.deb
-        sudo chmod 777 ./libtinfo5_6.3-2ubuntu0.1_amd64.deb
-        sudo apt install ./libtinfo5_6.3-2ubuntu0.1_amd64.deb
-        sudo apt-get update
-        sudo apt-get install -y git zip unzip openjdk-17-jdk python3-pip autoconf libtool pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo5 cmake libffi-dev libssl-dev
-
-    - name: Install Android dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements-gui.txt
-        pip install buildozer kivy cython
-
-    - name: Create buildozer.spec
-      run: |
-        cat > buildozer.spec << EOF
-        [app]
-        title = TurkAnime GUI
-        package.name = turkanime_gui
-        package.domain = com.turkanime
-        source.dir = .
-        source.include_exts = py,png,jpg,kv,atlas,txt,json
-        version = 1.0.0
-        requirements = python3,kivy,requests,pillow,beautifulsoup4,lxml,cython
-        orientation = portrait
-        fullscreen = 0
-        android.archs = armeabi-v7a,arm64-v8a
-        android.api = 33
-        android.minapi = 21
-        android.ndk = 25b
-        android.private_storage = True
-        android.permissions = INTERNET,WRITE_EXTERNAL_STORAGE,READ_EXTERNAL_STORAGE
-        p4a.branch = develop
-        presplash.filename = docs/TurkAnimu.ico
-        icon.filename = docs/TurkAnimu.ico
-        
-        [buildozer]
-        log_level = 2
-        warn_on_root = 1
-        EOF
-
-    - name: Setup Java environment
-      run: |
-        export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
-        echo "JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64" >> $GITHUB_ENV
-
-    - name: Create Android version of main.py
-      run: |
-        cat > main_android.py << EOF
-        # Android version using Kivy instead of CustomTkinter
-        import kivy
-        kivy.require('2.1.0')
-
-        from kivy.app import App
-        from kivy.uix.boxlayout import BoxLayout
-        from kivy.uix.label import Label
-        from kivy.uix.button import Button
-        from kivy.uix.textinput import TextInput
-        from kivy.uix.scrollview import ScrollView
-        from kivy.uix.gridlayout import GridLayout
-        from kivy.core.window import Window
-        from kivy.metrics import dp
-
-        # Import your existing modules
-        from turkanime_api.objects import Anime, Bolum
-        from turkanime_api.bypass import fetch
-        from turkanime_api.cli.dosyalar import Dosyalar
-        from turkanime_api.cli.cli_tools import VidSearchCLI, indir_aria2c
-        from turkanime_api.cli.gereksinimler import Gereksinimler
-        from turkanime_api.sources.animecix import CixAnime, search_animecix
-        from turkanime_api.sources.adapter import AdapterAnime, AdapterBolum
-        from turkanime_api.anilist_client import anilist_client, AniListAuthServer
-
-        class TurkAnimeApp(App):
-            def build(self):
-                Window.size = (400, 700)
-                Window.title = "TürkAnimu GUI"
-                
-                layout = BoxLayout(orientation='vertical', padding=dp(10), spacing=dp(10))
-                
-                # Header
-                header = Label(text="TürkAnimu", font_size=dp(24), size_hint_y=None, height=dp(50))
-                layout.add_widget(header)
-                
-                # Search section
-                search_layout = BoxLayout(size_hint_y=None, height=dp(50), spacing=dp(5))
-                self.search_input = TextInput(hint_text="Anime ara...", multiline=False)
-                search_button = Button(text="Ara", on_press=self.search_anime)
-                search_layout.add_widget(self.search_input)
-                search_layout.add_widget(search_button)
-                layout.add_widget(search_layout)
-                
-                # Results area
-                scroll = ScrollView()
-                self.results_layout = GridLayout(cols=1, spacing=dp(5), size_hint_y=None)
-                self.results_layout.bind(minimum_height=self.results_layout.setter('height'))
-                scroll.add_widget(self.results_layout)
-                layout.add_widget(scroll)
-                
-                return layout
-            
-            def search_anime(self, instance):
-                query = self.search_input.text.strip()
-                if not query:
-                    return
-                
-                # Clear previous results
-                self.results_layout.clear_widgets()
-                
-                try:
-                    # Search using existing logic
-                    results = search_animecix(query)
-                    
-                    for _id, name in results[:10]:  # Limit to 10 results
-                        btn = Button(text=name, size_hint_y=None, height=dp(40))
-                        btn.bind(on_press=lambda x, id=_id, n=name: self.select_anime(id, n))
-                        self.results_layout.add_widget(btn)
-                        
-                except Exception as e:
-                    error_label = Label(text=f"Hata: {str(e)}", color=(1, 0, 0, 1))
-                    self.results_layout.add_widget(error_label)
-            
-            def select_anime(self, anime_id, anime_name):
-                # Show anime details
-                self.results_layout.clear_widgets()
-                
-                try:
-                    cix = CixAnime(id=int(anime_id), title=anime_name)
-                    episodes = cix.episodes
-                    
-                    title_label = Label(text=f"{anime_name}\\n{len(episodes)} bölüm", 
-                                      size_hint_y=None, height=dp(60))
-                    self.results_layout.add_widget(title_label)
-                    
-                    for episode in episodes[:20]:  # Limit episodes
-                        btn = Button(text=episode.title, size_hint_y=None, height=dp(35))
-                        btn.bind(on_press=lambda x, ep=episode: self.play_episode(ep))
-                        self.results_layout.add_widget(btn)
-                        
-                except Exception as e:
-                    error_label = Label(text=f"Hata: {str(e)}", color=(1, 0, 0, 1))
-                    self.results_layout.add_widget(error_label)
-            
-            def play_episode(self, episode):
-                # Play episode using existing logic
-                try:
-                    # This would need to be adapted for Android
-                    pass
-                except Exception as e:
-                    print(f"Play error: {e}")
-
-        if __name__ == '__main__':
-            TurkAnimeApp().run()
-        EOF
-
-    - name: Build Android APK
-      run: |
-        export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
-        export ANDROID_HOME=$HOME/.buildozer/android/platform/android-sdk
-        export PATH=$PATH:$ANDROID_HOME/tools:$ANDROID_HOME/platform-tools
-        yes | buildozer android debug --verbose
-
-    - name: Upload Android build
-      uses: actions/upload-artifact@v4
-      with:
-        name: turkanime-gui-android
-        path: bin/*.apk
-
   create-release:
-    needs: [build-windows, build-linux, build-macos, build-android]
+    needs: [build-windows, build-linux, build-macos]
     runs-on: Linux
     if: startsWith(github.ref, 'refs/tags/v')
     steps:
@@ -280,7 +143,6 @@ jobs:
     - name: Create version.json
       run: |
         VERSION=${GITHUB_REF#refs/tags/v}
-        APK_NAME=$(find turkanime-gui-android -name '*arm64*.apk' -print -quit | xargs basename 2>/dev/null || echo "turkanime_gui-1.0.0-arm64-v8a-debug.apk")
         cat > version.json << EOF
         {
           "version": "$VERSION",
@@ -297,10 +159,6 @@ jobs:
             "macos": {
               "url": "https://github.com/${{ github.repository }}/releases/download/v$VERSION/turkanime-gui-macos",
               "checksum": "$(sha256sum turkanime-gui-macos/turkanime-gui-macos | cut -d' ' -f1)"
-            },
-            "android": {
-              "url": "https://github.com/${{ github.repository }}/releases/download/v$VERSION/$APK_NAME",
-              "checksum": "$(find turkanime-gui-android -name '*arm64*.apk' -exec sha256sum {} \; | cut -d' ' -f1)"
             }
           },
           "changelog": "Güncelleme bilgileri için GitHub release notlarını inceleyin."
@@ -314,7 +172,6 @@ jobs:
           turkanime-gui-windows/turkanime-gui-windows.exe
           turkanime-gui-linux/turkanime-gui-linux
           turkanime-gui-macos/turkanime-gui-macos
-          turkanime-gui-android/*.apk
           version.json
         generate_release_notes: true
       env:

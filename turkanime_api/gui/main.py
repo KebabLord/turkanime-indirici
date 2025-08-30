@@ -1167,14 +1167,8 @@ class MainWindow(ctk.CTk):
 
     def check_requirements_on_startup(self):
         """Eksik gereksinimleri kontrol et ve kullanıcıya bildir."""
-        try:
-            missing = self.requirements_manager.check_requirements()
-            if missing:
-                self.show_requirements_dialog(missing)
-            else:
-                self.message("Tüm gereksinimler yüklü", error=False)
-        except Exception as e:
-            self.message(f"Gereksinim kontrolü hatası: {e}", error=True)
+        # Embed edilmiş araçlar kullanılıyor, kontrolü atla
+        self.message("Embed edilmiş araçlar kullanılıyor", error=False)
 
     def show_requirements_dialog(self, missing_deps):
         """Eksik gereksinimler için dialog göster."""
