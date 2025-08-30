@@ -1,5 +1,6 @@
 # -*- mode: python ; coding: utf-8 -*-
 import os
+import platform
 from PyInstaller.utils.hooks import collect_submodules
 
 block_cipher = None
@@ -13,8 +14,11 @@ hiddenimports = (
     ['yt_dlp', 'curl_cffi', 'Crypto', 'customtkinter']
 )
 
-# Include bin directory if it exists
-bin_data = [('bin', 'bin')] if os.path.isdir('bin') else []
+# Include bin directory if it exists (only for Windows)
+if platform.system() == 'Windows':
+    bin_data = [('bin', 'bin')] if os.path.isdir('bin') else []
+else:
+    bin_data = []
 
 a = Analysis(
     ['turkanime_api/gui/main.py'],
@@ -22,6 +26,7 @@ a = Analysis(
     binaries=[],
     datas=[
         ('docs/TurkAnimu.ico', 'docs'),
+        ('docs/TurkAnimu.png', 'docs'),
         ('gereksinimler.json', '.'),
     ] + bin_data,
     hiddenimports=hiddenimports,

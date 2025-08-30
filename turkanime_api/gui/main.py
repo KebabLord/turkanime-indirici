@@ -6,6 +6,7 @@ import os
 import concurrent.futures as cf
 import customtkinter as ctk
 from tkinter import filedialog, messagebox
+import tkinter as tk
 from PIL import Image
 import threading
 import webbrowser
@@ -48,9 +49,12 @@ class RequirementsManager:
         self.dosyalar = Dosyalar()
         self.tmp_dir = tempfile.TemporaryDirectory()
         self.requirements_url = "https://raw.githubusercontent.com/KebabLord/turkanime-indirici/master/gereksinimler.json"
-        self.required_deps = ["yt-dlp", "mpv", "aria2c"]
         self.platform = get_platform()
         self.arch = get_arch()
+        if self.platform == 'windows':
+            self.required_deps = ["yt-dlp", "mpv", "aria2c", "ffmpeg"]
+        else:
+            self.required_deps = []
 
     def _get_embedded_tool_path(self, tool_name):
         """Embed edilmiş aracın yolunu döndür."""
@@ -624,11 +628,17 @@ class MainWindow(ctk.CTk):
         self.title("TürkAnimu Gui by @barkeser2002") # Kalsın
         self.geometry("1400x900")
 
-        # App icon
+        # App icon (Windows: .ico, Others: .png via iconphoto)
         try:
-            icon_path = _resource_path(os.path.join('docs', 'TurkAnimu.ico'))
-            if os.path.exists(icon_path):
-                pass
+            ico_path = _resource_path(os.path.join('docs', 'TurkAnimu.ico'))
+            if os.path.exists(ico_path):
+                # On Windows, iconbitmap expects .ico and updates taskbar/title icon
+                self.iconbitmap(ico_path)
+            else:
+                png_path = _resource_path(os.path.join('docs', 'TurkAnimu.png'))
+                if os.path.exists(png_path):
+                    self._app_icon_ref = tk.PhotoImage(file=png_path)
+                    self.iconphoto(True, self._app_icon_ref)
         except Exception:
             pass
 
@@ -899,7 +909,7 @@ class MainWindow(ctk.CTk):
 
         # Logo ikonu
         try:
-            icon_path = _resource_path(os.path.join('docs', 'TurkAnimu.ico'))
+            icon_path = _resource_path(os.path.join('docs', 'TurkAnimu.png'))
             if os.path.exists(icon_path):
                 logo_image = ctk.CTkImage(Image.open(icon_path), size=(28, 28))
                 logo_label = ctk.CTkLabel(logo_frame, image=logo_image, text="")
@@ -1119,7 +1129,7 @@ class MainWindow(ctk.CTk):
 
         # Hero görselini yükle
         try:
-            icon_path = _resource_path(os.path.join('docs', 'TurkAnimu.ico'))
+            icon_path = _resource_path(os.path.join('docs', 'TurkAnimu.png'))
             if os.path.exists(icon_path):
                 # Open image
                 pil_image = Image.open(icon_path)
