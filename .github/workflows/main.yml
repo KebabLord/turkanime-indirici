@@ -3,7 +3,7 @@ name: Hata kontrolü ve lint
 jobs:
   lint:
     name: pylint
-    runs-on: ubuntu-latest
+    runs-on: safehouse-homeserver
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
