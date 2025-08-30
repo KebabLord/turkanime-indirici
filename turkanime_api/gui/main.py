@@ -31,6 +31,7 @@ from turkanime_api.sources.adapter import AdapterAnime, AdapterBolum
 from turkanime_api.anilist_client import anilist_client, AniListAuthServer
 from turkanime_api.gui.update_manager import UpdateManager
 from turkanime_api.common.utils import get_platform, get_arch
+from turkanime_api.common.ui_helpers import create_progress_section
 
 try:
     from pypresence import Presence
@@ -1194,20 +1195,7 @@ class MainWindow(ctk.CTk):
         desc_label = ctk.CTkLabel(dialog, text=desc_text, wraplength=450)
         desc_label.pack(pady=(0, 20))
 
-        # Progress bar için frame
-        progress_frame = ctk.CTkFrame(dialog, fg_color="transparent")
-        progress_frame.pack(fill="x", padx=20, pady=(0, 20))
-
-        progress_label = ctk.CTkLabel(progress_frame, text="")
-        progress_label.pack()
-
-        progress_bar = ctk.CTkProgressBar(progress_frame, width=400)
-        progress_bar.pack(pady=(10, 0))
-        progress_bar.set(0)
-
-        # Butonlar
-        buttons_frame = ctk.CTkFrame(dialog, fg_color="transparent")
-        buttons_frame.pack(fill="x", padx=20, pady=(0, 20))
+        progress_label, progress_bar, buttons_frame = create_progress_section(dialog)
 
         def download_requirements():
             """Gereksinimleri indir."""
@@ -1699,6 +1687,8 @@ class MainWindow(ctk.CTk):
         # Tıkla eventi - tüm alan tıklanabilir
         def on_click():
             self.show_anime_details(anime_data)
+
+
 
         card_frame.bind("<Button-1>", lambda e: on_click())
         cover_label.bind("<Button-1>", lambda e: on_click())
@@ -3349,14 +3339,16 @@ class MainWindow(ctk.CTk):
                     if not anime_id:
                         self.message("Anime ID bulunamadı", error=True)
                         return
-    
+
                     # total_episodes her iki dalda da kullanılacağı için önce tanımla
                     total_episodes = self.selected_anime.get('episodes') if self.selected_anime else None
-    
+
                     if episode_num > 0:
-                        success = anilist_client.update_anime_progress(anime_id, episode_num)
+                        # normalize variable name used below
+                        new_progress = episode_num
+                        success = anilist_client.update_anime_progress(anime_id, new_progress)
                         if success:
-                            self.message(f"Progress güncellendi: {episode_num}/{total_episodes}")
+                            self.message(f"Progress güncellendi: {new_progress}/{total_episodes}")
                             # Refresh watchlist
                             self.on_anilist_watchlist()
                         else:
@@ -3415,6 +3407,8 @@ class MainWindow(ctk.CTk):
                 success = anilist_client.update_anime_progress(anime_id, episode_num)
                 if success:
                     self.message(f"AniList ilerlemesi güncellendi: Bölüm {episode_num}")
+                    # Senkronizasyonu güncelle
+                    self.sync_progress_with_anilist()
                 else:
                     self.message("AniList güncelleme başarısız", error=True)
 

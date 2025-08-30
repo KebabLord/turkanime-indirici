@@ -6,6 +6,7 @@ import tempfile
 from tkinter import messagebox
 import customtkinter as ctk
 from turkanime_api.common.utils import get_platform, get_arch
+from turkanime_api.common.ui_helpers import create_progress_section
 
 
 class UpdateManager:
@@ -94,21 +95,9 @@ class UpdateManager:
         changelog_text.insert("0.0", version_data.get("changelog", "Değişiklik bilgileri bulunamadı."))
         changelog_text.configure(state="disabled")
 
-        # Progress bar
-        progress_frame = ctk.CTkFrame(dialog, fg_color="transparent")
-        progress_frame.pack(fill="x", padx=20, pady=(0, 20))
-
-        progress_label = ctk.CTkLabel(progress_frame, text="")
-        progress_label.pack()
-
-        progress_bar = ctk.CTkProgressBar(progress_frame, width=400)
-        progress_bar.pack(pady=(10, 0))
-        progress_bar.set(0)
-
-        # Butonlar
-        buttons_frame = ctk.CTkFrame(dialog, fg_color="transparent")
-        buttons_frame.pack(fill="x", padx=20, pady=(0, 20))
-
+        # Progress bar ve butonlar
+        progress_label, progress_bar, buttons_frame = create_progress_section(dialog)
+        
         update_successful = False
 
         def download_update():
