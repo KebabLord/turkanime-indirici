@@ -52,6 +52,25 @@ class RequirementsManager:
         self.platform = get_platform()
         self.arch = get_arch()
 
+    def _get_embedded_tool_path(self, tool_name):
+        """Embed edilmiş aracın yolunu döndür."""
+        try:
+            # PyInstaller ile gömülü ise
+            base_path = getattr(sys, "_MEIPASS", None)
+            if base_path:
+                tool_path = os.path.join(base_path, "bin", tool_name)
+                if os.path.exists(tool_path):
+                    return tool_path
+            
+            # Geliştirme ortamında
+            tool_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "bin", tool_name)
+            if os.path.exists(tool_path):
+                return tool_path
+            
+            return None
+        except:
+            return None
+
     def check_requirements(self):
         """Gereksinimleri kontrol et ve eksik olanları döndür."""
         missing = []
@@ -64,6 +83,18 @@ class RequirementsManager:
         """Uygulamanın mevcut olup olmadığını kontrol et."""
         try:
             import subprocess
+            # Özel kontrol: mpv için placeholder kontrolü
+            if app_name == "mpv":
+                mpv_path = self._get_embedded_tool_path("mpv.exe")
+                if mpv_path and os.path.exists(mpv_path):
+                    # Placeholder kontrolü
+                    with open(mpv_path, 'r', encoding='utf-8', errors='ignore') as f:
+                        first_line = f.readline().strip()
+                        if first_line.startswith("#"):
+                            return False  # Placeholder, gerçek mpv yok
+                else:
+                    return False
+            
             result = subprocess.run([app_name, "--version"],
                                   capture_output=True, text=True, timeout=5)
             return result.returncode == 0
@@ -118,7 +149,17 @@ class RequirementsManager:
             if progress_callback:
                 progress_callback(f"Dosya indiriliyor: {url.split('/')[-1]}")
 
-            # Dosyayı indir
+            # Özel durum: mpv placeholder ise gerçek mpv'yi indir
+            if req_data["name"] == "mpv":
+                mpv_path = self._get_embedded_tool_path("mpv.exe")
+                if mpv_path and os.path.exists(mpv_path):
+                    with open(mpv_path, 'r', encoding='utf-8', errors='ignore') as f:
+                        first_line = f.readline().strip()
+                        if first_line.startswith("#"):
+                            # Placeholder, gerçek mpv'yi indir
+                            return self._download_real_mpv(url, req_data, progress_callback)
+
+            # Normal indirme işlemi
             response = requests.get(url, stream=True)
             response.raise_for_status()
 
@@ -132,6 +173,82 @@ class RequirementsManager:
 
             # Dosyayı kur
             return self._install_file(filepath, req_data, progress_callback)
+
+        except Exception as e:
+            return False, str(e)
+
+    def _download_real_mpv(self, url, req_data, progress_callback):
+        """mpv için gerçek indirme işlemi (placeholder yerine)."""
+        try:
+            if progress_callback:
+                progress_callback("Gerçek mpv indiriliyor...")
+
+            # mpv için daha güvenilir bir kaynak kullan
+            if self.platform == "windows":
+                # Windows için portable mpv indir
+                mpv_url = "https://github.com/shinchiro/mpv-winbuild-cmake/releases/download/20231231/mpv-x86_64-20231231-git-abc2a74.7z"
+                filename = "mpv.7z"
+            else:
+                # Diğer platformlar için normal URL kullan
+                mpv_url = url
+                filename = url.split("/")[-1]
+
+            response = requests.get(mpv_url, stream=True)
+            response.raise_for_status()
+
+            filepath = os.path.join(self.tmp_dir.name, filename)
+
+            with open(filepath, 'wb') as f:
+                for chunk in response.iter_content(chunk_size=8192):
+                    if chunk:
+                        f.write(chunk)
+
+            # mpv'yi özel olarak kur
+            return self._install_mpv_file(filepath, req_data, progress_callback)
+
+        except Exception as e:
+            return False, str(e)
+
+    def _install_mpv_file(self, filepath, req_data, progress_callback):
+        """mpv dosyasını özel olarak kur."""
+        try:
+            if progress_callback:
+                progress_callback("mpv kuruluyor...")
+
+            filename = os.path.basename(filepath)
+            file_ext = filename.split(".")[-1].lower()
+
+            if self.platform == "windows":
+                # Windows için 7z çıkarma
+                if file_ext == "7z":
+                    import subprocess
+                    # 7z ile çıkar
+                    result = subprocess.run([
+                        "C:\\Program Files\\7-Zip\\7z.exe", "x", filepath, 
+                        f"-o{self.tmp_dir.name}\\mpv_extracted", "-y"
+                    ], capture_output=True, text=True)
+                    
+                    if result.returncode == 0:
+                        # mpv.exe'yi bul ve bin klasörüne kopyala
+                        extracted_dir = os.path.join(self.tmp_dir.name, "mpv_extracted")
+                        for root, dirs, files in os.walk(extracted_dir):
+                            for file in files:
+                                if file.lower() == "mpv.exe":
+                                    src_path = os.path.join(root, file)
+                                    dest_path = self._get_embedded_tool_path("mpv.exe")
+                                    if dest_path:
+                                        import shutil
+                                        shutil.copy2(src_path, dest_path)
+                                        return True, None
+                        
+                        return False, "mpv.exe extracted folder'da bulunamadı"
+                    else:
+                        return False, f"7z extraction failed: {result.stderr}"
+                else:
+                    return False, f"Unsupported file type for mpv: {file_ext}"
+            else:
+                # Diğer platformlar için normal kurulum
+                return self._install_file(filepath, req_data, progress_callback)
 
         except Exception as e:
             return False, str(e)
