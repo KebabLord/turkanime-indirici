@@ -1,257 +1,175 @@
-name: Release
+name: Build and Release GUI
 
 on:
   push:
     tags:
-      - 'v*'
-  workflow_dispatch:
+      - '*v*'
 
 jobs:
-  build-windows:
-    runs-on: windows-latest
+  build:
+    name: Build (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
+      - name: Setup Python 3.10
+        uses: actions/setup-python@v5
         with:
           python-version: '3.10'
 
       - name: Install dependencies
+        shell: bash
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-gui.txt
+          pip install pyinstaller
+
+      - name: Prepare embedded runtime (Windows only)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path bin | Out-Null
+          Invoke-WebRequest -Uri "https://www.7-zip.org/a/7zr.exe" -OutFile "7zr.exe"
+          # yt-dlp
+          curl.exe -L -o bin/yt-dlp.exe "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe"
+          # aria2c
+          curl.exe -L -o aria2.zip "https://github.com/aria2/aria2/releases/download/release-1.37.0/aria2-1.37.0-win-64bit-build1.zip"
+          Expand-Archive -LiteralPath aria2.zip -DestinationPath tmp_aria2
+          $aria2Dir = Get-ChildItem -Recurse -Path tmp_aria2 -Filter aria2c.exe | Select-Object -First 1 | Split-Path -Parent
+          Copy-Item -Recurse -Force "$aria2Dir\*" "bin\"
+          # mpv
+          $mpvUrl = "https://sourceforge.net/projects/mpv-player-windows/files/64bit/mpv-x86_64-20231231-git-abc2a74.7z/download"
+          curl.exe -L -o mpv.7z $mpvUrl
+          ./7zr.exe x mpv.7z -obin -y | Out-Null
+          $mpvExe = Get-ChildItem -Recurse -Path bin -Filter mpv.exe | Select-Object -First 1
+          if (-not $mpvExe) { throw "mpv.exe not found after extraction" }
+          # ffmpeg
+          curl.exe -L -o ffmpeg.zip "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip"
+          Expand-Archive -LiteralPath ffmpeg.zip -DestinationPath tmp_ffmpeg
+          $ffmpegExe = Get-ChildItem -Recurse -Path tmp_ffmpeg -Filter ffmpeg.exe | Select-Object -First 1
+          $ffprobeExe = Get-ChildItem -Recurse -Path tmp_ffmpeg -Filter ffprobe.exe | Select-Object -First 1
+          if (-not $ffmpegExe) { throw "ffmpeg.exe not found after extraction" }
+          Copy-Item -Force $ffmpegExe.FullName bin/
+          if ($ffprobeExe) { Copy-Item -Force $ffprobeExe.FullName bin/ }
+
+      - name: Build with PyInstaller (spec)
+        shell: bash
+        run: |
+          python -m PyInstaller pyinstaller.spec
+
+      - name: Build CLI (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install pyinstaller
+          pip install pyinstaller pyinstaller_versionfile
 
-      - name: Install 7-Zip (Windows)
+          Remove-Item -Force version_generator.py -ErrorAction Ignore
+          Add-Content -Path version_generator.py -Value "import pyinstaller_versionfile"
+          Add-Content -Path version_generator.py -Value "from turkanime_api.cli.version import __version__"
+          Add-Content -Path version_generator.py -Value ""
+          Add-Content -Path version_generator.py -Value "pyinstaller_versionfile.create_versionfile("
+          Add-Content -Path version_generator.py -Value "    output_file='versionfile.txt',"
+          Add-Content -Path version_generator.py -Value "    version=__version__,"
+          Add-Content -Path version_generator.py -Value "    company_name='TurkAnimu Dev',"
+          Add-Content -Path version_generator.py -Value "    file_description='Anime İndirici & Oynatıcı',"
+          Add-Content -Path version_generator.py -Value "    internal_name='TurkAnimu',"
+          Add-Content -Path version_generator.py -Value "    legal_copyright='© KebabLord, All rights reserved.',"
+          Add-Content -Path version_generator.py -Value "    original_filename='TurkAnimu.exe',"
+          Add-Content -Path version_generator.py -Value "    product_name='TurkAnimu İndirici'"
+          Add-Content -Path version_generator.py -Value ")"
+          python version_generator.py
+
+          Remove-Item -Force compiled.py -ErrorAction Ignore
+          Add-Content -Path compiled.py -Value 'from turkanime_api.cli.__main__ import main'
+          Add-Content -Path compiled.py -Value 'if __name__ == "__main__":'
+          Add-Content -Path compiled.py -Value '    main()'
+
+          pyinstaller --noconfirm --onefile --console `
+            --icon "docs\TurkAnimu.ico" `
+            --name "TurkAnimu" `
+            --version-file versionfile.txt `
+            --hidden-import yt_dlp `
+            --hidden-import curl_cffi `
+            --hidden-import Crypto `
+            --add-data "gereksinimler.json;." `
+            compiled.py
+
+      - name: Build CLI (Linux/macOS)
+        if: matrix.os != 'windows-latest'
+        shell: bash
         run: |
-          choco install 7zip -y
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          python -m pip install pyinstaller
+          printf '%s\n' \
+            'from turkanime_api.cli.__main__ import main' \
+            'if __name__ == "__main__":' \
+            '    main()' > compiled.py
+          python -m PyInstaller \
+            --noconfirm \
+            --name turkanime-cli \
+            --onefile \
+            --console \
+            --hidden-import yt_dlp \
+            --hidden-import curl_cffi \
+            --hidden-import Crypto \
+            --add-data "gereksinimler.json:." \
+            compiled.py
 
-      - name: Download yt-dlp (Windows)
+      - name: Rename artifact per OS
+        shell: bash
         run: |
-          Invoke-WebRequest -Uri "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe" -OutFile "bin\yt-dlp.exe"
-
-      - name: Download aria2c (Windows)
-        run: |
-          Invoke-WebRequest -Uri "https://github.com/aria2/aria2/releases/download/release-1.37.0/aria2-1.37.0-win-64bit-build1.zip" -OutFile "aria2.zip"
-          Expand-Archive -Path "aria2.zip" -DestinationPath "aria2_temp"
-          Copy-Item "aria2_temp\aria2-1.37.0-win-64bit-build1\aria2c.exe" -Destination "bin\aria2c.exe"
-          Remove-Item "aria2.zip" -Force
-          Remove-Item "aria2_temp" -Recurse -Force
-
-      - name: Download mpv (Windows)
-        run: |
-          Invoke-WebRequest -Uri "https://github.com/shinchiro/mpv-winbuild-cmake/releases/download/20250827/mpv-x86_64-20250827-git-9f153e2.7z" -OutFile "mpv.7z"
-          & "C:\Program Files\7-Zip\7z.exe" x "mpv.7z" -o"mpv_temp" -y
-          Copy-Item "mpv_temp\mpv.exe" -Destination "bin\mpv.exe"
-          Remove-Item "mpv.7z" -Force
-          Remove-Item "mpv_temp" -Recurse -Force
-
-      - name: Download ffmpeg (Windows)
-        run: |
-          Invoke-WebRequest -Uri "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip" -OutFile "ffmpeg.zip"
-          Expand-Archive -Path "ffmpeg.zip" -DestinationPath "ffmpeg_temp"
-          $ffmpegDir = Get-ChildItem "ffmpeg_temp" -Directory | Select-Object -First 1
-          Copy-Item "$ffmpegDir\bin\ffmpeg.exe" -Destination "bin\ffmpeg.exe"
-          Remove-Item "ffmpeg.zip" -Force
-          Remove-Item "ffmpeg_temp" -Recurse -Force
-
-      - name: Build executable
-        run: pyinstaller --clean --noconfirm turkanime-gui.spec
+          if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
+            mv dist/turkanime-gui.exe dist/turkanime-gui-windows.exe
+            certutil -hashfile dist/turkanime-gui-windows.exe MD5 > dist/turkanime-gui-windows.exe.md5 || echo "md5 skipped"
+            if [[ -f dist/TurkAnimu.exe ]]; then mv dist/TurkAnimu.exe dist/turkanime-cli-windows.exe; elif [[ -f dist/turkanime-cli.exe ]]; then mv dist/turkanime-cli.exe dist/turkanime-cli-windows.exe; fi
+            if [[ -f dist/turkanime-cli-windows.exe ]]; then certutil -hashfile dist/turkanime-cli-windows.exe MD5 > dist/turkanime-cli-windows.exe.md5 || echo "md5 skipped"; fi
+          elif [[ "${{ matrix.os }}" == "ubuntu-latest" ]]; then
+            mv dist/turkanime-gui dist/turkanime-gui-linux
+            md5sum dist/turkanime-gui-linux > dist/turkanime-gui-linux.md5 || echo "md5 skipped"
+            if [[ -f dist/turkanime-cli ]]; then mv dist/turkanime-cli dist/turkanime-cli-linux; fi
+            if [[ -f dist/turkanime-cli-linux ]]; then md5sum dist/turkanime-cli-linux > dist/turkanime-cli-linux.md5 || echo "md5 skipped"; fi
+          else
+            mv dist/turkanime-gui dist/turkanime-gui-macos
+            md5 -r dist/turkanime-gui-macos > dist/turkanime-gui-macos.md5 || echo "md5 skipped"
+            if [[ -f dist/turkanime-cli ]]; then mv dist/turkanime-cli dist/turkanime-cli-macos; fi
+            if [[ -f dist/turkanime-cli-macos ]]; then md5 -r dist/turkanime-cli-macos > dist/turkanime-cli-macos.md5 || echo "md5 skipped"; fi
+          fi
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: turkanime-windows
-          path: dist/
-
-  build-linux:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.10'
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install pyinstaller
-
-      - name: Create bin directory
-        run: mkdir -p bin
-
-      - name: Download yt-dlp (Linux)
-        run: |
-          wget -O bin/yt-dlp https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp
-          chmod +x bin/yt-dlp
-
-      - name: Download aria2c (Linux)
-        run: |
-          wget -O bin/aria2c https://github.com/q3aql/aria2-static-builds/releases/download/v1.37.0/aria2-1.37.0-linux-gnu-64bit-build1
-          chmod +x bin/aria2c
-
-      - name: Download mpv (Linux)
-        run: |
-          wget -O bin/mpv https://github.com/mpv-player/mpv-build/releases/download/0.36.0/mpv-0.36.0-x86_64-static
-          chmod +x bin/mpv
-
-      - name: Download ffmpeg (Linux)
-        run: |
-          wget -O ffmpeg.tar.xz https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz
-          tar -xf ffmpeg.tar.xz
-          cp ffmpeg-*-amd64-static/ffmpeg bin/ffmpeg
-          chmod +x bin/ffmpeg
-          rm -rf ffmpeg.tar.xz ffmpeg-*-amd64-static
-
-      - name: Build executable
-        run: pyinstaller --clean --noconfirm turkanime-gui.spec
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: turkanime-linux
-          path: dist/
-
-  build-macos:
-    runs-on: macos-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.10'
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install pyinstaller
-
-      - name: Create bin directory
-        run: mkdir -p bin
-
-      - name: Download yt-dlp (macOS)
-        run: |
-          curl -L -o bin/yt-dlp https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_macos
-          chmod +x bin/yt-dlp
-
-      - name: Download aria2c (macOS)
-        run: |
-          curl -L -o bin/aria2c https://github.com/aria2/aria2/releases/download/release-1.37.0/aria2-1.37.0-osx-darwin.tar.bz2
-          tar -xjf aria2-1.37.0-osx-darwin.tar.bz2
-          cp aria2-1.37.0-osx-darwin/bin/aria2c bin/aria2c
-          chmod +x bin/aria2c
-          rm -rf aria2-1.37.0-osx-darwin* aria2-1.37.0-osx-darwin.tar.bz2
-
-      - name: Download mpv (macOS)
-        run: |
-          curl -L -o bin/mpv https://github.com/mpv-player/mpv-build/releases/download/0.36.0/mpv-0.36.0-macos-universal
-          chmod +x bin/mpv
-
-      - name: Download ffmpeg (macOS)
-        run: |
-          curl -L -o ffmpeg.zip https://evermeet.cx/ffmpeg/ffmpeg-7.0.1.zip
-          unzip ffmpeg.zip
-          mv ffmpeg bin/ffmpeg
-          chmod +x bin/ffmpeg
-          rm -f ffmpeg.zip
-
-      - name: Build executable
-        run: pyinstaller --clean --noconfirm turkanime-gui.spec
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: turkanime-macos
-          path: dist/
+          name: turkanime-gui-${{ matrix.os }}
+          path: |
+            dist/turkanime-gui-windows.exe
+            dist/turkanime-gui-linux
+            dist/turkanime-gui-macos
+            dist/turkanime-cli-windows.exe
+            dist/turkanime-cli-linux
+            dist/turkanime-cli-macos
+          if-no-files-found: ignore
 
   release:
-    needs: [build-windows, build-linux, build-macos]
+    needs: build
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Download all artifacts
+      - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
-          path: artifacts/
+          pattern: turkanime-gui-*
+          path: dist
+          merge-multiple: true
 
-      - name: Create release
-        uses: actions/create-release@v1
-        id: create_release
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/**
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ github.ref_name }}
-          release_name: Release ${{ github.ref_name }}
-          draft: false
-          prerelease: false
-
-      - name: Find Windows executable
-        id: find_windows
-        run: |
-          FILE=$(find artifacts/turkanime-windows -type f -name '*.exe' -print -quit)
-          if [ -z "$FILE" ]; then
-            echo "No Windows executable found in artifacts/turkanime-windows"
-            exit 1
-          fi
-          echo "path=$FILE" >> $GITHUB_OUTPUT
-
-      - name: Upload Windows executable
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ${{ steps.find_windows.outputs.path }}
-          asset_name: turkanime-windows.exe
-          asset_content_type: application/octet-stream
-
-      - name: Find Linux executable
-        id: find_linux
-        run: |
-          FILE=$(find artifacts/turkanime-linux -type f -print -quit)
-          if [ -z "$FILE" ]; then
-            echo "No Linux executable found in artifacts/turkanime-linux"
-            exit 1
-          fi
-          echo "path=$FILE" >> $GITHUB_OUTPUT
-
-      - name: Upload Linux executable
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ${{ steps.find_linux.outputs.path }}
-          asset_name: turkanime-linux
-          asset_content_type: application/octet-stream
-
-      - name: Find macOS executable
-        id: find_macos
-        run: |
-          FILE=$(find artifacts/turkanime-macos -type f -print -quit)
-          if [ -z "$FILE" ]; then
-            echo "No macOS executable found in artifacts/turkanime-macos"
-            exit 1
-          fi
-          echo "path=$FILE" >> $GITHUB_OUTPUT
-
-      - name: Upload macOS executable
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ${{ steps.find_macos.outputs.path }}
-          asset_name: turkanime-macos
-          asset_content_type: application/octet-stream
