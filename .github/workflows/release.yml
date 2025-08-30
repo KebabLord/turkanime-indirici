@@ -8,7 +8,7 @@ on:
 
 jobs:
   build-windows:
-    runs-on: SAFEHOUSE-MFSU
+    runs-on: Windows
     steps:
     - uses: actions/checkout@v4
 
@@ -34,7 +34,7 @@ jobs:
         path: dist/turkanime-gui-windows.exe
 
   build-linux:
-    runs-on: safehouse-homeserver
+    runs-on: Linux
     steps:
     - uses: actions/checkout@v4
 
@@ -91,7 +91,7 @@ jobs:
         path: dist/turkanime-gui-macos
 
   build-android:
-    runs-on: safehouse-homeserver
+    runs-on: Linux
     steps:
     - uses: actions/checkout@v4
 
@@ -268,7 +268,7 @@ jobs:
 
   create-release:
     needs: [build-windows, build-linux, build-macos, build-android]
-    runs-on: safehouse-homeserver
+    runs-on: Linux
     if: startsWith(github.ref, 'refs/tags/v')
     steps:
     - name: Download all artifacts
