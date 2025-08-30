@@ -33,10 +33,11 @@ rich = ">=13.0.0"
 easygui = ">=0.98.2"
 # PyQt6 bazı Linux/musl ve yeni Python kombinasyonlarında tekerlek yayınlamayabilir.
 # Bu nedenle opsiyonel yapıyoruz; GUI isteyenler extras ile kurabilir.
-PyQt6 = { version = ">=6.5", optional = true }
+# PyQt6 = { version = ">=6.5", optional = true }
+customtkinter = { version = ">=5.2.0", optional = true }
 
 [tool.poetry.extras]
-gui = ["PyQt6>=6.5"]
+gui = ["customtkinter>=5.2.0"]
 
 [tool.poetry.dev-dependencies]
 

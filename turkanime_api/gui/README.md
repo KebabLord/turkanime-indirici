@@ -1,4 +1,4 @@
-Bu klasör, PyQt6 tabanlı TürkAnimu GUI uygulamasını içerir.
+Bu klasör, CustomTkinter tabanlı TürkAnimu GUI uygulamasını içerir.
 
 ## Derleme (lokal)
 

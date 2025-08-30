@@ -1,2 +1,2 @@
 -r requirements.txt
-PyQt6>=6.5
+customtkinter>=5.2.0

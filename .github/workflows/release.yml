@@ -1,175 +1,302 @@
-name: Build and Release GUI
+name: Build and Release
 
 on:
   push:
     tags:
-      - 'v*.*.*'
+      - '*v*'
+  workflow_dispatch:
 
 jobs:
-  build:
-    name: Build (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [windows-latest, ubuntu-latest, macos-latest]
+  build-windows:
+    runs-on: windows-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+    - uses: actions/checkout@v4
 
-      - name: Setup Python 3.10
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.10'
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
 
-      - name: Install dependencies
-        shell: bash
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements-gui.txt
-          pip install pyinstaller
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements-gui.txt
+        pip install pyinstaller
 
-      - name: Prepare embedded runtime (Windows only)
-        if: matrix.os == 'windows-latest'
-        shell: pwsh
-        run: |
-          New-Item -ItemType Directory -Force -Path bin | Out-Null
-          Invoke-WebRequest -Uri "https://www.7-zip.org/a/7zr.exe" -OutFile "7zr.exe"
-          # yt-dlp
-          curl.exe -L -o bin/yt-dlp.exe "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe"
-          # aria2c
-          curl.exe -L -o aria2.zip "https://github.com/aria2/aria2/releases/download/release-1.37.0/aria2-1.37.0-win-64bit-build1.zip"
-          Expand-Archive -LiteralPath aria2.zip -DestinationPath tmp_aria2
-          $aria2Dir = Get-ChildItem -Recurse -Path tmp_aria2 -Filter aria2c.exe | Select-Object -First 1 | Split-Path -Parent
-          Copy-Item -Recurse -Force "$aria2Dir\*" "bin\"
-          # mpv
-          $mpvUrl = "https://sourceforge.net/projects/mpv-player-windows/files/64bit/mpv-x86_64-20231231-git-abc2a74.7z/download"
-          curl.exe -L -o mpv.7z $mpvUrl
-          ./7zr.exe x mpv.7z -obin -y | Out-Null
-          $mpvExe = Get-ChildItem -Recurse -Path bin -Filter mpv.exe | Select-Object -First 1
-          if (-not $mpvExe) { throw "mpv.exe not found after extraction" }
-          # ffmpeg
-          curl.exe -L -o ffmpeg.zip "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip"
-          Expand-Archive -LiteralPath ffmpeg.zip -DestinationPath tmp_ffmpeg
-          $ffmpegExe = Get-ChildItem -Recurse -Path tmp_ffmpeg -Filter ffmpeg.exe | Select-Object -First 1
-          $ffprobeExe = Get-ChildItem -Recurse -Path tmp_ffmpeg -Filter ffprobe.exe | Select-Object -First 1
-          if (-not $ffmpegExe) { throw "ffmpeg.exe not found after extraction" }
-          Copy-Item -Force $ffmpegExe.FullName bin/
-          if ($ffprobeExe) { Copy-Item -Force $ffprobeExe.FullName bin/ }
+    - name: Build Windows executable
+      run: |
+        pyinstaller --onefile --windowed --name turkanime-gui-windows --icon docs/TurkAnimu.ico turkanime_api/gui/main.py
 
-      - name: Build with PyInstaller (spec)
-        shell: bash
-        run: |
-          python -m PyInstaller pyinstaller.spec
+    - name: Upload Windows build
+      uses: actions/upload-artifact@v4
+      with:
+        name: turkanime-gui-windows
+        path: dist/turkanime-gui-windows.exe
 
-      - name: Build CLI (Windows)
-        if: matrix.os == 'windows-latest'
-        shell: pwsh
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install pyinstaller pyinstaller_versionfile
-
-          Remove-Item -Force version_generator.py -ErrorAction Ignore
-          Add-Content -Path version_generator.py -Value "import pyinstaller_versionfile"
-          Add-Content -Path version_generator.py -Value "from turkanime_api.cli.version import __version__"
-          Add-Content -Path version_generator.py -Value ""
-          Add-Content -Path version_generator.py -Value "pyinstaller_versionfile.create_versionfile("
-          Add-Content -Path version_generator.py -Value "    output_file='versionfile.txt',"
-          Add-Content -Path version_generator.py -Value "    version=__version__,"
-          Add-Content -Path version_generator.py -Value "    company_name='TurkAnimu Dev',"
-          Add-Content -Path version_generator.py -Value "    file_description='Anime İndirici & Oynatıcı',"
-          Add-Content -Path version_generator.py -Value "    internal_name='TurkAnimu',"
-          Add-Content -Path version_generator.py -Value "    legal_copyright='© KebabLord, All rights reserved.',"
-          Add-Content -Path version_generator.py -Value "    original_filename='TurkAnimu.exe',"
-          Add-Content -Path version_generator.py -Value "    product_name='TurkAnimu İndirici'"
-          Add-Content -Path version_generator.py -Value ")"
-          python version_generator.py
-
-          Remove-Item -Force compiled.py -ErrorAction Ignore
-          Add-Content -Path compiled.py -Value 'from turkanime_api.cli.__main__ import main'
-          Add-Content -Path compiled.py -Value 'if __name__ == "__main__":'
-          Add-Content -Path compiled.py -Value '    main()'
-
-          pyinstaller --noconfirm --onefile --console `
-            --icon "docs\TurkAnimu.ico" `
-            --name "TurkAnimu" `
-            --version-file versionfile.txt `
-            --hidden-import yt_dlp `
-            --hidden-import curl_cffi `
-            --hidden-import Crypto `
-            --add-data "gereksinimler.json;." `
-            compiled.py
-
-      - name: Build CLI (Linux/macOS)
-        if: matrix.os != 'windows-latest'
-        shell: bash
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          python -m pip install pyinstaller
-          printf '%s\n' \
-            'from turkanime_api.cli.__main__ import main' \
-            'if __name__ == "__main__":' \
-            '    main()' > compiled.py
-          python -m PyInstaller \
-            --noconfirm \
-            --name turkanime-cli \
-            --onefile \
-            --console \
-            --hidden-import yt_dlp \
-            --hidden-import curl_cffi \
-            --hidden-import Crypto \
-            --add-data "gereksinimler.json:." \
-            compiled.py
-
-      - name: Rename artifact per OS
-        shell: bash
-        run: |
-          if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
-            mv dist/turkanime-gui.exe dist/turkanime-gui-windows.exe
-            certutil -hashfile dist/turkanime-gui-windows.exe MD5 > dist/turkanime-gui-windows.exe.md5 || echo "md5 skipped"
-            if [[ -f dist/TurkAnimu.exe ]]; then mv dist/TurkAnimu.exe dist/turkanime-cli-windows.exe; elif [[ -f dist/turkanime-cli.exe ]]; then mv dist/turkanime-cli.exe dist/turkanime-cli-windows.exe; fi
-            if [[ -f dist/turkanime-cli-windows.exe ]]; then certutil -hashfile dist/turkanime-cli-windows.exe MD5 > dist/turkanime-cli-windows.exe.md5 || echo "md5 skipped"; fi
-          elif [[ "${{ matrix.os }}" == "ubuntu-latest" ]]; then
-            mv dist/turkanime-gui dist/turkanime-gui-linux
-            md5sum dist/turkanime-gui-linux > dist/turkanime-gui-linux.md5 || echo "md5 skipped"
-            if [[ -f dist/turkanime-cli ]]; then mv dist/turkanime-cli dist/turkanime-cli-linux; fi
-            if [[ -f dist/turkanime-cli-linux ]]; then md5sum dist/turkanime-cli-linux > dist/turkanime-cli-linux.md5 || echo "md5 skipped"; fi
-          else
-            mv dist/turkanime-gui dist/turkanime-gui-macos
-            md5 -r dist/turkanime-gui-macos > dist/turkanime-gui-macos.md5 || echo "md5 skipped"
-            if [[ -f dist/turkanime-cli ]]; then mv dist/turkanime-cli dist/turkanime-cli-macos; fi
-            if [[ -f dist/turkanime-cli-macos ]]; then md5 -r dist/turkanime-cli-macos > dist/turkanime-cli-macos.md5 || echo "md5 skipped"; fi
-          fi
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: turkanime-gui-${{ matrix.os }}
-          path: |
-            dist/turkanime-gui-windows.exe
-            dist/turkanime-gui-linux
-            dist/turkanime-gui-macos
-            dist/turkanime-cli-windows.exe
-            dist/turkanime-cli-linux
-            dist/turkanime-cli-macos
-          if-no-files-found: ignore
-
-  release:
-    needs: build
+  build-linux:
     runs-on: ubuntu-latest
     steps:
-      - name: Download artifacts
-        uses: actions/download-artifact@v4
-        with:
-          pattern: turkanime-gui-*
-          path: dist
-          merge-multiple: true
+    - uses: actions/checkout@v4
 
-      - name: Create Release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: |
-            dist/**
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libgtk-3-dev libgirepository1.0-dev
+
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements-gui.txt
+        pip install pyinstaller
+
+    - name: Build Linux executable
+      run: |
+        pyinstaller --onefile --name turkanime-gui-linux turkanime_api/gui/main.py
+
+    - name: Upload Linux build
+      uses: actions/upload-artifact@v4
+      with:
+        name: turkanime-gui-linux
+        path: dist/turkanime-gui-linux
+
+  build-macos:
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements-gui.txt
+        pip install pyinstaller
+
+    - name: Build macOS executable
+      run: |
+        pyinstaller --onefile --name turkanime-gui-macos turkanime_api/gui/main.py
+
+    - name: Upload macOS build
+      uses: actions/upload-artifact@v4
+      with:
+        name: turkanime-gui-macos
+        path: dist/turkanime-gui-macos
+
+  build-android:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: Install Android dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements-gui.txt
+        pip install buildozer kivy
+
+    - name: Create buildozer.spec
+      run: |
+        cat > buildozer.spec << EOF
+        [app]
+        title = TurkAnime GUI
+        package.name = turkanime_gui
+        package.domain = com.turkanime
+        source.dir = .
+        source.include_exts = py,png,jpg,kv,atlas
+        version = 1.0.0
+        requirements = python3,kivy,requests,pillow,beautifulsoup4,lxml
+        orientation = portrait
+        fullscreen = 0
+        android.arch = armeabi-v7a,arm64-v8a
+        android.api = 31
+        android.minapi = 21
+        android.sdk = 31
+        android.ndk = 25b
+        android.private_storage = True
+        android.permissions = INTERNET,WRITE_EXTERNAL_STORAGE,READ_EXTERNAL_STORAGE
+        p4a.branch = master
+        presplash.filename = docs/TurkAnimu.ico
+        icon.filename = docs/TurkAnimu.ico
+        EOF
+
+    - name: Create Android version of main.py
+      run: |
+        cat > main_android.py << EOF
+        # Android version using Kivy instead of CustomTkinter
+        import kivy
+        kivy.require('2.1.0')
+
+        from kivy.app import App
+        from kivy.uix.boxlayout import BoxLayout
+        from kivy.uix.label import Label
+        from kivy.uix.button import Button
+        from kivy.uix.textinput import TextInput
+        from kivy.uix.scrollview import ScrollView
+        from kivy.uix.gridlayout import GridLayout
+        from kivy.core.window import Window
+        from kivy.metrics import dp
+
+        # Import your existing modules
+        from turkanime_api.objects import Anime, Bolum
+        from turkanime_api.bypass import fetch
+        from turkanime_api.cli.dosyalar import Dosyalar
+        from turkanime_api.cli.cli_tools import VidSearchCLI, indir_aria2c
+        from turkanime_api.cli.gereksinimler import Gereksinimler
+        from turkanime_api.sources.animecix import CixAnime, search_animecix
+        from turkanime_api.sources.adapter import AdapterAnime, AdapterBolum
+        from turkanime_api.anilist_client import anilist_client, AniListAuthServer
+
+        class TurkAnimeApp(App):
+            def build(self):
+                Window.size = (400, 700)
+                Window.title = "TürkAnimu GUI"
+                
+                layout = BoxLayout(orientation='vertical', padding=dp(10), spacing=dp(10))
+                
+                # Header
+                header = Label(text="TürkAnimu", font_size=dp(24), size_hint_y=None, height=dp(50))
+                layout.add_widget(header)
+                
+                # Search section
+                search_layout = BoxLayout(size_hint_y=None, height=dp(50), spacing=dp(5))
+                self.search_input = TextInput(hint_text="Anime ara...", multiline=False)
+                search_button = Button(text="Ara", on_press=self.search_anime)
+                search_layout.add_widget(self.search_input)
+                search_layout.add_widget(search_button)
+                layout.add_widget(search_layout)
+                
+                # Results area
+                scroll = ScrollView()
+                self.results_layout = GridLayout(cols=1, spacing=dp(5), size_hint_y=None)
+                self.results_layout.bind(minimum_height=self.results_layout.setter('height'))
+                scroll.add_widget(self.results_layout)
+                layout.add_widget(scroll)
+                
+                return layout
+            
+            def search_anime(self, instance):
+                query = self.search_input.text.strip()
+                if not query:
+                    return
+                
+                # Clear previous results
+                self.results_layout.clear_widgets()
+                
+                try:
+                    # Search using existing logic
+                    results = search_animecix(query)
+                    
+                    for _id, name in results[:10]:  # Limit to 10 results
+                        btn = Button(text=name, size_hint_y=None, height=dp(40))
+                        btn.bind(on_press=lambda x, id=_id, n=name: self.select_anime(id, n))
+                        self.results_layout.add_widget(btn)
+                        
+                except Exception as e:
+                    error_label = Label(text=f"Hata: {str(e)}", color=(1, 0, 0, 1))
+                    self.results_layout.add_widget(error_label)
+            
+            def select_anime(self, anime_id, anime_name):
+                # Show anime details
+                self.results_layout.clear_widgets()
+                
+                try:
+                    cix = CixAnime(id=int(anime_id), title=anime_name)
+                    episodes = cix.episodes
+                    
+                    title_label = Label(text=f"{anime_name}\\n{len(episodes)} bölüm", 
+                                      size_hint_y=None, height=dp(60))
+                    self.results_layout.add_widget(title_label)
+                    
+                    for episode in episodes[:20]:  # Limit episodes
+                        btn = Button(text=episode.title, size_hint_y=None, height=dp(35))
+                        btn.bind(on_press=lambda x, ep=episode: self.play_episode(ep))
+                        self.results_layout.add_widget(btn)
+                        
+                except Exception as e:
+                    error_label = Label(text=f"Hata: {str(e)}", color=(1, 0, 0, 1))
+                    self.results_layout.add_widget(error_label)
+            
+            def play_episode(self, episode):
+                # Play episode using existing logic
+                try:
+                    # This would need to be adapted for Android
+                    pass
+                except Exception as e:
+                    print(f"Play error: {e}")
+
+        if __name__ == '__main__':
+            TurkAnimeApp().run()
+        EOF
+
+    - name: Build Android APK
+      run: |
+        buildozer android debug
+
+    - name: Upload Android build
+      uses: actions/upload-artifact@v4
+      with:
+        name: turkanime-gui-android
+        path: bin/*.apk
+
+  create-release:
+    needs: [build-windows, build-linux, build-macos, build-android]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+
+    - name: Create version.json
+      run: |
+        VERSION=${GITHUB_REF#refs/tags/v}
+        APK_NAME=$(find turkanime-gui-android -name '*arm64*.apk' -print -quit | xargs basename 2>/dev/null || echo "turkanime_gui-1.0.0-arm64-v8a-debug.apk")
+        cat > version.json << EOF
+        {
+          "version": "$VERSION",
+          "release_date": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+          "platforms": {
+            "windows": {
+              "url": "https://github.com/${{ github.repository }}/releases/download/v$VERSION/turkanime-gui-windows.exe",
+              "checksum": "$(sha256sum turkanime-gui-windows/turkanime-gui-windows.exe | cut -d' ' -f1)"
+            },
+            "linux": {
+              "url": "https://github.com/${{ github.repository }}/releases/download/v$VERSION/turkanime-gui-linux",
+              "checksum": "$(sha256sum turkanime-gui-linux/turkanime-gui-linux | cut -d' ' -f1)"
+            },
+            "macos": {
+              "url": "https://github.com/${{ github.repository }}/releases/download/v$VERSION/turkanime-gui-macos",
+              "checksum": "$(sha256sum turkanime-gui-macos/turkanime-gui-macos | cut -d' ' -f1)"
+            },
+            "android": {
+              "url": "https://github.com/${{ github.repository }}/releases/download/v$VERSION/$APK_NAME",
+              "checksum": "$(find turkanime-gui-android -name '*arm64*.apk' -exec sha256sum {} \; | cut -d' ' -f1)"
+            }
+          },
+          "changelog": "Güncelleme bilgileri için GitHub release notlarını inceleyin."
+        }
+        EOF
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          turkanime-gui-windows/turkanime-gui-windows.exe
+          turkanime-gui-linux/turkanime-gui-linux
+          turkanime-gui-macos/turkanime-gui-macos
+          turkanime-gui-android/*.apk
+          version.json
+        generate_release_notes: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

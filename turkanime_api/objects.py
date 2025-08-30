@@ -40,13 +40,13 @@ class LogHandler:
     """ TODO: ytdlp log handler prototipi """
     @staticmethod
     def error(msg):
-        pass
+        pass  # msg is unused but required by yt-dlp interface
     @staticmethod
     def warning(msg):
-        pass
+        pass  # msg is unused but required by yt-dlp interface
     @staticmethod
     def debug(msg):
-        pass
+        pass  # msg is unused but required by yt-dlp interface
 
 
 class Anime:
@@ -218,7 +218,7 @@ class Bolum:
                 self._videos.append(Video(self,vpath,player))
         return self._videos
 
-    def best_video(self, by_res=True, by_fansub=None, default_res=600, callback=lambda x:None, early_subset: int = 8):
+    def best_video(self, by_res=True, by_fansub=None, default_res=600, callback=lambda x: None, early_subset: int = 8):
         """
         Parametrelerde belirtilmiş en ideal videoyu tespit edip döndürür.
 
@@ -345,10 +345,10 @@ class Video:
                 self._info = {}
                 return self._info
             # nedense mpv direct=True ise oynatmıyor
-            if "direct" in info:
+            if isinstance(info, dict) and "direct" in info:
                 del info["direct"]
             # false-pozitifleri önlemek için.
-            if info.get("video_ext") == "html":
+            if isinstance(info, dict) and info.get("video_ext") == "html":
                 info = None
             self._info = info
         return self._info
@@ -357,21 +357,31 @@ class Video:
     def resolution(self):
         """ Video çözünürlüğünü ara, bulunamadıysa None. """
         if self._resolution is None:
-            formats = self.info.get("formats")
-            res = self.info.get("resolution")
-            if res and re.search(r'\d{2,4}',res):
-                res = int(re.findall(r'\d{2,4}',res)[-1])
-            elif formats:
-                if "height" in formats[0]:
-                    res = max(formats,key=lambda x:x.get("height") or 0).get("height")
-                elif "format_id" in formats[0]:
-                    fid = formats[0].get("format_id")
-                    res = {"sd":480, "hd":720, "fhd": 1080, "hq":2160}.get(fid)
+            info = self.info
+            if not isinstance(info, dict):
+                self._resolution = 0
+                return self._resolution
+            formats = info.get("formats")
+            res = info.get("resolution")
+            if res and isinstance(res, str) and re.search(r'\d{2,4}', res):
+                res = int(re.findall(r'\d{2,4}', res)[-1])
+            elif isinstance(formats, list) and formats:
+                first_format = formats[0]
+                if isinstance(first_format, dict) and "height" in first_format:
+                    best_format = max(formats, key=lambda x: (x.get("height") or 0) if isinstance(x, dict) else 0)
+                    res = best_format.get("height") if isinstance(best_format, dict) else None
+                elif isinstance(first_format, dict) and "format_id" in first_format:
+                    fid = first_format.get("format_id")
+                    if isinstance(fid, str):
+                        res = {"sd": 480, "hd": 720, "fhd": 1080, "hq": 2160}.get(fid)
                 else:
                     # Ek fallback: vcodec isimlerinden veya tbr'den yaklaşık çözünürlük tahmini
                     try:
-                        t = max(formats, key=lambda x: (x.get("height") or 0, x.get("tbr") or 0))
-                        res = t.get("height") or (720 if (t.get("tbr") or 0) > 1500 else 480)
+                        t = max(formats, key=lambda x: ((x.get("height") or 0) if isinstance(x, dict) else 0, (x.get("tbr") or 0) if isinstance(x, dict) else 0))
+                        if isinstance(t, dict):
+                            res = t.get("height") or (720 if (t.get("tbr") or 0) > 1500 else 480)
+                        else:
+                            res = None
                     except Exception:
                         res = None
             self._resolution = res or 0
@@ -451,3 +461,13 @@ class Video:
         for opt in mpv_opts:
             cmd.insert(1,opt)
         return sp.run(cmd, text=True, stdout=sp.PIPE, stderr=sp.PIPE)
+
+    def get(self, key, default=None):
+        """Dictionary-like get method for compatibility."""
+        if key == 'url':
+            return self.url
+        elif key == 'label':
+            return getattr(self, 'fansub', None) or self.player
+        elif key == 'player':
+            return self.player
+        return default

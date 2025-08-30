@@ -74,16 +74,19 @@ def obtain_key() -> bytes:
         if "'decrypt'" not in j2:
             j2 = fetch(f'/embed/js/embeds.{js1_imports[1]}.js')
         # Obfuscated listeyi parse'la.
-        obfuscate_list = re.search(
+        match = re.search(
                 'function a\\d_0x[\\w]{1,4}\\(\\){var _0x\\w{3,8}=\\[(.*?)\\];',j2
-            ).group(1)
+            )
+        if match is None:
+            return b""
+        obfuscate_list = match.group(1)
         # Listedeki en uzun elemanı, yani şifremizi bul.
         return max(
             obfuscate_list.split("','"),
             key=lambda i:len( re.sub(r"\\x\d\d","?",i))
         ).encode()
-    except IndexError:
-        return False
+    except (IndexError, AttributeError):
+        return b""
 
 
 
@@ -115,27 +118,26 @@ def decrypt_cipher(key: bytes, data: bytes) -> str:
     # Decrypt link and unpad it.
     try:
         return unpad(crypt.decrypt(cipher_text)).decode("utf-8")
-    except UnicodeDecodeError:
-        return False
+    except (UnicodeDecodeError, ValueError):
+        return ""
 
 
 
 def get_real_url(url_cipher: str, cache=True) -> str:
     """ Videonun gerçek url'sini decrypt'le, parolayı da cache'le. """
     cache_file = os.path.join(user_cache_dir(),"turkanimu_key.cache")
-    url_cipher = url_cipher.encode()
 
     # Daha önceden cache'lenmiş key varsa onunla şifreyi çözmeyi dene.
     if cache and os.path.isfile(cache_file):
         with open(cache_file,"r",encoding="utf-8") as f:
             cached_key = f.read().strip().encode()
-            plaintext = decrypt_cipher(cached_key,url_cipher)
+            plaintext = decrypt_cipher(cached_key, url_cipher.encode())
         if plaintext:
             return plaintext
 
     # Cache'lenmiş key işe yaramadıysa, yeni key'i edin ve decryptlemeyi dene.
     key = obtain_key()
-    plaintext = decrypt_cipher(key,url_cipher)
+    plaintext = decrypt_cipher(key, url_cipher.encode())
     if not plaintext:
         raise ValueError("Embed URLsinin şifresi çözülemedi.")
     # Cache'i güncelle
@@ -204,7 +206,7 @@ def obtain_csrf():
 
     # Hepsini decrypt'lemeyi dene, başarılı olanı döndür
     decrypted_list = [decrypt_jsjiamiv7(ct,key) for ct in candidates]
-    return next((i for i in decrypted_list if re.search("^[a-zA-Z/\+]+$",i)), None)
+    return next((i for i in decrypted_list if re.search(r"^[a-zA-Z/\+]+$",i)), None)
 
 
 def unmask_real_url(url_mask):
@@ -235,6 +237,14 @@ def unmask_real_url(url_mask):
 
 def get_alucard_m3u8(url):
     """ MPV'nin video'yu oynatabilmesi için en yüksek çözünürlüklü alucard m3u8 stream'i indir"""
+    global session, BASE_URL
+    if session is None:
+        session = requests.Session(impersonate="firefox", allow_redirects=True)
+        res = session.get(BASE_URL)
+        assert res.status_code == 200, ConnectionError
+        BASE_URL = res.url
+        BASE_URL = BASE_URL[:-1] if BASE_URL.endswith('/') else BASE_URL
+
     res = session.get(url)
     m3u8_url = re.findall("https://.*",res.text)[-1]
     res = session.get(m3u8_url)

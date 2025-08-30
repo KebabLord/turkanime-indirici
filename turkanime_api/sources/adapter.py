@@ -43,9 +43,9 @@ class AdapterAnime:
 class AdapterVideo:
     """TürkAnime Video arayüzüne minimum uyumlu basit video nesnesi."""
 
-    def __init__(self, bolum: 'AdapterBolum', url: str, label: Optional[str] = None):
+    def __init__(self, bolum: 'AdapterBolum', url: Optional[str], label: Optional[str] = None):
         self.bolum = bolum
-        self._url = url
+        self._url = url or ""
         self.label = label
         self.player = "ANIMECIX"
         self._info: Optional[Dict[str, Any]] = None
@@ -68,7 +68,7 @@ class AdapterVideo:
         return self._url
 
     @property
-    def info(self):
+    def info(self) -> Optional[Dict[str, Any]]:
         if self._info is None:
             with YoutubeDL(self.ydl_opts) as ydl:
                 raw_info = ydl.extract_info(self.url, download=False)
@@ -76,11 +76,16 @@ class AdapterVideo:
             if not info:
                 self._info = {}
             else:
-                if "direct" in info:
-                    del info["direct"]
-                if info.get("video_ext") == "html":
-                    info = None
-                self._info = info
+                # info'nun Dict[str, Any] olduğunu garanti edelim
+                if isinstance(info, dict):
+                    if "direct" in info:
+                        del info["direct"]
+                    if info.get("video_ext") == "html":
+                        self._info = None
+                    else:
+                        self._info = info
+                else:
+                    self._info = {}
         return self._info
 
     @property
@@ -109,27 +114,15 @@ class AdapterVideo:
         with YoutubeDL(opts) as ydl:
             ydl.download_with_info_file(tmp.name)
 
-    def oynat(self, dakika_hatirla=False, izlerken_kaydet=False, mpv_opts=None):
-        assert self.is_working, "Video çalışmıyor."
-        if mpv_opts is None:
-            mpv_opts = []
-        with NamedTemporaryFile("w", delete=False) as tmp:
-            json.dump(self.info, tmp)
-        cmd = [
-            "mpv",
-            "--no-input-terminal",
-            "--msg-level=all=error",
-            "--script-opts=ytdl_hook-ytdl_path=yt-dlp,ytdl_hook-try_ytdl_first=yes",
-            "--ytdl-raw-options=load-info-json=" + tmp.name,
-            "ytdl://" + self.bolum.slug,
-        ]
-        if dakika_hatirla:
-            mpv_opts.append("--save-position-on-quit")
-        if izlerken_kaydet:
-            mpv_opts.append("--stream-record")
-        for opt in mpv_opts:
-            cmd.insert(1, opt)
-        return sp.run(cmd, text=True, stdout=sp.PIPE, stderr=sp.PIPE)
+    def get(self, key, default=None):
+        """Dictionary-like get method for compatibility."""
+        if key == 'url':
+            return self.url
+        elif key == 'label':
+            return self.label
+        elif key == 'player':
+            return self.player
+        return default
 
     @property
     def resolution(self) -> int:
@@ -176,7 +169,7 @@ class AdapterVideo:
 
 
 class AdapterBolum:
-    def __init__(self, url: str, title: str, anime: AdapterAnime):
+    def __init__(self, url: Optional[str], title: str, anime: AdapterAnime):
         self.url = url
         self._title = title
         self.anime = anime
@@ -193,6 +186,11 @@ class AdapterBolum:
         return []
 
     def best_video(self, by_res=True, by_fansub=None, default_res=600, callback=lambda x: None, early_subset: int = 8):
+        # URL kontrolü
+        if not self.url:
+            callback({"current": 1, "total": 1, "player": "ANIMECIX", "status": "URL bulunamadı"})
+            return None
+
         # AnimeciX embed path üzerinden stream listesi
         callback({"current": 0, "total": 1, "player": "ANIMECIX", "status": "üstbilgi çekiliyor"})
         streams = _video_streams(self.url)
@@ -205,7 +203,12 @@ class AdapterBolum:
             return int(m[0]) if m else default_res
 
         picked = max(streams, key=lambda s: parse_res(s.get("label") or "0p")) if by_res else streams[0]
-        vid = AdapterVideo(self, picked.get("url"), picked.get("label"))
+        video_url = picked.get("url")
+        if not video_url:
+            callback({"current": 1, "total": 1, "player": "ANIMECIX", "status": "video URL bulunamadı"})
+            return None
+
+        vid = AdapterVideo(self, video_url, picked.get("label"))
         if vid.is_working:
             callback({"current": 1, "total": 1, "player": "ANIMECIX", "status": "çalışıyor"})
             return vid

@@ -39,7 +39,8 @@ class Dosyalar:
             "max resolution" : True,
             "dakika hatirla" : True,
             "aria2c kullan" : False,
-            "kaynak": "turkanime"
+            "kaynak": "turkanime",
+            "discord_rich_presence": True
         }
         # Gerekli dosyalar eğer daha önce yaratılmadıysa yarat.
         if not path.isdir(".git") and not path.isdir(self.ta_path):

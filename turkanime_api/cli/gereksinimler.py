@@ -5,6 +5,8 @@ import tempfile
 import re
 import subprocess as sp
 import json
+import platform
+import os
 from zipfile import ZipFile
 from py7zr import SevenZipFile
 import requests
@@ -26,16 +28,46 @@ class Gereksinimler:
         self.folder = Dosyalar().ta_path
         self._url_liste = None
         self._eksikler = []
+        self._platform = self._get_platform()
+        self._arch = self._get_arch()
+
+    def _get_platform(self):
+        """Mevcut platformu tespit et."""
+        system = platform.system().lower()
+        if system == "windows":
+            return "windows"
+        elif system == "linux":
+            return "linux"
+        elif system == "darwin":
+            return "macos"
+        else:
+            return "unknown"
+
+    def _get_arch(self):
+        """Mevcut mimariyi tespit et."""
+        machine = platform.machine().lower()
+        if machine in ["x86_64", "amd64"]:
+            return "x64"
+        elif machine in ["i386", "i686"]:
+            return "x32"
+        elif machine in ["arm64", "aarch64"]:
+            return "arm64"
+        else:
+            return "x64"  # fallback
 
     def app_kontrol(self,app):
         """ Gereksinimi çalıştırmayı deneyip exit kodunu öğren. """
-        process = sp.Popen(f'{app} --version', stdout=sp.PIPE, stderr=sp.PIPE, shell=True)
-        exit_code, stdout = process.wait(), process.stdout.read().decode()
-        if exit_code == 0:
-            return SUCCESS
-        if exit_code in (1,127,32512):
+        try:
+            process = sp.Popen(f'{app} --version', stdout=sp.PIPE, stderr=sp.PIPE, shell=True)
+            exit_code = process.wait()
+            stdout = process.stdout.read().decode() if process.stdout else ""
+            if exit_code == 0:
+                return SUCCESS
+            if exit_code in (1,127,32512):
+                return MISSING
+            return NOT_WORKING
+        except Exception:
             return MISSING
-        return NOT_WORKING
 
     @property
     def eksikler(self):
@@ -53,7 +85,35 @@ class Gereksinimler:
     def url_liste(self):
         """ İndirme linklerinin bulunduğu Json dosyasını Dict olarak döndürür """
         if self._url_liste is None:
-            self._url_liste = json.loads(requests.get(DL_URL).text)
+            try:
+                response = requests.get(DL_URL)
+                response.raise_for_status()
+                raw_data = json.loads(response.text)
+
+                # Yeni formatı eski formata dönüştür
+                converted_data = []
+                for item in raw_data:
+                    if "platforms" in item:
+                        # Yeni format - platform bilgisine göre URL seç
+                        platform_data = item["platforms"].get(self._platform, {})
+                        url = platform_data.get(self._arch, platform_data.get("x64", ""))
+
+                        if url:
+                            converted_item = {
+                                "name": item["name"],
+                                "type": item["type"],
+                                "is_setup": item.get("is_setup", False),
+                                "url": url
+                            }
+                            converted_data.append(converted_item)
+                    else:
+                        # Eski format - doğrudan kullan
+                        converted_data.append(item)
+
+                self._url_liste = converted_data
+            except Exception as e:
+                print(f"Gereksinimler listesi alınamadı: {e}")
+                self._url_liste = []
         return self._url_liste
 
     def otomatik_indir(self, url_liste=None, break_on_fail = False, callback = None):
@@ -95,9 +155,10 @@ class Gereksinimler:
         return {"path":file_name}
 
     def dosyayi_kur(self,file_name,file_path,is_setup=False,is_dir=False):
-        """ 7z, Zip veya Exe formatındaki indirilmiş dosyayı uygulama dizinine kurar. """
-        file_type = file_path.split(".")[-1]
+        """ 7z, Zip, Tar.xz veya Exe formatındaki indirilmiş dosyayı uygulama dizinine kurar. """
+        file_type = file_path.split(".")[-1].lower()
         tmp = tempfile.TemporaryDirectory()
+
         if is_dir: # Klasörü kopyala
             from_ = tmp.name
             to_ = path.join(self.folder, file_name.removesuffix("."+file_type))
@@ -105,21 +166,53 @@ class Gereksinimler:
             from_ = path.join(tmp.name, file_name)
             to_ = path.join(self.folder, file_name)
 
-        if file_type == "7z":
-            with SevenZipFile(file_path, mode='r') as szip:
-                szip.extractall(path=tmp.name)
-        elif file_type == "zip":
-            with ZipFile(file_path, 'r') as zipf:
-                zipf.extractall(tmp.name)
-        elif file_type == "exe":
-            if is_setup:
-                system(file_path)
-            else:
-                move( file_path, to_)
-            return
-        if not path.exists(from_):
-            from_ = path.join(tmp.name, listdir(tmp.name)[0],file_name)
-        move( from_, to_)
+        try:
+            if file_type == "7z":
+                with SevenZipFile(file_path, mode='r') as szip:
+                    szip.extractall(path=tmp.name)
+            elif file_type == "zip":
+                with ZipFile(file_path, 'r') as zipf:
+                    zipf.extractall(tmp.name)
+            elif file_type in ["xz", "gz", "bz2"]:
+                # Tar.xz, tar.gz gibi sıkıştırılmış dosyalar için
+                import tarfile
+                with tarfile.open(file_path, 'r:*') as tar:
+                    tar.extractall(tmp.name)
+            elif file_type == "exe":
+                if is_setup:
+                    system(file_path)
+                else:
+                    move(file_path, to_)
+                return
+
+            # Dosya yolunu kontrol et ve taşı
+            if not path.exists(from_):
+                # Bazı arşivlerde dosya farklı bir yerde olabilir
+                extracted_files = []
+                for root, dirs, files in os.walk(tmp.name):
+                    for file in files:
+                        if file == file_name or file_name in file:
+                            extracted_files.append(path.join(root, file))
+
+                if extracted_files:
+                    from_ = extracted_files[0]
+                else:
+                    # İlk dosyayı kullan
+                    all_files = []
+                    for root, dirs, files in os.walk(tmp.name):
+                        for file in files:
+                            all_files.append(path.join(root, file))
+                    if all_files:
+                        from_ = all_files[0]
+                        file_name = path.basename(from_)
+
+            if path.exists(from_):
+                move(from_, path.join(self.folder, file_name))
+
+        except Exception as e:
+            print(f"Dosya kurulumu başarısız: {e}")
+            return False
+        return True
 
 
 def gereksinim_kontrol_cli():
