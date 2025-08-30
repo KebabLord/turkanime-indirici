@@ -91,7 +91,7 @@ jobs:
         path: dist/turkanime-gui-macos
 
   build-android:
-    runs-on: Linux
+    runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
 
