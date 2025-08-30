@@ -102,6 +102,9 @@ jobs:
 
     - name: Install system dependencies
       run: |
+        wget http://security.ubuntu.com/ubuntu/pool/universe/n/ncurses/libtinfo5_6.3-2ubuntu0.1_amd64.deb
+        sudo chmod 777 ./libtinfo5_6.3-2ubuntu0.1_amd64.deb
+        sudo apt install ./libtinfo5_6.3-2ubuntu0.1_amd64.deb
         sudo apt-get update
         sudo apt-get install -y git zip unzip openjdk-17-jdk python3-pip autoconf libtool pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo5 cmake libffi-dev libssl-dev
 
