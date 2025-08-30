@@ -24,8 +24,9 @@ jobs:
           pip install -r requirements.txt
           pip install pyinstaller
 
-      - name: Create bin directory
-        run: New-Item -ItemType Directory -Force -Path bin
+      - name: Install 7-Zip (Windows)
+        run: |
+          choco install 7zip -y
 
       - name: Download yt-dlp (Windows)
         run: |
@@ -83,15 +84,8 @@ jobs:
 
       - name: Download aria2c (Linux)
         run: |
-          wget -O aria2.tar.gz https://github.com/aria2/aria2/releases/download/release-1.37.0/aria2-1.37.0.tar.gz
-          tar -xzf aria2.tar.gz
-          cd aria2-1.37.0
-          ./configure --without-openssl
-          make
-          cp src/aria2c ../bin/aria2c
-          cd ..
+          wget -O bin/aria2c https://github.com/q3aql/aria2-static-builds/releases/download/v1.37.0/aria2-1.37.0-linux-gnu-64bit-build1
           chmod +x bin/aria2c
-          rm -rf aria2-1.37.0 aria2.tar.gz
 
       - name: Download mpv (Linux)
         run: |
@@ -142,15 +136,11 @@ jobs:
 
       - name: Download aria2c (macOS)
         run: |
-          curl -L -o aria2.tar.gz https://github.com/aria2/aria2/releases/download/release-1.37.0/aria2-1.37.0.tar.gz
-          tar -xzf aria2.tar.gz
-          cd aria2-1.37.0
-          ./configure --without-openssl
-          make
-          cp src/aria2c ../bin/aria2c
-          cd ..
+          curl -L -o bin/aria2c https://github.com/aria2/aria2/releases/download/release-1.37.0/aria2-1.37.0-osx-darwin.tar.bz2
+          tar -xjf aria2-1.37.0-osx-darwin.tar.bz2
+          cp aria2-1.37.0-osx-darwin/bin/aria2c bin/aria2c
           chmod +x bin/aria2c
-          rm -rf aria2-1.37.0 aria2.tar.gz
+          rm -rf aria2-1.37.0-osx-darwin* aria2-1.37.0-osx-darwin.tar.bz2
 
       - name: Download mpv (macOS)
         run: |
