@@ -19,6 +19,7 @@ jobs:
       - name: Run pylint (errors only quick scan)
         shell: bash
         run: |
+          shopt -s globstar
           pylint --ignored-modules py7zr -E **/*.py || true
       - name: Run pylint (package strict)
         shell: bash
