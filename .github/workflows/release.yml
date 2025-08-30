@@ -261,7 +261,7 @@ jobs:
         export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
         export ANDROID_HOME=$HOME/.buildozer/android/platform/android-sdk
         export PATH=$PATH:$ANDROID_HOME/tools:$ANDROID_HOME/platform-tools
-        buildozer android debug --verbose
+        yes | buildozer android debug --verbose
 
     - name: Upload Android build
       uses: actions/upload-artifact@v4
