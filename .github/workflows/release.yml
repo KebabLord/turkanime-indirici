@@ -48,6 +48,15 @@ jobs:
           Remove-Item "mpv.7z" -Force
           Remove-Item "mpv_temp" -Recurse -Force
 
+      - name: Download ffmpeg (Windows)
+        run: |
+          Invoke-WebRequest -Uri "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip" -OutFile "ffmpeg.zip"
+          Expand-Archive -Path "ffmpeg.zip" -DestinationPath "ffmpeg_temp"
+          $ffmpegDir = Get-ChildItem "ffmpeg_temp" -Directory | Select-Object -First 1
+          Copy-Item "$ffmpegDir\bin\ffmpeg.exe" -Destination "bin\ffmpeg.exe"
+          Remove-Item "ffmpeg.zip" -Force
+          Remove-Item "ffmpeg_temp" -Recurse -Force
+
       - name: Build executable
         run: pyinstaller --clean --noconfirm turkanime-gui.spec
 
@@ -89,16 +98,16 @@ jobs:
 
       - name: Download mpv (Linux)
         run: |
-          wget -O mpv.tar.gz https://github.com/mpv-player/mpv/archive/refs/tags/v0.36.0.tar.gz
-          tar -xzf mpv.tar.gz
-          cd mpv-0.36.0
-          ./bootstrap.py
-          ./waf configure --enable-libmpv-shared
-          ./waf build
-          cp build/mpv ../bin/mpv
-          cd ..
+          wget -O bin/mpv https://github.com/mpv-player/mpv-build/releases/download/0.36.0/mpv-0.36.0-x86_64-static
           chmod +x bin/mpv
-          rm -rf mpv-0.36.0 mpv.tar.gz
+
+      - name: Download ffmpeg (Linux)
+        run: |
+          wget -O ffmpeg.tar.xz https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz
+          tar -xf ffmpeg.tar.xz
+          cp ffmpeg-*-amd64-static/ffmpeg bin/ffmpeg
+          chmod +x bin/ffmpeg
+          rm -rf ffmpeg.tar.xz ffmpeg-*-amd64-static
 
       - name: Build executable
         run: pyinstaller --clean --noconfirm turkanime-gui.spec
@@ -144,16 +153,16 @@ jobs:
 
       - name: Download mpv (macOS)
         run: |
-          curl -L -o mpv.tar.gz https://github.com/mpv-player/mpv/archive/refs/tags/v0.36.0.tar.gz
-          tar -xzf mpv.tar.gz
-          cd mpv-0.36.0
-          python3 bootstrap.py
-          python3 ./waf configure --enable-libmpv-shared
-          python3 ./waf build
-          cp build/mpv ../bin/mpv
-          cd ..
+          curl -L -o bin/mpv https://github.com/mpv-player/mpv-build/releases/download/0.36.0/mpv-0.36.0-macos-universal
           chmod +x bin/mpv
-          rm -rf mpv-0.36.0 mpv.tar.gz
+
+      - name: Download ffmpeg (macOS)
+        run: |
+          curl -L -o ffmpeg.zip https://evermeet.cx/ffmpeg/ffmpeg-7.0.1.zip
+          unzip ffmpeg.zip
+          mv ffmpeg bin/ffmpeg
+          chmod +x bin/ffmpeg
+          rm -f ffmpeg.zip
 
       - name: Build executable
         run: pyinstaller --clean --noconfirm turkanime-gui.spec
