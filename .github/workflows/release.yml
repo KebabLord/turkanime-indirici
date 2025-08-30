@@ -1,0 +1,228 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Create bin directory
+        run: New-Item -ItemType Directory -Force -Path bin
+
+      - name: Download yt-dlp (Windows)
+        run: |
+          Invoke-WebRequest -Uri "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe" -OutFile "bin\yt-dlp.exe"
+
+      - name: Download aria2c (Windows)
+        run: |
+          Invoke-WebRequest -Uri "https://github.com/aria2/aria2/releases/download/release-1.37.0/aria2-1.37.0-win-64bit-build1.zip" -OutFile "aria2.zip"
+          Expand-Archive -Path "aria2.zip" -DestinationPath "aria2_temp"
+          Copy-Item "aria2_temp\aria2-1.37.0-win-64bit-build1\aria2c.exe" -Destination "bin\aria2c.exe"
+          Remove-Item "aria2.zip" -Force
+          Remove-Item "aria2_temp" -Recurse -Force
+
+      - name: Download mpv (Windows)
+        run: |
+          Invoke-WebRequest -Uri "https://nightly.link/mpv-player/mpv/workflows/build/master/mpv-x86_64-pc-windows-msvc.zip" -OutFile "mpv.zip"
+          Expand-Archive -Path "mpv.zip" -DestinationPath "mpv_temp"
+          Copy-Item "mpv_temp\mpv.exe" -Destination "bin\mpv.exe"
+          Remove-Item "mpv.zip" -Force
+          Remove-Item "mpv_temp" -Recurse -Force
+
+      - name: Build executable
+        run: pyinstaller --clean --noconfirm turkanime-gui.spec
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: turkanime-windows
+          path: dist/
+
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Create bin directory
+        run: mkdir -p bin
+
+      - name: Download yt-dlp (Linux)
+        run: |
+          wget -O bin/yt-dlp https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp
+          chmod +x bin/yt-dlp
+
+      - name: Download aria2c (Linux)
+        run: |
+          wget -O aria2.tar.gz https://github.com/aria2/aria2/releases/download/release-1.37.0/aria2-1.37.0.tar.gz
+          tar -xzf aria2.tar.gz
+          cd aria2-1.37.0
+          ./configure --without-openssl
+          make
+          cp src/aria2c ../bin/aria2c
+          cd ..
+          chmod +x bin/aria2c
+          rm -rf aria2-1.37.0 aria2.tar.gz
+
+      - name: Download mpv (Linux)
+        run: |
+          wget -O mpv.tar.gz https://github.com/mpv-player/mpv/archive/refs/tags/v0.36.0.tar.gz
+          tar -xzf mpv.tar.gz
+          cd mpv-0.36.0
+          ./bootstrap.py
+          ./waf configure --enable-libmpv-shared
+          ./waf build
+          cp build/mpv ../bin/mpv
+          cd ..
+          chmod +x bin/mpv
+          rm -rf mpv-0.36.0 mpv.tar.gz
+
+      - name: Build executable
+        run: pyinstaller --clean --noconfirm turkanime-gui.spec
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: turkanime-linux
+          path: dist/
+
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Create bin directory
+        run: mkdir -p bin
+
+      - name: Download yt-dlp (macOS)
+        run: |
+          curl -L -o bin/yt-dlp https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_macos
+          chmod +x bin/yt-dlp
+
+      - name: Download aria2c (macOS)
+        run: |
+          curl -L -o aria2.tar.gz https://github.com/aria2/aria2/releases/download/release-1.37.0/aria2-1.37.0.tar.gz
+          tar -xzf aria2.tar.gz
+          cd aria2-1.37.0
+          ./configure --without-openssl
+          make
+          cp src/aria2c ../bin/aria2c
+          cd ..
+          chmod +x bin/aria2c
+          rm -rf aria2-1.37.0 aria2.tar.gz
+
+      - name: Download mpv (macOS)
+        run: |
+          curl -L -o mpv.tar.gz https://github.com/mpv-player/mpv/archive/refs/tags/v0.36.0.tar.gz
+          tar -xzf mpv.tar.gz
+          cd mpv-0.36.0
+          python3 bootstrap.py
+          python3 ./waf configure --enable-libmpv-shared
+          python3 ./waf build
+          cp build/mpv ../bin/mpv
+          cd ..
+          chmod +x bin/mpv
+          rm -rf mpv-0.36.0 mpv.tar.gz
+
+      - name: Build executable
+        run: pyinstaller --clean --noconfirm turkanime-gui.spec
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: turkanime-macos
+          path: dist/
+
+  release:
+    needs: [build-windows, build-linux, build-macos]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts/
+
+      - name: Create release
+        uses: actions/create-release@v1
+        id: create_release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref_name }}
+          release_name: Release ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+
+      - name: Upload Windows executable
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: artifacts/turkanime-windows/turkanime.exe
+          asset_name: turkanime-windows.exe
+          asset_content_type: application/octet-stream
+
+      - name: Upload Linux executable
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: artifacts/turkanime-linux/turkanime
+          asset_name: turkanime-linux
+          asset_content_type: application/octet-stream
+
+      - name: Upload macOS executable
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: artifacts/turkanime-macos/turkanime
+          asset_name: turkanime-macos
+          asset_content_type: application/octet-stream
