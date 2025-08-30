@@ -1,11 +1,11 @@
 import requests
 import json
 import os
-import platform
 import subprocess
 import tempfile
 from tkinter import messagebox
 import customtkinter as ctk
+from turkanime_api.common.utils import get_platform, get_arch
 
 
 class UpdateManager:
@@ -14,35 +14,9 @@ class UpdateManager:
     def __init__(self, parent_window, current_version="1.0.0"):
         self.parent = parent_window
         self.current_version = current_version
-        self.version_url = "https://raw.githubusercontent.com/barkeser2002/turkanime-indirici/master/version.json"
-        self.platform = self._get_platform()
-        self.arch = self._get_arch()
-
-    def _get_platform(self):
-        """Mevcut platformu tespit et."""
-        system = platform.system().lower()
-        if system == "windows":
-            return "windows"
-        elif system == "linux":
-            return "linux"
-        elif system == "darwin":
-            return "macos"
-        elif system == "android":
-            return "android"
-        else:
-            return "unknown"
-
-    def _get_arch(self):
-        """Mevcut mimariyi tespit et."""
-        machine = platform.machine().lower()
-        if machine in ["x86_64", "amd64"]:
-            return "x64"
-        elif machine in ["i386", "i686"]:
-            return "x32"
-        elif machine in ["arm64", "aarch64"]:
-            return "arm64"
-        else:
-            return "x64"
+        self.version_url = "https://github.com/barkeser2002/turkanime-indirici/releases/latest/download/version.json"
+        self.platform = get_platform()
+        self.arch = get_arch()
 
     def check_for_updates(self, silent=False):
         """Güncelleme kontrolü yap."""

@@ -29,7 +29,8 @@ from turkanime_api.cli.gereksinimler import Gereksinimler
 from turkanime_api.sources.animecix import CixAnime, search_animecix
 from turkanime_api.sources.adapter import AdapterAnime, AdapterBolum
 from turkanime_api.anilist_client import anilist_client, AniListAuthServer
-from .update_manager import UpdateManager
+from turkanime_api.gui.update_manager import UpdateManager
+from turkanime_api.common.utils import get_platform, get_arch
 
 try:
     from pypresence import Presence
@@ -47,32 +48,8 @@ class RequirementsManager:
         self.tmp_dir = tempfile.TemporaryDirectory()
         self.requirements_url = "https://raw.githubusercontent.com/KebabLord/turkanime-indirici/master/gereksinimler.json"
         self.required_deps = ["yt-dlp", "mpv", "aria2c"]
-        self.platform = self._get_platform()
-        self.arch = self._get_arch()
-
-    def _get_platform(self):
-        """Mevcut platformu tespit et."""
-        system = platform.system().lower()
-        if system == "windows":
-            return "windows"
-        elif system == "linux":
-            return "linux"
-        elif system == "darwin":
-            return "macos"
-        else:
-            return "unknown"
-
-    def _get_arch(self):
-        """Mevcut mimariyi tespit et."""
-        machine = platform.machine().lower()
-        if machine in ["x86_64", "amd64"]:
-            return "x64"
-        elif machine in ["i386", "i686"]:
-            return "x32"
-        elif machine in ["arm64", "aarch64"]:
-            return "arm64"
-        else:
-            return "x64"
+        self.platform = get_platform()
+        self.arch = get_arch()
 
     def check_requirements(self):
         """Gereksinimleri kontrol et ve eksik olanları döndür."""
@@ -1629,7 +1606,7 @@ class MainWindow(ctk.CTk):
         col = 0
         max_cols = 6  # 6'dan 5'e düşürdük, kartlar daha büyük görünsün
 
-        for anime in anime_list[:12]:  # 12'den 10'a düşürdük, daha az ama daha büyük kart
+        for anime in anime_list[:12]: # 12'den 10'a düşürdük, daha az ama daha büyük kart
             if col >= max_cols:
                 col = 0
                 row += 1
@@ -1709,7 +1686,7 @@ class MainWindow(ctk.CTk):
             score_label = ctk.CTkLabel(score_frame, text=f"★{score}",
                                      font=ctk.CTkFont(size=8, weight="bold"),
                                      text_color="#ffffff")
-            score_label.pack(expand=True)
+            score_label.pack()
 
         # Popülerlik/Bölüm sayısı - daha küçük font
         popularity = anime_data.get('episodes', 0)
@@ -2120,7 +2097,7 @@ class MainWindow(ctk.CTk):
                                 break
                         if not pick:
                             pick = results[0]
-
+                    
                     if pick:
                         _id, name = pick
                         cix = CixAnime(id=int(_id), title=str(name))
@@ -2966,7 +2943,7 @@ class MainWindow(ctk.CTk):
             self.message(f"Anime ekleme hatası: {e}", error=True)
 
     def update_anilist_progress(self, anime_data: Dict):
-        """Update progress for anime in AniList."""
+        """AniList'e izleme ilerlemesini kaydet."""
         try:
             anime_id = anime_data.get('id')
             if not anime_id:
@@ -3368,14 +3345,26 @@ class MainWindow(ctk.CTk):
             def save_progress():
                 try:
                     episode_num = int(episode_entry.get().strip())
+                    anime_id = self.selected_anime.get('id') if self.selected_anime else None
+                    if not anime_id:
+                        self.message("Anime ID bulunamadı", error=True)
+                        return
+    
+                    # total_episodes her iki dalda da kullanılacağı için önce tanımla
+                    total_episodes = self.selected_anime.get('episodes') if self.selected_anime else None
+    
                     if episode_num > 0:
-                        self.save_anilist_progress(episode_obj, episode_num)
-                        dialog.destroy()
-                        self.message(f"İlerlemeniz kaydedildi: Bölüm {episode_num}")
+                        success = anilist_client.update_anime_progress(anime_id, episode_num)
+                        if success:
+                            self.message(f"Progress güncellendi: {episode_num}/{total_episodes}")
+                            # Refresh watchlist
+                            self.on_anilist_watchlist()
+                        else:
+                            self.message("Progress güncelleme başarısız", error=True)
                     else:
-                        self.message("Geçerli bir bölüm sayısı girin", error=True)
+                        self.message(f"Geçersiz progress: 0-{total_episodes} arası olmalı", error=True)
                 except ValueError:
-                    self.message("Geçerli bir sayı girin", error=True)
+                    self.message("Geçersiz sayı", error=True)
 
             def skip():
                 dialog.destroy()

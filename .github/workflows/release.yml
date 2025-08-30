@@ -100,11 +100,16 @@ jobs:
       with:
         python-version: '3.10'
 
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y git zip unzip openjdk-17-jdk python3-pip autoconf libtool pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo5 cmake libffi-dev libssl-dev
+
     - name: Install Android dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements-gui.txt
-        pip install buildozer kivy
+        pip install buildozer kivy cython
 
     - name: Create buildozer.spec
       run: |
@@ -114,22 +119,30 @@ jobs:
         package.name = turkanime_gui
         package.domain = com.turkanime
         source.dir = .
-        source.include_exts = py,png,jpg,kv,atlas
+        source.include_exts = py,png,jpg,kv,atlas,txt,json
         version = 1.0.0
-        requirements = python3,kivy,requests,pillow,beautifulsoup4,lxml
+        requirements = python3,kivy,requests,pillow,beautifulsoup4,lxml,cython
         orientation = portrait
         fullscreen = 0
-        android.arch = armeabi-v7a,arm64-v8a
-        android.api = 31
+        android.archs = armeabi-v7a,arm64-v8a
+        android.api = 33
         android.minapi = 21
-        android.sdk = 31
         android.ndk = 25b
         android.private_storage = True
         android.permissions = INTERNET,WRITE_EXTERNAL_STORAGE,READ_EXTERNAL_STORAGE
-        p4a.branch = master
+        p4a.branch = develop
         presplash.filename = docs/TurkAnimu.ico
         icon.filename = docs/TurkAnimu.ico
+        
+        [buildozer]
+        log_level = 2
+        warn_on_root = 1
         EOF
+
+    - name: Setup Java environment
+      run: |
+        export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+        echo "JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64" >> $GITHUB_ENV
 
     - name: Create Android version of main.py
       run: |
@@ -242,7 +255,10 @@ jobs:
 
     - name: Build Android APK
       run: |
-        buildozer android debug
+        export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+        export ANDROID_HOME=$HOME/.buildozer/android/platform/android-sdk
+        export PATH=$PATH:$ANDROID_HOME/tools:$ANDROID_HOME/platform-tools
+        buildozer android debug --verbose
 
     - name: Upload Android build
       uses: actions/upload-artifact@v4
