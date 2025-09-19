@@ -155,7 +155,7 @@ jobs:
           version_data = {
               'version': __version__,
               'release_date': datetime.datetime.now().isoformat(),
-              'changelog': 'Otomatik güncelleme - yeni özellikler ve düzeltmeler',
+              'changelog': 'Otomatik güncelleme',
               'platforms': {
                   'windows': {
                       'url': f'https://github.com/barkeser2002/turkanime-indirici/releases/download/{tag_name}/turkanime-gui-windows.exe',
@@ -171,7 +171,7 @@ jobs:
                   }
               }
           }
-          with open('../dist/version.json', 'w') as f:
+          with open('../../dist/version.json', 'w') as f:
               json.dump(version_data, f, indent=2)
           "
 
