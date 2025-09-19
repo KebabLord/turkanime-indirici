@@ -1,5 +1,5 @@
 """ TürkAnimu Downloader CLI """
-from os import environ, name
+from os import environ, name, path
 from time import sleep
 import sys
 import atexit
@@ -9,6 +9,61 @@ from rich.table import Table
 from rich.live import Live
 import questionary as qa
 from easygui import diropenbox
+
+# Tkinter import - cross-platform klasör seçimi için
+try:
+    import tkinter as tk
+    from tkinter import filedialog
+    TKINTER_AVAILABLE = True
+except ImportError:
+    TKINTER_AVAILABLE = False
+
+
+def select_download_folder(current_path=None):
+    """
+    Cross-platform klasör seçme fonksiyonu.
+    Tkinter'i tercih eder, fallback olarak easygui kullanır.
+    """
+    if TKINTER_AVAILABLE:
+        try:
+            # Tkinter root window oluştur (görünmez)
+            root = tk.Tk()
+            root.withdraw()
+            root.attributes('-topmost', True)  # Windows'ta üstte tut
+
+            # Başlangıç dizinini ayarla
+            initial_dir = None
+            if current_path and path.exists(path.expanduser(current_path)):
+                initial_dir = path.expanduser(current_path)
+            elif current_path:
+                # current_path bir değişken ise onu kullan
+                initial_dir = current_path
+
+            # Klasör seçme dialog'u
+            folder_path = filedialog.askdirectory(
+                title="TürkAnimu - İndirme Klasörünü Seçin",
+                initialdir=initial_dir,
+                mustexist=True
+            )
+
+            root.destroy()
+
+            if folder_path:  # Kullanıcı bir klasör seçti
+                return folder_path
+
+        except Exception as e:
+            print(f"Tkinter dialog hatası: {e}")
+
+    # Fallback: easygui kullan
+    try:
+        return diropenbox(
+            msg="İndirme klasörünü seçin",
+            title="TürkAnimu - İndirme Klasörü Seçimi",
+            default=current_path or "~/Downloads"
+        )
+    except Exception as e:
+        print(f"Easygui dialog hatası: {e}")
+        return None
 
 from ..bypass import fetch
 from ..objects import Anime
@@ -226,7 +281,7 @@ def menu_loop():
                 ).ask()
 
                 if ayar_islem == ayarlar_options[0]:
-                    indirilenler_dizin = diropenbox()
+                    indirilenler_dizin = select_download_folder(ayarlar.get("indirilenler"))
                     if indirilenler_dizin:
                         dosyalar.set_ayar("indirilenler", indirilenler_dizin)
                 elif ayar_islem == ayarlar_options[1]:

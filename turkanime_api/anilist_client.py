@@ -83,7 +83,7 @@ class AniListClient:
         try:
             # AniList token endpoint form-encoded bekler; JSON gönderimi unsupported_grant_type hatası döndürebilir.
             headers = {"Content-Type": "application/x-www-form-urlencoded"}
-            response = requests.post(self.TOKEN_URL, data=data, headers=headers)
+            response = requests.post(self.TOKEN_URL, data=data, headers=headers, timeout=10)
             response.raise_for_status()
             token_data = response.json()
 
@@ -112,7 +112,7 @@ class AniListClient:
 
         try:
             headers = {"Content-Type": "application/x-www-form-urlencoded"}
-            response = requests.post(self.TOKEN_URL, data=data, headers=headers)
+            response = requests.post(self.TOKEN_URL, data=data, headers=headers, timeout=10)
             response.raise_for_status()
             token_data = response.json()
 
@@ -139,7 +139,7 @@ class AniListClient:
 
         def do_request() -> Optional[requests.Response]:
             try:
-                resp = requests.post(self.BASE_URL, headers=headers, json=data)
+                resp = requests.post(self.BASE_URL, headers=headers, json=data, timeout=10)
                 return resp
             except Exception as e:
                 print(f"API request failed: {e}")

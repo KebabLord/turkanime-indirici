@@ -109,7 +109,7 @@ class RequirementsManager:
         """Eksik gereksinimleri indir ve kur."""
         try:
             # Gereksinimler listesini al
-            response = requests.get(self.requirements_url)
+            response = requests.get(self.requirements_url, timeout=10)
             response.raise_for_status()
             requirements = response.json()
 
@@ -164,7 +164,7 @@ class RequirementsManager:
                             return self._download_real_mpv(url, req_data, progress_callback)
 
             # Normal indirme işlemi
-            response = requests.get(url, stream=True)
+            response = requests.get(url, stream=True, timeout=30)
             response.raise_for_status()
 
             filename = url.split("/")[-1]
@@ -197,7 +197,7 @@ class RequirementsManager:
                 mpv_url = url
                 filename = url.split("/")[-1]
 
-            response = requests.get(mpv_url, stream=True)
+            response = requests.get(mpv_url, stream=True, timeout=30)
             response.raise_for_status()
 
             filepath = os.path.join(self.tmp_dir.name, filename)

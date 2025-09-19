@@ -64,7 +64,10 @@ def _episodes_for_title(title_id: int) -> List[Dict[str, Any]]:
     episodes: List[Dict[str, Any]] = []
     seen = set()
     for sidx in _seasons_for_title(title_id):
-        url = f"{ALT_URL}secure/related-videos?episode=1&season={sidx+1}&titleId={title_id}&videoId=637113"
+        url = (
+            f"{ALT_URL}secure/related-videos?"
+            f"episode=1&season={sidx+1}&titleId={title_id}&videoId=637113"
+        )
         data = json.loads(_http_get(url))
         for v in data.get("videos", []):
             name = v.get("name")

@@ -15,7 +15,10 @@ class UpdateManager:
     def __init__(self, parent_window, current_version="1.0.0"):
         self.parent = parent_window
         self.current_version = current_version
-        self.version_url = "https://github.com/barkeser2002/turkanime-indirici/releases/latest/download/version.json"
+        self.version_url = (
+            "https://github.com/barkeser2002/turkanime-indirici/"
+            "releases/latest/download/version.json"
+        )
         self.platform = get_platform()
         self.arch = get_arch()
 
@@ -39,7 +42,7 @@ class UpdateManager:
                                       "Uygulamanız güncel!")
                 return False, None
 
-        except Exception as e:
+        except requests.RequestException as e:
             if not silent:
                 messagebox.showerror("Güncelleme Hatası",
                                    f"Güncelleme kontrolü yapılamadı:\n{str(e)}")
@@ -69,7 +72,10 @@ class UpdateManager:
                     try:
                         from datetime import datetime
                         # Release date'yi parse et
-                        latest_date = datetime.fromisoformat(release_date.replace('Z', '+00:00') if release_date.endswith('Z') else release_date)
+                        latest_date = datetime.fromisoformat(
+                            release_date.replace('Z', '+00:00')
+                            if release_date.endswith('Z') else release_date
+                        )
                         # Eğer release date geçerliyse ve versiyon aynıysa güncelleme var
                         return True
                     except:
@@ -107,7 +113,10 @@ class UpdateManager:
 
         changelog_text = ctk.CTkTextbox(dialog, height=100)
         changelog_text.pack(fill="x", padx=20, pady=(5, 20))
-        changelog_text.insert("0.0", version_data.get("changelog", "Değişiklik bilgileri bulunamadı."))
+        changelog_text.insert(
+            "0.0",
+            version_data.get("changelog", "Değişiklik bilgileri bulunamadı.")
+        )
         changelog_text.configure(state="disabled")
 
         # Progress bar ve butonlar
@@ -135,7 +144,7 @@ class UpdateManager:
                     progress_bar.set(0.3)
 
                     # Dosyayı indir
-                    response = requests.get(download_url, stream=True)
+                    response = requests.get(download_url, stream=True, timeout=30)
                     response.raise_for_status()
 
                     filename = download_url.split("/")[-1]
@@ -178,9 +187,12 @@ class UpdateManager:
                     self.parent.after(2000, dialog.destroy)
 
                     # Kullanıcıya kurulum talimatı ver
-                    self.parent.after(2500, lambda: self._show_install_instructions(filepath, filename))
+                    self.parent.after(
+                        2500,
+                        lambda: self._show_install_instructions(filepath, filename)
+                    )
 
-                except Exception as e:
+                except requests.RequestException as e:
                     progress_label.configure(text=f"❌ Hata: {str(e)}")
                     download_btn.configure(state="normal", text="Tekrar Dene")
 
@@ -221,11 +233,26 @@ class UpdateManager:
         title_label.pack(pady=(20, 10))
 
         if self.platform == "windows":
-            text = f"1. Mevcut uygulamayı kapatın\n2. İndirilen dosya: {filename}\n3. Eski uygulama dosyasını yedekleyin\n4. Yeni dosyayı eski dosyanın yerine kopyalayın\n5. Uygulamayı yeniden başlatın"
+            text = (
+                "1. Mevcut uygulamayı kapatın\n"
+                f"2. İndirilen dosya: {filename}\n"
+                "3. Eski uygulama dosyasını yedekleyin\n"
+                "4. Yeni dosyayı eski dosyanın yerine kopyalayın\n"
+                "5. Uygulamayı yeniden başlatın"
+            )
         elif self.platform == "linux":
-            text = f"1. Mevcut uygulamayı kapatın\n2. Terminal açın\n3. chmod +x {filename}\n4. ./ {filename} komutu ile çalıştırın"
+            text = (
+                "1. Mevcut uygulamayı kapatın\n"
+                "2. Terminal açın\n"
+                f"3. chmod +x {filename}\n"
+                f"4. ./ {filename} komutu ile çalıştırın"
+            )
         elif self.platform == "macos":
-            text = f"1. Mevcut uygulamayı kapatın\n2. İndirilen dosyayı Applications klasörüne taşıyın\n3. Güvenlik ayarlarından uygulamaya izin verin"
+            text = (
+                "1. Mevcut uygulamayı kapatın\n"
+                "2. İndirilen dosyayı Applications klasörüne taşıyın\n"
+                "3. Güvenlik ayarlarından uygulamaya izin verin"
+            )
         else:
             text = f"Dosya indirildi: {filepath}\nPlatformunuz için manuel kurulum gerekebilir."
 

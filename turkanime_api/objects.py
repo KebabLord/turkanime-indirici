@@ -196,8 +196,14 @@ class Bolum:
         # Yalnızca tek bir fansub varsa
         if not re.search(".*birden fazla grup",self.html):
             fansub = re.findall(r"</span> ([^\\<>]*)</button>.*?iframe",self.html)[0]
-            vids = re.findall(r"/embed/#/url/(.*?)\?status=0\".*?</span> ([^ ]*?) ?</button>", self.html)
-            vids += re.findall(r"(ajax\/videosec&b=[A-Za-z0-9]+&v=.*?)'.*?<\/span> ?(.*?)<\/button",self.html)
+            vids = re.findall(
+                r"/embed/#/url/(.*?)\?status=0\".*?</span> ([^ ]*?) ?</button>",
+                self.html
+            )
+            vids += re.findall(
+                r"(ajax\/videosec&b=[A-Za-z0-9]+&v=.*?)'.*?<\/span> ?(.*?)<\/button",
+                self.html
+            )
             for vpath,player in vids:
                 self._videos.append(Video(self,vpath,player,fansub))
         # Fansublar da parse'lanacaksa
@@ -205,16 +211,28 @@ class Bolum:
             fansubs = re.findall(r"(ajax\/videosec&.*?)'.*?<\/span> ?(.*?)<\/a>",self.html)
             for path,fansub in fansubs:
                 src = fetch(path)
-                vids = re.findall(r"/embed/#/url/(.*?)\?status=0\".*?</span> ([^ ]*?) ?</button>", src)
-                vids += re.findall(r"(ajax\/videosec&b=[A-Za-z0-9]+&v=.*?)'.*?<\/span> ?(.*?)<\/button",src)
+                vids = re.findall(
+                    r"/embed/#/url/(.*?)\?status=0\".*?</span> ([^ ]*?) ?</button>",
+                    src
+                )
+                vids += re.findall(
+                    r"(ajax\/videosec&b=[A-Za-z0-9]+&v=.*?)'.*?<\/span> ?(.*?)<\/button",
+                    src
+                )
                 for vpath,player in vids:
                     self._videos.append(Video(self,vpath,player,fansub))
         # Fansubları parselamaksızın tüm videoları getir
         else:
-            allpath = re.findall(r"(ajax\/videosec&b=[A-Za-z0-9]+.*?)&[fv]=.*?'.*?<\/span>",self.html)[0]
+            allpath = re.findall(
+                r"(ajax\/videosec&b=[A-Za-z0-9]+.*?)&[fv]=.*?'.*?<\/span>",
+                self.html
+            )[0]
             src = fetch(allpath)
             vids = re.findall(r"/embed/#/url/(.*?)\?status=0\".*?</span> ([^ ]*?) ?</button>", src)
-            vids += re.findall(r"(ajax\/videosec&b=[A-Za-z0-9]+&v=.*?)'.*?<\/span> ?(.*?)<\/button",src)
+            vids += re.findall(
+                r"(ajax\/videosec&b=[A-Za-z0-9]+&v=.*?)'.*?<\/span> ?(.*?)<\/button",
+                src
+            )
             for vpath,player in vids:
                 self._videos.append(Video(self,vpath,player))
         return self._videos
@@ -256,10 +274,18 @@ class Bolum:
                 with _cf.ThreadPoolExecutor(max_workers=min(n, len(subset))) as _ex:
                     list(_ex.map(lambda v: getattr(v, 'resolution'), subset))
                 # Eğer 1080+ bulunan varsa doğrudan onu al
-                cands = [v for v in subset if (v.resolution or default_res) >= 1080 and v.is_working]
+                cands = [
+                    v for v in subset
+                    if (v.resolution or default_res) >= 1080 and v.is_working
+                ]
                 if cands:
                     pick = sorted(cands, key=lambda v: SUPPORTED.index(v.player))[0]
-                    callback({"current": len(vids), "total": len(vids), "player": pick.player, "status": "çalışıyor"})
+                    callback({
+                        "current": len(vids),
+                        "total": len(vids),
+                        "player": pick.player,
+                        "status": "çalışıyor"
+                    })
                     return pick
             except Exception:
                 pass
@@ -369,7 +395,10 @@ class Video:
             elif isinstance(formats, list) and formats:
                 first_format = formats[0]
                 if isinstance(first_format, dict) and "height" in first_format:
-                    best_format = max(formats, key=lambda x: (x.get("height") or 0) if isinstance(x, dict) else 0)
+                    best_format = max(
+                        formats,
+                        key=lambda x: (x.get("height") or 0) if isinstance(x, dict) else 0
+                    )
                     res = best_format.get("height") if isinstance(best_format, dict) else None
                 elif isinstance(first_format, dict) and "format_id" in first_format:
                     fid = first_format.get("format_id")
@@ -378,7 +407,13 @@ class Video:
                 else:
                     # Ek fallback: vcodec isimlerinden veya tbr'den yaklaşık çözünürlük tahmini
                     try:
-                        t = max(formats, key=lambda x: ((x.get("height") or 0) if isinstance(x, dict) else 0, (x.get("tbr") or 0) if isinstance(x, dict) else 0))
+                        t = max(
+                            formats,
+                            key=lambda x: (
+                                (x.get("height") or 0) if isinstance(x, dict) else 0,
+                                (x.get("tbr") or 0) if isinstance(x, dict) else 0
+                            )
+                        )
                         if isinstance(t, dict):
                             res = t.get("height") or (720 if (t.get("tbr") or 0) > 1500 else 480)
                         else:
@@ -469,7 +504,10 @@ class Video:
         ]
 
         if self.player == "ALUCARD(BETA)":
-            cmd += ["--demuxer-lavf-o=protocol_whitelist=[file,tcp,tls,https],http_keep_alive=0,http_persistent=0"]
+            cmd += [
+                "--demuxer-lavf-o=protocol_whitelist=[file,tcp,tls,https],"
+                "http_keep_alive=0,http_persistent=0"
+            ]
             cmd += ["--cache=yes", get_alucard_m3u8(self.url) ]
             del cmd[4]
 

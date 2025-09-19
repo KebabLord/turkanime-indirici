@@ -15,7 +15,8 @@ from .animecix import _video_streams
 
 
 def _slugify(text: str) -> str:
-    """Basit ve güvenli bir slug üretici: ASCII'ye indirger, boşlukları '-' yapar, gereksizleri temizler."""
+    """Basit ve güvenli bir slug üretici: ASCII'ye indirger,
+    boşlukları '-' yapar, gereksizleri temizler."""
     if not text:
         return ""
     # Unicode -> ASCII transliterasyon
@@ -138,10 +139,16 @@ class AdapterVideo:
             if fmts:
                 try:
                     if "height" in (fmts[0] or {}):
-                        self._resolution = max(fmts, key=lambda x: x.get("height") or 0).get("height") or 0
+                        self._resolution = max(
+                            fmts,
+                            key=lambda x: x.get("height") or 0
+                        ).get("height") or 0
                     else:
                         t = max(fmts, key=lambda x: (x.get("height") or 0, x.get("tbr") or 0))
-                        self._resolution = (t.get("height") or (720 if (t.get("tbr") or 0) > 1500 else 480)) or 0
+                        self._resolution = (
+                            t.get("height") or
+                            (720 if (t.get("tbr") or 0) > 1500 else 480)
+                        ) or 0
                 except Exception:
                     self._resolution = 0
             else:
@@ -185,7 +192,14 @@ class AdapterBolum:
         # AnimeciX tarafında fansub konsepti kullanılmıyor
         return []
 
-    def best_video(self, by_res=True, by_fansub=None, default_res=600, callback=lambda x: None, early_subset: int = 8):
+    def best_video(
+        self,
+        by_res=True,
+        by_fansub=None,
+        default_res=600,
+        callback=lambda x: None,
+        early_subset: int = 8
+    ):
         # URL kontrolü
         if not self.url:
             callback({"current": 1, "total": 1, "player": "ANIMECIX", "status": "URL bulunamadı"})
@@ -195,17 +209,30 @@ class AdapterBolum:
         callback({"current": 0, "total": 1, "player": "ANIMECIX", "status": "üstbilgi çekiliyor"})
         streams = _video_streams(self.url)
         if not streams:
-            callback({"current": 1, "total": 1, "player": "ANIMECIX", "status": "hiçbiri çalışmıyor"})
+            callback({
+                "current": 1,
+                "total": 1,
+                "player": "ANIMECIX",
+                "status": "hiçbiri çalışmıyor"
+            })
             return None
 
         def parse_res(label: str) -> int:
             m = re.findall(r"(\d{3,4})p", label or "")
             return int(m[0]) if m else default_res
 
-        picked = max(streams, key=lambda s: parse_res(s.get("label") or "0p")) if by_res else streams[0]
+        picked = max(
+            streams,
+            key=lambda s: parse_res(s.get("label") or "0p")
+        ) if by_res else streams[0]
         video_url = picked.get("url")
         if not video_url:
-            callback({"current": 1, "total": 1, "player": "ANIMECIX", "status": "video URL bulunamadı"})
+            callback({
+                "current": 1,
+                "total": 1,
+                "player": "ANIMECIX",
+                "status": "video URL bulunamadı"
+            })
             return None
 
         vid = AdapterVideo(self, video_url, picked.get("label"))

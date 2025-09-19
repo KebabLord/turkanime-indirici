@@ -86,7 +86,7 @@ class Gereksinimler:
         """ İndirme linklerinin bulunduğu Json dosyasını Dict olarak döndürür """
         if self._url_liste is None:
             try:
-                response = requests.get(DL_URL)
+                response = requests.get(DL_URL, timeout=10)
                 response.raise_for_status()
                 raw_data = json.loads(response.text)
 
@@ -139,7 +139,7 @@ class Gereksinimler:
         """ URL'deki dosyayı indirir, belirtilmişse callback'e rapor eder. """
         remote_file = url.split("/")[-1]
         file_name = path.join(self.tmp.name, remote_file)
-        response = requests.get(url, stream=True)
+        response = requests.get(url, stream=True, timeout=30)
         if response.status_code != 200:
             text = re.sub(" {2,6}"," ",re.sub("<.*?>","",response.text.replace("\n"," ")))
             return {"err_msg": text}

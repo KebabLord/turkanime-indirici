@@ -184,7 +184,9 @@ class TemplateAnimeAdapter:
     def create_episode_object(self, episode_data: Dict[str, Any], anime: Anime) -> Bolum:
         """Adapter verisinden Bolum objesi oluştur."""
         # Bölüm için gerekli slug oluştur
-        slug = self._create_slug(episode_data.get('title', f"bolum-{episode_data.get('episode_number', 0)}"))
+        slug = self._create_slug(
+            episode_data.get('title', f"bolum-{episode_data.get('episode_number', 0)}")
+        )
 
         bolum = Bolum(
             slug=slug,
