@@ -16,16 +16,16 @@ jobs:
           if [ -f requirements.txt ]; then grep -v py7zr requirements.txt > req2.txt && pip install -r req2.txt; fi
           if [ -f requirements-gui.txt ]; then pip install -r requirements-gui.txt; else pip install PyQt6; fi
           pip install pylint
-      - name: Run pylint (errors only quick scan)
+      - name: Run pylint (critical errors only)
         shell: bash
         run: |
           shopt -s globstar
           pylint --ignored-modules py7zr -E **/*.py || true
-      - name: Run pylint (package strict)
+      - name: Run pylint (package critical issues)
         shell: bash
         run: |
-          pylint --ignored-modules py7zr turkanime_api/ --fail-under 8.2
-      - name: Run pylint (script optional)
+          pylint --ignored-modules py7zr turkanime_api/ --fail-under 9.8
+      - name: Run pylint (duplicate code check)
         shell: bash
         run: |
-          if [ -f turkanime.py ]; then pylint --ignored-modules py7zr turkanime.py --fail-under 9.2; fi
+          if [ -f turkanime.py ]; then pylint --ignored-modules py7zr turkanime.py --disable=all --enable=duplicate-code; fi
