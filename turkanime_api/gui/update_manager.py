@@ -28,7 +28,7 @@ class UpdateManager:
 
             latest_version = version_data.get("version", "0.0.0")
 
-            if self._is_newer_version(latest_version, self.current_version):
+            if self._is_newer_version(latest_version, self.current_version, version_data):
                 if silent:
                     return True, version_data
                 else:
@@ -45,12 +45,13 @@ class UpdateManager:
                                    f"Güncelleme kontrolü yapılamadı:\n{str(e)}")
             return False, None
 
-    def _is_newer_version(self, latest, current):
-        """Versiyon karşılaştırması yap."""
+    def _is_newer_version(self, latest_version, current_version, version_data=None):
+        """Versiyon karşılaştırması yap. Release date'yi de kontrol et."""
         try:
-            latest_parts = [int(x) for x in latest.split('.')]
-            current_parts = [int(x) for x in current.split('.')]
+            latest_parts = [int(x) for x in latest_version.split('.')]
+            current_parts = [int(x) for x in current_version.split('.')]
 
+            version_different = False
             for i in range(max(len(latest_parts), len(current_parts))):
                 latest_num = latest_parts[i] if i < len(latest_parts) else 0
                 current_num = current_parts[i] if i < len(current_parts) else 0
@@ -59,6 +60,20 @@ class UpdateManager:
                     return True
                 elif latest_num < current_num:
                     return False
+
+            # Versiyonlar aynıysa, release_date'yi kontrol et
+            if version_data and latest_version == current_version:
+                # Eğer release_date varsa ve versiyon aynıysa, güncelleme var kabul et
+                release_date = version_data.get("release_date")
+                if release_date:
+                    try:
+                        from datetime import datetime
+                        # Release date'yi parse et
+                        latest_date = datetime.fromisoformat(release_date.replace('Z', '+00:00') if release_date.endswith('Z') else release_date)
+                        # Eğer release date geçerliyse ve versiyon aynıysa güncelleme var
+                        return True
+                    except:
+                        pass
 
             return False
         except:
