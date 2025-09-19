@@ -9,6 +9,7 @@ import importlib
 import sysconfig
 import sys
 from typing import Optional, Dict, Any
+from yt_dlp import YoutubeDL
 
 def get_platform() -> str:
     """Return a string with current platform (system and machine architecture).
@@ -122,3 +123,16 @@ def get_video_resolution_mpv(url: str) -> Optional[int]:
         # mpv yüklü değil, zaman aşımı veya başka bir hata
         pass
     return None
+
+
+def extract_video_info(url: str, ydl_opts: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """YoutubeDL kullanarak video bilgilerini çıkarır."""
+    try:
+        with YoutubeDL(ydl_opts) as ydl:
+            raw_info = ydl.extract_info(url, download=False)
+            info = ydl.sanitize_info(raw_info)
+        if info and isinstance(info, dict):
+            return info
+        return {}
+    except Exception:
+        return {}

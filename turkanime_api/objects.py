@@ -12,6 +12,7 @@ import re
 import json
 from yt_dlp import YoutubeDL
 from yt_dlp.networking.impersonate import ImpersonateTarget
+from .common.utils import get_ydl_opts, get_video_resolution_mpv, extract_video_info
 
 from .bypass import get_real_url, unmask_real_url, fetch, get_alucard_m3u8
 from .common.utils import get_platform, get_arch
@@ -331,16 +332,7 @@ class Video:
         self._is_working = None
         self.is_supported = self.player in SUPPORTED
 
-        self.ydl_opts = {
-          'logger': log_handler,
-          'quiet': True,
-          'ignoreerrors': 'only_download',
-          'retries': 5,
-          'fragment_retries': 10,
-          'restrictfilenames': True,
-          'nocheckcertificate': True,
-          'concurrent_fragment_downloads': 5,
-        }
+        self.ydl_opts = get_ydl_opts(log_handler)
         if self.player == "ALUCARD(BETA)":
             self.ydl_opts['impersonate'] = ImpersonateTarget("chrome")
 
@@ -365,9 +357,7 @@ class Video:
     def info(self):
         if self._info is None:
             assert self.is_supported, "Bu player desteklenmiyor."
-            with YoutubeDL(self.ydl_opts) as ydl:
-                raw_info = ydl.extract_info(self.url, download=False)
-                info = ydl.sanitize_info(raw_info)
+            info = extract_video_info(self.url, self.ydl_opts)
             if not info:
                 self._info = {}
                 return self._info
@@ -423,20 +413,7 @@ class Video:
             self._resolution = res or 0
             # Son çare: mpv ile çözünürlük oku
             if not self._resolution:
-                try:
-                    cmd = [
-                        "mpv", "--no-config", "--no-audio", "--no-video",
-                        "--frames=1", "--really-quiet",
-                        "--term-playing-msg=${video-params/w}x${video-params/h}",
-                        self.url,
-                    ]
-                    _res = sp.run(cmd, text=True, stdout=sp.PIPE, stderr=sp.PIPE, timeout=10)
-                    out = (_res.stdout or "") + (_res.stderr or "")
-                    mm = re.findall(r"(\d{3,4})x(\d{3,4})", out)
-                    if mm:
-                        self._resolution = int(mm[-1][1])
-                except Exception:
-                    pass
+                self._resolution = get_video_resolution_mpv(self.url) or 0
         return self._resolution
 
     @property

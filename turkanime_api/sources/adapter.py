@@ -12,6 +12,7 @@ import unicodedata
 from yt_dlp import YoutubeDL
 
 from .animecix import _video_streams
+from ..common.utils import get_ydl_opts, get_video_resolution_mpv, extract_video_info
 
 
 def _slugify(text: str) -> str:
@@ -53,16 +54,7 @@ class AdapterVideo:
         self.is_supported = True
         self._is_working: Optional[bool] = None
         self._resolution: Optional[int] = None
-        self.ydl_opts = {
-            'logger': None,
-            'quiet': True,
-            'ignoreerrors': 'only_download',
-            'retries': 5,
-            'fragment_retries': 10,
-            'restrictfilenames': True,
-            'nocheckcertificate': True,
-            'concurrent_fragment_downloads': 5,
-        }
+        self.ydl_opts = get_ydl_opts()
 
     @property
     def url(self) -> str:
@@ -71,9 +63,7 @@ class AdapterVideo:
     @property
     def info(self) -> Optional[Dict[str, Any]]:
         if self._info is None:
-            with YoutubeDL(self.ydl_opts) as ydl:
-                raw_info = ydl.extract_info(self.url, download=False)
-                info = ydl.sanitize_info(raw_info)
+            info = extract_video_info(self.url, self.ydl_opts)
             if not info:
                 self._info = {}
             else:
@@ -157,21 +147,7 @@ class AdapterVideo:
                 self._resolution = int(m[0]) if m else 0
             # mpv ile son çare çözünürlük tespiti
             if not self._resolution:
-                try:
-                    import subprocess as _sp
-                    cmd = [
-                        "mpv", "--no-config", "--no-audio", "--no-video",
-                        "--frames=1", "--really-quiet",
-                        "--term-playing-msg=${video-params/w}x${video-params/h}",
-                        self.url,
-                    ]
-                    res = _sp.run(cmd, text=True, stdout=_sp.PIPE, stderr=_sp.PIPE, timeout=10)
-                    out = (res.stdout or "") + (res.stderr or "")
-                    mm = re.findall(r"(\d{3,4})x(\d{3,4})", out)
-                    if mm:
-                        self._resolution = int(mm[-1][1])
-                except Exception:
-                    pass
+                self._resolution = get_video_resolution_mpv(self.url) or 0
         return self._resolution or 0
 
 
