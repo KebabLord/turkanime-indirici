@@ -142,6 +142,38 @@ jobs:
             if [[ -f dist/turkanime-cli-macos ]]; then md5 -r dist/turkanime-cli-macos > dist/turkanime-cli-macos.md5 || echo "md5 skipped"; fi
           fi
 
+      - name: Create version.json
+        shell: bash
+        run: |
+          python -c "
+          import json
+          import datetime
+          import os
+          os.chdir('turkanime_api/cli')
+          from version import __version__
+          version_data = {
+              'version': __version__,
+              'release_date': datetime.datetime.now().isoformat(),
+              'changelog': 'Otomatik güncelleme - yeni özellikler ve düzeltmeler',
+              'platforms': {
+                  'windows': {
+                      'url': f'https://github.com/barkeser2002/turkanime-indirici/releases/download/{os.environ[\"GITHUB_REF_NAME\"]}/turkanime-gui-windows.exe',
+                      'checksum': ''
+                  },
+                  'linux': {
+                      'url': f'https://github.com/barkeser2002/turkanime-indirici/releases/download/{os.environ[\"GITHUB_REF_NAME\"]}/turkanime-gui-linux',
+                      'checksum': ''
+                  },
+                  'macos': {
+                      'url': f'https://github.com/barkeser2002/turkanime-indirici/releases/download/{os.environ[\"GITHUB_REF_NAME\"]}/turkanime-gui-macos',
+                      'checksum': ''
+                  }
+              }
+          }
+          with open('../dist/version.json', 'w') as f:
+              json.dump(version_data, f, indent=2)
+          "
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
@@ -153,6 +185,7 @@ jobs:
             dist/turkanime-cli-windows.exe
             dist/turkanime-cli-linux
             dist/turkanime-cli-macos
+            dist/version.json
           if-no-files-found: ignore
 
   release:
