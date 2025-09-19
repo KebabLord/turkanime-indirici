@@ -14,6 +14,7 @@ from yt_dlp import YoutubeDL
 from yt_dlp.networking.impersonate import ImpersonateTarget
 
 from .bypass import get_real_url, unmask_real_url, fetch, get_alucard_m3u8
+from .common.utils import get_platform, get_arch
 
 # Çalıştığı bilinen playerlar ve öncelikleri
 SUPPORTED = [
@@ -438,6 +439,24 @@ class Video:
     def oynat(self, dakika_hatirla=False ,izlerken_kaydet=False, mpv_opts=[]):
         """ Oynatmak için yt-dlp + mpv kullanıyoruz. """
         assert self.is_working, "Video çalışmıyor."
+        
+        # Platform ve mimari bilgisini al
+        platform_info = get_platform()
+        arch = get_arch()
+        
+        # ARM mimarileri için Android MPV kullan
+        if arch in ["armv7l", "arm64"] or "aarch64" in platform_info:
+            # Android MPV komutu
+            cmd = [
+                "nohup", "am", "start", "--user", "0", 
+                "-a", "android.intent.action.VIEW",
+                "-d", self.url,
+                "-n", "is.xyz.mpv/.MPVActivity"
+            ]
+            # Android için stdout/stderr'ı /dev/null'a yönlendir
+            return sp.run(cmd, stdout=sp.DEVNULL, stderr=sp.DEVNULL)
+        
+        # Standart masaüstü MPV komutu
         with NamedTemporaryFile("w",delete=False) as tmp:
             json.dump(self.info, tmp)
         cmd = [
