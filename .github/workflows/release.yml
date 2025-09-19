@@ -151,21 +151,22 @@ jobs:
           import os
           os.chdir('turkanime_api/cli')
           from version import __version__
+          tag_name = os.environ.get('GITHUB_REF_NAME', 'latest')
           version_data = {
               'version': __version__,
               'release_date': datetime.datetime.now().isoformat(),
               'changelog': 'Otomatik güncelleme - yeni özellikler ve düzeltmeler',
               'platforms': {
                   'windows': {
-                      'url': f'https://github.com/barkeser2002/turkanime-indirici/releases/download/{os.environ[\"GITHUB_REF_NAME\"]}/turkanime-gui-windows.exe',
+                      'url': f'https://github.com/barkeser2002/turkanime-indirici/releases/download/{tag_name}/turkanime-gui-windows.exe',
                       'checksum': ''
                   },
                   'linux': {
-                      'url': f'https://github.com/barkeser2002/turkanime-indirici/releases/download/{os.environ[\"GITHUB_REF_NAME\"]}/turkanime-gui-linux',
+                      'url': f'https://github.com/barkeser2002/turkanime-indirici/releases/download/{tag_name}/turkanime-gui-linux',
                       'checksum': ''
                   },
                   'macos': {
-                      'url': f'https://github.com/barkeser2002/turkanime-indirici/releases/download/{os.environ[\"GITHUB_REF_NAME\"]}/turkanime-gui-macos',
+                      'url': f'https://github.com/barkeser2002/turkanime-indirici/releases/download/{tag_name}/turkanime-gui-macos',
                       'checksum': ''
                   }
               }
