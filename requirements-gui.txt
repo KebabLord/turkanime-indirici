@@ -1,2 +1,3 @@
 -r requirements.txt
 customtkinter>=5.2.0
+toml

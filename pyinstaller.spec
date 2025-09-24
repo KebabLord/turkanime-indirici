@@ -4,7 +4,7 @@ from PyInstaller.utils.hooks import collect_submodules
 
 block_cipher = None
 
-hiddenimports = collect_submodules('yt_dlp') + collect_submodules('curl_cffi') + collect_submodules('Crypto') + collect_submodules('customtkinter')
+hiddenimports = collect_submodules('yt_dlp') + collect_submodules('curl_cffi') + collect_submodules('Crypto') + collect_submodules('customtkinter') + ['toml']
 bin_data = [('bin', 'bin')] if os.path.isdir('bin') else []
 
 a = Analysis([

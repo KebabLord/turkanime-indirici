@@ -9,3 +9,4 @@ questionary
 requests
 Pillow
 pypresence
+toml

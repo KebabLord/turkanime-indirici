@@ -11,7 +11,7 @@ hiddenimports = (
     collect_submodules('curl_cffi') +
     collect_submodules('Crypto') +
     collect_submodules('customtkinter') +
-    ['yt_dlp', 'curl_cffi', 'Crypto', 'customtkinter']
+    ['yt_dlp', 'curl_cffi', 'Crypto', 'customtkinter', 'toml']
 )
 
 # Include bin directory if it exists (only for Windows)
