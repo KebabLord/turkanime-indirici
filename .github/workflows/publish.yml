@@ -35,6 +35,9 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: dist/
+          files: |
+            dist/turkanime_gui-*.whl
+            dist/turkanime_gui-*.tar.gz
           skip-existing: true
       - name: Upload release assets
         uses: actions/upload-release-asset@v1
