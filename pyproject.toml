@@ -1,11 +1,11 @@
 [tool.poetry]
-name = "turkanime-cli"
+name = "turkanime-gui"
 version = "9.3.4"
 description = "Türkanime video oynatıcı ve indirici"
-authors = ["Junicchi <junicchi@waifu.club>"]
+authors = ["Junicchi <junicchi@waifu.club>","barkeser2002 <bariskeser@bariskeser.com>"]
 readme = "README.md"
 license = "CC-BY-NC-ND-4.0"
-repository = "https://github.com/kebablord/turkanime-indirici"
+repository = "https://github.com/barkeser2002/turkanime-indirici"
 keywords = ["turkanime","turk","anime","downloader"]
 
 classifiers = [
@@ -37,7 +37,7 @@ easygui = ">=0.98.2"
 customtkinter = { version = ">=5.2.0", optional = true }
 
 [tool.poetry.extras]
-gui = ["customtkinter>=5.2.0"]
+gui = ["customtkinter"]
 
 [tool.poetry.dev-dependencies]
 
@@ -51,4 +51,5 @@ build-backend = "poetry.core.masonry.api"
 #   poetry build; poetry install; poetry publish
 
 turkanime = 'turkanime_api.cli.__main__:main'
+turkanime-cli = 'turkanime_api.cli.__main__:main'
 turkanime-gui = 'turkanime_api.gui.main:run'

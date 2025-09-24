@@ -26,5 +26,37 @@ jobs:
       - name: Build package
         run: |
           poetry build
+      - name: Prepare release assets
+        run: |
+          cp dist/turkanime_gui-*.whl dist/turkanime_cli-${{ github.event.release.tag_name }}.whl
+          cp dist/turkanime_gui-*.whl dist/turkanime_gui-${{ github.event.release.tag_name }}.whl
+          cp dist/turkanime_gui-*.tar.gz dist/turkanime_cli-${{ github.event.release.tag_name }}.tar.gz
       - name: Publish package distributions to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
+      - name: Upload release assets
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: dist/turkanime_cli-${{ github.event.release.tag_name }}.whl
+          asset_name: turkanime_cli-${{ github.event.release.tag_name }}.whl
+          asset_content_type: application/zip
+      - name: Upload GUI release asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: dist/turkanime_gui-${{ github.event.release.tag_name }}.whl
+          asset_name: turkanime_gui-${{ github.event.release.tag_name }}.whl
+          asset_content_type: application/zip
+      - name: Upload source release asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: dist/turkanime_cli-${{ github.event.release.tag_name }}.tar.gz
+          asset_name: turkanime_cli-${{ github.event.release.tag_name }}.tar.gz
+          asset_content_type: application/gzip

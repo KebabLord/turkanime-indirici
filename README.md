@@ -4,9 +4,9 @@
 ![TürkAnimu Logo](https://i.imgur.com/GaMNM29.png)
 
 [![GitHub all releases](https://img.shields.io/github/downloads/barkeser2002/turkanime-indirici/total?style=flat-square)](https://github.com/barkeser2002/turkanime-indirici/releases/latest)
-[![Downloads](https://static.pepy.tech/personalized-badge/turkanime-cli?period=total&units=international_system&left_color=grey&right_color=orange&left_text=Pip%20Installs)](https://pepy.tech/project/turkanime-cli)
+[![Downloads](https://static.pepy.tech/personalized-badge/turkanime-gui?period=total&units=international_system&left_color=grey&right_color=orange&left_text=Pip%20Installs)](https://pepy.tech/project/turkanime-gui)
 [![GitHub release (latest by date)](https://img.shields.io/github/v/release/barkeser2002/turkanime-indirici?style=flat-square)](https://github.com/barkeser2002/turkanime-indirici/releases/latest/download/turkanime-gui-windows.exe)
-[![Pypi version](https://img.shields.io/pypi/v/turkanime-cli?style=flat-square)](https://pypi.org/project/turkanime-cli/)
+[![Pypi version](https://img.shields.io/pypi/v/turkanime-gui?style=flat-square)](https://pypi.org/project/turkanime-gui/)
 
 </div>
 
@@ -78,17 +78,61 @@ Vidmoly   Dailymotion   Yandisk   Uqload   Drive
 ### Önceden Derlenmiş Sürümler
 En kolay yöntem: [Releases](https://github.com/barkeser2002/turkanime-indirici/releases/latest) sayfasından işletim sisteminize uygun exe dosyasını indirin.
 
-### Pip ile Kurulum
+### PyPI ile Kurulum
+
+#### CLI Sürümü (Terminal Arayüzü)
 ```bash
-pip install turkanime-cli
+pip install turkanime-gui
 ```
 
-### GUI Sürümü Kaynak Koddan
-Modern arayüz için:
+#### GUI Sürümü (Grafiksel Arayüz)
 ```bash
+pip install turkanime-gui
+```
+
+### Kaynak Koddan Kurulum
+
+#### CLI Sürümü
+```bash
+git clone https://github.com/barkeser2002/turkanime-indirici.git
+cd turkanime-indirici
+pip install -r requirements.txt
+```
+
+#### GUI Sürümü
+```bash
+git clone https://github.com/barkeser2002/turkanime-indirici.git
+cd turkanime-indirici
 pip install -r requirements-gui.txt
+```
+
+### 🚀 Çalıştırma
+
+#### CLI Modu
+Terminal'de anime indirmek ve oynatmak için:
+```bash
+# PyPI'den yükledikten sonra
+turkanime-cli
+
+# Veya kaynak koddan
+python -m turkanime_api.cli
+```
+
+#### GUI Modu
+Grafiksel arayüz ile kullanmak için:
+```bash
+# PyPI'den yükledikten sonra
+turkanime-gui
+
+# Veya kaynak koddan
 python -m turkanime_api.gui.main
 ```
+
+### 🔧 Sistem Gereksinimleri
+- **Python**: 3.9 veya üzeri
+- **FFmpeg**: Video işleme için (otomatik indirilir)
+- **mpv**: Video oynatma için (GUI için)
+- **Git**: Kaynak koddan yükleme için
 
 Daha fazla kurulum detayı için [Wiki](https://github.com/barkeser2002/turkanime-indirici/wiki) sayfasını ziyaret edin.
 
