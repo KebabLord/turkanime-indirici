@@ -1,4 +1,4 @@
-name: Build and Release GUI
+name: Build and Release GUI/CLI
 
 on:
   push:

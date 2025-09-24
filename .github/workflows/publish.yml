@@ -1,4 +1,4 @@
-name: Upload Python Package to PyPI when a Release is Created
+name: PyPI Publish
 
 on:
     release:
@@ -37,7 +37,6 @@ jobs:
       - name: Publish package distributions to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          packages-dir: dist/
           files: |
             dist/turkanime_gui-*.whl
             dist/turkanime_gui-*.tar.gz
