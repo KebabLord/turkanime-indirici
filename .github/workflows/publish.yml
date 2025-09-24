@@ -33,6 +33,9 @@ jobs:
           cp dist/turkanime_gui-*.tar.gz dist/turkanime_cli-${{ github.event.release.tag_name }}.tar.gz
       - name: Publish package distributions to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist/
+          skip-existing: true
       - name: Upload release assets
         uses: actions/upload-release-asset@v1
         env:
