@@ -12,8 +12,10 @@ import re
 import json
 from yt_dlp import YoutubeDL
 from yt_dlp.networking.impersonate import ImpersonateTarget
+from .common.utils import get_ydl_opts, get_video_resolution_mpv, extract_video_info
 
 from .bypass import get_real_url, unmask_real_url, fetch, get_alucard_m3u8
+from .common.utils import get_platform, get_arch
 
 # Çalıştığı bilinen playerlar ve öncelikleri
 SUPPORTED = [
@@ -40,13 +42,13 @@ class LogHandler:
     """ TODO: ytdlp log handler prototipi """
     @staticmethod
     def error(msg):
-        pass
+        pass  # msg is unused but required by yt-dlp interface
     @staticmethod
     def warning(msg):
-        pass
+        pass  # msg is unused but required by yt-dlp interface
     @staticmethod
     def debug(msg):
-        pass
+        pass  # msg is unused but required by yt-dlp interface
 
 
 class Anime:
@@ -195,8 +197,14 @@ class Bolum:
         # Yalnızca tek bir fansub varsa
         if not re.search(".*birden fazla grup",self.html):
             fansub = re.findall(r"</span> ([^\\<>]*)</button>.*?iframe",self.html)[0]
-            vids = re.findall(r"/embed/#/url/(.*?)\?status=0\".*?</span> ([^ ]*?) ?</button>", self.html)
-            vids += re.findall(r"(ajax\/videosec&b=[A-Za-z0-9]+&v=.*?)'.*?<\/span> ?(.*?)<\/button",self.html)
+            vids = re.findall(
+                r"/embed/#/url/(.*?)\?status=0\".*?</span> ([^ ]*?) ?</button>",
+                self.html
+            )
+            vids += re.findall(
+                r"(ajax\/videosec&b=[A-Za-z0-9]+&v=.*?)'.*?<\/span> ?(.*?)<\/button",
+                self.html
+            )
             for vpath,player in vids:
                 self._videos.append(Video(self,vpath,player,fansub))
         # Fansublar da parse'lanacaksa
@@ -204,21 +212,33 @@ class Bolum:
             fansubs = re.findall(r"(ajax\/videosec&.*?)'.*?<\/span> ?(.*?)<\/a>",self.html)
             for path,fansub in fansubs:
                 src = fetch(path)
-                vids = re.findall(r"/embed/#/url/(.*?)\?status=0\".*?</span> ([^ ]*?) ?</button>", src)
-                vids += re.findall(r"(ajax\/videosec&b=[A-Za-z0-9]+&v=.*?)'.*?<\/span> ?(.*?)<\/button",src)
+                vids = re.findall(
+                    r"/embed/#/url/(.*?)\?status=0\".*?</span> ([^ ]*?) ?</button>",
+                    src
+                )
+                vids += re.findall(
+                    r"(ajax\/videosec&b=[A-Za-z0-9]+&v=.*?)'.*?<\/span> ?(.*?)<\/button",
+                    src
+                )
                 for vpath,player in vids:
                     self._videos.append(Video(self,vpath,player,fansub))
         # Fansubları parselamaksızın tüm videoları getir
         else:
-            allpath = re.findall(r"(ajax\/videosec&b=[A-Za-z0-9]+.*?)&[fv]=.*?'.*?<\/span>",self.html)[0]
+            allpath = re.findall(
+                r"(ajax\/videosec&b=[A-Za-z0-9]+.*?)&[fv]=.*?'.*?<\/span>",
+                self.html
+            )[0]
             src = fetch(allpath)
             vids = re.findall(r"/embed/#/url/(.*?)\?status=0\".*?</span> ([^ ]*?) ?</button>", src)
-            vids += re.findall(r"(ajax\/videosec&b=[A-Za-z0-9]+&v=.*?)'.*?<\/span> ?(.*?)<\/button",src)
+            vids += re.findall(
+                r"(ajax\/videosec&b=[A-Za-z0-9]+&v=.*?)'.*?<\/span> ?(.*?)<\/button",
+                src
+            )
             for vpath,player in vids:
                 self._videos.append(Video(self,vpath,player))
         return self._videos
 
-    def best_video(self, by_res=True, by_fansub=None, default_res=600, callback=lambda x:None, early_subset: int = 8):
+    def best_video(self, by_res=True, by_fansub=None, default_res=600, callback=lambda x: None, early_subset: int = 8):
         """
         Parametrelerde belirtilmiş en ideal videoyu tespit edip döndürür.
 
@@ -255,10 +275,18 @@ class Bolum:
                 with _cf.ThreadPoolExecutor(max_workers=min(n, len(subset))) as _ex:
                     list(_ex.map(lambda v: getattr(v, 'resolution'), subset))
                 # Eğer 1080+ bulunan varsa doğrudan onu al
-                cands = [v for v in subset if (v.resolution or default_res) >= 1080 and v.is_working]
+                cands = [
+                    v for v in subset
+                    if (v.resolution or default_res) >= 1080 and v.is_working
+                ]
                 if cands:
                     pick = sorted(cands, key=lambda v: SUPPORTED.index(v.player))[0]
-                    callback({"current": len(vids), "total": len(vids), "player": pick.player, "status": "çalışıyor"})
+                    callback({
+                        "current": len(vids),
+                        "total": len(vids),
+                        "player": pick.player,
+                        "status": "çalışıyor"
+                    })
                     return pick
             except Exception:
                 pass
@@ -304,16 +332,7 @@ class Video:
         self._is_working = None
         self.is_supported = self.player in SUPPORTED
 
-        self.ydl_opts = {
-          'logger': log_handler,
-          'quiet': True,
-          'ignoreerrors': 'only_download',
-          'retries': 5,
-          'fragment_retries': 10,
-          'restrictfilenames': True,
-          'nocheckcertificate': True,
-          'concurrent_fragment_downloads': 5,
-        }
+        self.ydl_opts = get_ydl_opts(log_handler)
         if self.player == "ALUCARD(BETA)":
             self.ydl_opts['impersonate'] = ImpersonateTarget("chrome")
 
@@ -338,17 +357,15 @@ class Video:
     def info(self):
         if self._info is None:
             assert self.is_supported, "Bu player desteklenmiyor."
-            with YoutubeDL(self.ydl_opts) as ydl:
-                raw_info = ydl.extract_info(self.url, download=False)
-                info = ydl.sanitize_info(raw_info)
+            info = extract_video_info(self.url, self.ydl_opts)
             if not info:
                 self._info = {}
                 return self._info
             # nedense mpv direct=True ise oynatmıyor
-            if "direct" in info:
+            if isinstance(info, dict) and "direct" in info:
                 del info["direct"]
             # false-pozitifleri önlemek için.
-            if info.get("video_ext") == "html":
+            if isinstance(info, dict) and info.get("video_ext") == "html":
                 info = None
             self._info = info
         return self._info
@@ -357,40 +374,46 @@ class Video:
     def resolution(self):
         """ Video çözünürlüğünü ara, bulunamadıysa None. """
         if self._resolution is None:
-            formats = self.info.get("formats")
-            res = self.info.get("resolution")
-            if res and re.search(r'\d{2,4}',res):
-                res = int(re.findall(r'\d{2,4}',res)[-1])
-            elif formats:
-                if "height" in formats[0]:
-                    res = max(formats,key=lambda x:x.get("height") or 0).get("height")
-                elif "format_id" in formats[0]:
-                    fid = formats[0].get("format_id")
-                    res = {"sd":480, "hd":720, "fhd": 1080, "hq":2160}.get(fid)
+            info = self.info
+            if not isinstance(info, dict):
+                self._resolution = 0
+                return self._resolution
+            formats = info.get("formats")
+            res = info.get("resolution")
+            if res and isinstance(res, str) and re.search(r'\d{2,4}', res):
+                res = int(re.findall(r'\d{2,4}', res)[-1])
+            elif isinstance(formats, list) and formats:
+                first_format = formats[0]
+                if isinstance(first_format, dict) and "height" in first_format:
+                    best_format = max(
+                        formats,
+                        key=lambda x: (x.get("height") or 0) if isinstance(x, dict) else 0
+                    )
+                    res = best_format.get("height") if isinstance(best_format, dict) else None
+                elif isinstance(first_format, dict) and "format_id" in first_format:
+                    fid = first_format.get("format_id")
+                    if isinstance(fid, str):
+                        res = {"sd": 480, "hd": 720, "fhd": 1080, "hq": 2160}.get(fid)
                 else:
                     # Ek fallback: vcodec isimlerinden veya tbr'den yaklaşık çözünürlük tahmini
                     try:
-                        t = max(formats, key=lambda x: (x.get("height") or 0, x.get("tbr") or 0))
-                        res = t.get("height") or (720 if (t.get("tbr") or 0) > 1500 else 480)
+                        t = max(
+                            formats,
+                            key=lambda x: (
+                                (x.get("height") or 0) if isinstance(x, dict) else 0,
+                                (x.get("tbr") or 0) if isinstance(x, dict) else 0
+                            )
+                        )
+                        if isinstance(t, dict):
+                            res = t.get("height") or (720 if (t.get("tbr") or 0) > 1500 else 480)
+                        else:
+                            res = None
                     except Exception:
                         res = None
             self._resolution = res or 0
             # Son çare: mpv ile çözünürlük oku
             if not self._resolution:
-                try:
-                    cmd = [
-                        "mpv", "--no-config", "--no-audio", "--no-video",
-                        "--frames=1", "--really-quiet",
-                        "--term-playing-msg=${video-params/w}x${video-params/h}",
-                        self.url,
-                    ]
-                    _res = sp.run(cmd, text=True, stdout=sp.PIPE, stderr=sp.PIPE, timeout=10)
-                    out = (_res.stdout or "") + (_res.stderr or "")
-                    mm = re.findall(r"(\d{3,4})x(\d{3,4})", out)
-                    if mm:
-                        self._resolution = int(mm[-1][1])
-                except Exception:
-                    pass
+                self._resolution = get_video_resolution_mpv(self.url) or 0
         return self._resolution
 
     @property
@@ -428,6 +451,24 @@ class Video:
     def oynat(self, dakika_hatirla=False ,izlerken_kaydet=False, mpv_opts=[]):
         """ Oynatmak için yt-dlp + mpv kullanıyoruz. """
         assert self.is_working, "Video çalışmıyor."
+        
+        # Platform ve mimari bilgisini al
+        platform_info = get_platform()
+        arch = get_arch()
+        
+        # ARM mimarileri için Android MPV kullan
+        if arch in ["armv7l", "arm64"] or "aarch64" in platform_info:
+            # Android MPV komutu
+            cmd = [
+                "nohup", "am", "start", "--user", "0", 
+                "-a", "android.intent.action.VIEW",
+                "-d", self.url,
+                "-n", "is.xyz.mpv/.MPVActivity"
+            ]
+            # Android için stdout/stderr'ı /dev/null'a yönlendir
+            return sp.run(cmd, stdout=sp.DEVNULL, stderr=sp.DEVNULL)
+        
+        # Standart masaüstü MPV komutu
         with NamedTemporaryFile("w",delete=False) as tmp:
             json.dump(self.info, tmp)
         cmd = [
@@ -440,7 +481,10 @@ class Video:
         ]
 
         if self.player == "ALUCARD(BETA)":
-            cmd += ["--demuxer-lavf-o=protocol_whitelist=[file,tcp,tls,https],http_keep_alive=0,http_persistent=0"]
+            cmd += [
+                "--demuxer-lavf-o=protocol_whitelist=[file,tcp,tls,https],"
+                "http_keep_alive=0,http_persistent=0"
+            ]
             cmd += ["--cache=yes", get_alucard_m3u8(self.url) ]
             del cmd[4]
 
@@ -451,3 +495,13 @@ class Video:
         for opt in mpv_opts:
             cmd.insert(1,opt)
         return sp.run(cmd, text=True, stdout=sp.PIPE, stderr=sp.PIPE)
+
+    def get(self, key, default=None):
+        """Dictionary-like get method for compatibility."""
+        if key == 'url':
+            return self.url
+        elif key == 'label':
+            return getattr(self, 'fansub', None) or self.player
+        elif key == 'player':
+            return self.player
+        return default

@@ -8,6 +8,8 @@ from os import path,mkdir,getcwd
 from tempfile import NamedTemporaryFile
 from shutil import move
 import json
+import uuid
+import platform
 
 # yt-dlp, mpv gibi gereksinimlerin indirme linklerinin bulunduğu dosya.
 DL_URL="https://raw.githubusercontent.com/KebabLord/turkanime-indirici/master/gereksinimler.json"
@@ -29,17 +31,21 @@ class Dosyalar:
             self.ta_path = getcwd()
         self.ayar_path = path.join(self.ta_path, "ayarlar.json")
         self.gecmis_path = path.join(self.ta_path, "gecmis.json")
+        # Platforma göre indirilenler klasörü
+        downloads_dir = path.join(path.expanduser("~"), "Downloads")
+        
         # Ayar isimleri ascii karakterlerden oluşmalı.
         default_ayarlar = {
             "manuel fansub" : False,
             "izlerken kaydet" : False,
-            "indirilenler" : ".",
+            "indirilenler" : downloads_dir,
             "izlendi ikonu" : True,
             "paralel indirme sayisi" : 3,
             "max resolution" : True,
             "dakika hatirla" : True,
             "aria2c kullan" : False,
-            "kaynak": "turkanime"
+            "kaynak": "turkanime",
+            "discord_rich_presence": True
         }
         # Gerekli dosyalar eğer daha önce yaratılmadıysa yarat.
         if not path.isdir(".git") and not path.isdir(self.ta_path):
@@ -50,10 +56,19 @@ class Dosyalar:
             for ayar,value in default_ayarlar.items():
                 if not ayar in ayarlar:
                     self.set_ayar(ayar,value)
+            # User ID kontrolü - eğer yoksa oluştur
+            if 'user_id' not in ayarlar or not ayarlar.get('user_id'):
+                user_id = str(uuid.uuid4())
+                self.set_ayar('user_id', user_id)
+                print(f"Yeni kullanıcı kimliği oluşturuldu: {user_id}")
         else:
             with open(self.ayar_path,"w",encoding="utf-8") as fp:
                 fp.write('{}')
             self.set_ayar(ayar_list=default_ayarlar)
+            # İlk çalıştırmada user_id oluştur
+            user_id = str(uuid.uuid4())
+            self.set_ayar('user_id', user_id)
+            print(f"İlk çalıştırma - kullanıcı kimliği oluşturuldu: {user_id}")
         if not path.isfile(self.gecmis_path):
             with open(self.gecmis_path,"w",encoding="utf-8") as fp:
                 fp.write('{"izlendi":{},"indirildi":{}}\n')

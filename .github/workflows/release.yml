@@ -1,9 +1,9 @@
-name: Build and Release GUI
+name: Build and Release GUI/CLI
 
 on:
   push:
     tags:
-      - 'v*.*.*'
+      - '*v*'
 
 jobs:
   build:
@@ -142,6 +142,39 @@ jobs:
             if [[ -f dist/turkanime-cli-macos ]]; then md5 -r dist/turkanime-cli-macos > dist/turkanime-cli-macos.md5 || echo "md5 skipped"; fi
           fi
 
+      - name: Create version.json
+        shell: bash
+        run: |
+          python -c "
+          import json
+          import datetime
+          import os
+          os.chdir('turkanime_api/cli')
+          from version import __version__
+          tag_name = os.environ.get('GITHUB_REF_NAME', 'latest')
+          version_data = {
+              'version': __version__,
+              'release_date': datetime.datetime.now().isoformat(),
+              'changelog': 'Otomatik güncelleme',
+              'platforms': {
+                  'windows': {
+                      'url': f'https://github.com/barkeser2002/turkanime-indirici/releases/download/{tag_name}/turkanime-gui-windows.exe',
+                      'checksum': ''
+                  },
+                  'linux': {
+                      'url': f'https://github.com/barkeser2002/turkanime-indirici/releases/download/{tag_name}/turkanime-gui-linux',
+                      'checksum': ''
+                  },
+                  'macos': {
+                      'url': f'https://github.com/barkeser2002/turkanime-indirici/releases/download/{tag_name}/turkanime-gui-macos',
+                      'checksum': ''
+                  }
+              }
+          }
+          with open('../../docs/version.json', 'w') as f:
+              json.dump(version_data, f, indent=2)
+          "
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
@@ -153,6 +186,7 @@ jobs:
             dist/turkanime-cli-windows.exe
             dist/turkanime-cli-linux
             dist/turkanime-cli-macos
+            docs/version.json
           if-no-files-found: ignore
 
   release:
@@ -171,5 +205,6 @@ jobs:
         with:
           files: |
             dist/**
+            docs/version.json
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

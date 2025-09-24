@@ -1,43 +1,127 @@
 [
   {
-    "name":"mpv",
-    "type":"7z",
-    "is_setup":false,
-    "url":"https://master.dl.sourceforge.net/project/mpv-player-windows/64bit/mpv-x86_64-20231231-git-abc2a74.7z",
-    "url_x32":"https://master.dl.sourceforge.net/project/mpv-player-windows/32bit/mpv-i686-20231231-git-abc2a74.7z"
+    "name": "mpv",
+    "type": "7z",
+    "is_setup": false,
+    "platforms": {
+      "windows": {
+        "x64": "https://master.dl.sourceforge.net/project/mpv-player-windows/64bit/mpv-x86_64-20231231-git-abc2a74.7z",
+        "x32": "https://master.dl.sourceforge.net/project/mpv-player-windows/32bit/mpv-i686-20231231-git-abc2a74.7z"
+      },
+      "linux": {
+        "x64": "https://github.com/mpv-player/mpv/releases/download/v0.37.0/mpv-0.37.0-x86_64-static.tar.xz",
+        "arm64": "https://github.com/mpv-player/mpv/releases/download/v0.37.0/mpv-0.37.0-arm64-static.tar.xz"
+      },
+      "macos": {
+        "x64": "https://github.com/mpv-player/mpv/releases/download/v0.37.0/mpv-0.37.0-macos-12-x86_64.tar.xz",
+        "arm64": "https://github.com/mpv-player/mpv/releases/download/v0.37.0/mpv-0.37.0-macos-12-arm64.tar.xz"
+      }
+    }
   },
   {
-    "name":"youtube-dl",
-    "type":"exe",
-    "is_setup":false,
-    "url":"https://github.com/ytdl-org/youtube-dl/releases/download/2021.12.17/youtube-dl.exe"
+    "name": "youtube-dl",
+    "type": "exe",
+    "is_setup": false,
+    "platforms": {
+      "windows": {
+        "x64": "https://github.com/ytdl-org/youtube-dl/releases/download/2021.12.17/youtube-dl.exe",
+        "x32": "https://github.com/ytdl-org/youtube-dl/releases/download/2021.12.17/youtube-dl.exe"
+      },
+      "linux": {
+        "x64": "https://github.com/ytdl-org/youtube-dl/releases/download/2021.12.17/youtube-dl",
+        "arm64": "https://github.com/ytdl-org/youtube-dl/releases/download/2021.12.17/youtube-dl"
+      },
+      "macos": {
+        "x64": "https://github.com/ytdl-org/youtube-dl/releases/download/2021.12.17/youtube-dl",
+        "arm64": "https://github.com/ytdl-org/youtube-dl/releases/download/2021.12.17/youtube-dl"
+      }
+    }
   },
   {
-    "name":"geckodriver",
-    "type":"zip",
-    "is_setup":false,
-    "url":"https://github.com/mozilla/geckodriver/releases/download/v0.34.0/geckodriver-v0.34.0-win64.zip",
-    "url_x32":"https://github.com/mozilla/geckodriver/releases/download/v0.34.0/geckodriver-v0.34.0-win32.zip"
+    "name": "geckodriver",
+    "type": "zip",
+    "is_setup": false,
+    "platforms": {
+      "windows": {
+        "x64": "https://github.com/mozilla/geckodriver/releases/download/v0.34.0/geckodriver-v0.34.0-win64.zip",
+        "x32": "https://github.com/mozilla/geckodriver/releases/download/v0.34.0/geckodriver-v0.34.0-win32.zip"
+      },
+      "linux": {
+        "x64": "https://github.com/mozilla/geckodriver/releases/download/v0.34.0/geckodriver-v0.34.0-linux64.tar.gz",
+        "arm64": "https://github.com/mozilla/geckodriver/releases/download/v0.34.0/geckodriver-v0.34.0-linux-aarch64.tar.gz"
+      },
+      "macos": {
+        "x64": "https://github.com/mozilla/geckodriver/releases/download/v0.34.0/geckodriver-v0.34.0-macos.tar.gz",
+        "arm64": "https://github.com/mozilla/geckodriver/releases/download/v0.34.0/geckodriver-v0.34.0-macos-aarch64.tar.gz"
+      }
+    }
   },
   {
-    "name":"vcredist_x86",
-    "type":"exe",
-    "is_setup":true,
-    "url":"https://download.microsoft.com/download/1/6/5/165255E7-1014-4D0A-B094-B6A430A6BFFC/vcredist_x86.exe"
+    "name": "vcredist_x86",
+    "type": "exe",
+    "is_setup": true,
+    "platforms": {
+      "windows": {
+        "x64": "https://download.microsoft.com/download/1/6/5/165255E7-1014-4D0A-B094-B6A430A6BFFC/vcredist_x86.exe",
+        "x32": "https://download.microsoft.com/download/1/6/5/165255E7-1014-4D0A-B094-B6A430A6BFFC/vcredist_x86.exe"
+      }
+    }
   },
   {
-    "name":"yt-dlp",
-    "type":"exe",
-    "url":"https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe"
+    "name": "yt-dlp",
+    "type": "exe",
+    "is_setup": false,
+    "platforms": {
+      "windows": {
+        "x64": "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe",
+        "x32": "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe"
+      },
+      "linux": {
+        "x64": "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp",
+        "arm64": "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp"
+      },
+      "macos": {
+        "x64": "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp",
+        "arm64": "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp"
+      }
+    }
   },
   {
-    "name":"7zr",
-    "type":"exe",
-    "url":"https://www.7-zip.org/a/7zr.exe"
+    "name": "7zr",
+    "type": "exe",
+    "is_setup": false,
+    "platforms": {
+      "windows": {
+        "x64": "https://www.7-zip.org/a/7zr.exe",
+        "x32": "https://www.7-zip.org/a/7zr.exe"
+      },
+      "linux": {
+        "x64": "https://www.7-zip.org/a/7zr",
+        "arm64": "https://www.7-zip.org/a/7zr"
+      },
+      "macos": {
+        "x64": "https://www.7-zip.org/a/7zr",
+        "arm64": "https://www.7-zip.org/a/7zr"
+      }
+    }
   },
   {
-    "name":"aria2c",
-    "type":"zip",
-    "url":"https://github.com/aria2/aria2/releases/download/release-1.37.0/aria2-1.37.0-win-64bit-build1.zip"
+    "name": "aria2c",
+    "type": "zip",
+    "is_setup": false,
+    "platforms": {
+      "windows": {
+        "x64": "https://github.com/aria2/aria2/releases/download/release-1.37.0/aria2-1.37.0-win-64bit-build1.zip",
+        "x32": "https://github.com/aria2/aria2/releases/download/release-1.37.0/aria2-1.37.0-win-32bit-build1.zip"
+      },
+      "linux": {
+        "x64": "https://github.com/aria2/aria2/releases/download/release-1.37.0/aria2-1.37.0-linux-gnu-64bit-build1.tar.xz",
+        "arm64": "https://github.com/aria2/aria2/releases/download/release-1.37.0/aria2-1.37.0-linux-gnu-armhf-build1.tar.xz"
+      },
+      "macos": {
+        "x64": "https://github.com/aria2/aria2/releases/download/release-1.37.0/aria2-1.37.0-osx-darwin.tar.xz",
+        "arm64": "https://github.com/aria2/aria2/releases/download/release-1.37.0/aria2-1.37.0-osx-darwin.tar.xz"
+      }
+    }
   }
 ]
