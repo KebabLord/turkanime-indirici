@@ -1,0 +1,416 @@
+DEBUG: show_anime_details çaðrýldý: Gachiakuta
+DEBUG: Thread baþlatýlýyor
+DEBUG: load_sources_worker baþladý
+DEBUG: Thread baþlatýldý
+DEBUG: show_anime_details tamamlandý
+DEBUG: TürkAnime aramasý baþlatýlýyor (timeout: 8s)
+DEBUG: AnimeciX aramasý baþlatýlýyor (timeout: 8s)
+DEBUG: AniList aramasý baþlatýlýyor (timeout: 5s)
+DEBUG: AniList tamamlandý - 1 sonuç
+DEBUG: AniList tamamlandý: 0.28s
+DEBUG: AnimeciX tamamlandý - 11 bölüm
+DEBUG: AnimeciX tamamlandý: 0.78s
+DEBUG: TürkAnime tamamlandý - 10 bölüm
+DEBUG: TürkAnime tamamlandý: 1.37s
+INFO: Baþarýyla yüklenen kaynaklar: TürkAnime, AnimeciX, AniList
+DEBUG: all_episodes set to: ['AniList', 'AnimeciX', 'TürkAnime']
+DEBUG: render_sources_page scheduled
+DEBUG: render_sources_page çaðrýldý, all_episodes: ['AniList', 'AnimeciX', 'TürkAnime']
+DEBUG: render_sources_page tamamlandý
+DEBUG: create_accordion baþladý
+DEBUG: create_accordion tamamlandý
+DEBUG: show_anime_details çaðrýldý: Dandadan 2nd Season
+DEBUG: Thread baþlatýlýyor
+DEBUG: load_sources_worker baþladý
+DEBUG: show_anime_details tamamlandý
+DEBUG: TürkAnime aramasý baþlatýlýyor (timeout: 8s)
+DEBUG: AnimeciX aramasý baþlatýlýyor (timeout: 8s)
+DEBUG: AniList aramasý baþlatýlýyor (timeout: 5s)
+DEBUG: AniList tamamlandý - 1 sonuç
+DEBUG: AniList tamamlandý: 0.40s
+DEBUG: AnimeciX tamamlandý - 24 bölüm
+DEBUG: AnimeciX tamamlandý: 0.88s
+DEBUG: TürkAnime tamamlandý - 12 bölüm
+DEBUG: TürkAnime tamamlandý: 1.20s
+INFO: Baþarýyla yüklenen kaynaklar: TürkAnime, AnimeciX, AniList
+DEBUG: all_episodes set to: ['AniList', 'AnimeciX', 'TürkAnime']
+DEBUG: render_sources_page scheduled
+DEBUG: render_sources_page çaðrýldý, all_episodes: ['AniList', 'AnimeciX', 'TürkAnime']
+DEBUG: render_sources_page tamamlandý
+DEBUG: create_accordion baþladý
+DEBUG: create_accordion tamamlandý
+DEBUG: show_anime_details çaðrýldý: Gachiakuta
+DEBUG: Thread baþlatýlýyor
+DEBUG: load_sources_worker baþladý
+DEBUG: Thread baþlatýldý
+DEBUG: show_anime_details tamamlandý
+DEBUG: TürkAnime aramasý baþlatýlýyor (timeout: 8s)
+DEBUG: AnimeciX aramasý baþlatýlýyor (timeout: 8s)
+DEBUG: AniList aramasý baþlatýlýyor (timeout: 5s)
+DEBUG: AniList tamamlandý - 1 sonuç
+DEBUG: AniList tamamlandý: 0.30s
+DEBUG: AnimeciX tamamlandý - 11 bölüm
+DEBUG: AnimeciX tamamlandý: 0.59s
+DEBUG: TürkAnime tamamlandý - 10 bölüm
+DEBUG: TürkAnime tamamlandý: 0.69s
+INFO: Baþarýyla yüklenen kaynaklar: TürkAnime, AnimeciX, AniList
+DEBUG: all_episodes set to: ['AniList', 'AnimeciX', 'TürkAnime']
+DEBUG: render_sources_page scheduled
+DEBUG: render_sources_page çaðrýldý, all_episodes: ['AniList', 'AnimeciX', 'TürkAnime']
+DEBUG: render_sources_page tamamlandý
+DEBUG: create_accordion baþladý
+DEBUG: create_accordion tamamlandý
+DEBUG: show_anime_details çaðrýldý: Gachiakuta
+DEBUG: Thread baþlatýlýyor
+DEBUG: Thread baþlatýldý
+DEBUG: load_sources_worker baþladý
+DEBUG: show_anime_details tamamlandý
+DEBUG: TürkAnime aramasý baþlatýlýyor (timeout: 8s)
+DEBUG: AnimeciX aramasý baþlatýlýyor (timeout: 8s)
+DEBUG: AniList aramasý baþlatýlýyor (timeout: 5s)
+DEBUG: AniList tamamlandý - 1 sonuç
+DEBUG: AniList tamamlandý: 0.32s
+DEBUG: AnimeciX tamamlandý - 11 bölüm
+DEBUG: AnimeciX tamamlandý: 0.79s
+DEBUG: TürkAnime tamamlandý - 10 bölüm
+DEBUG: TürkAnime tamamlandý: 1.33s
+INFO: Baþarýyla yüklenen kaynaklar: TürkAnime, AnimeciX, AniList
+DEBUG: all_episodes set to: ['AniList', 'AnimeciX', 'TürkAnime']
+DEBUG: render_sources_page scheduled
+DEBUG: render_sources_page çaðrýldý, all_episodes: ['AniList', 'AnimeciX', 'TürkAnime']
+DEBUG: render_sources_page tamamlandý
+DEBUG: create_accordion baþladý
+DEBUG: create_accordion tamamlandý
+DEBUG: show_anime_details çaðrýldý: ONE PIECE
+DEBUG: Thread baþlatýlýyor
+DEBUG: Thread baþlatýldý
+DEBUG: load_sources_worker baþladý
+DEBUG: show_anime_details tamamlandý
+DEBUG: TürkAnime aramasý baþlatýlýyor (timeout: 8s)
+DEBUG: AniList aramasý baþlatýlýyor (timeout: 5s)
+DEBUG: AnimeciX aramasý baþlatýlýyor (timeout: 8s)
+DEBUG: AniList tamamlandý - 1 sonuç
+DEBUG: AniList tamamlandý: 0.30s
+DEBUG: TürkAnime tamamlandý - 5 bölüm
+DEBUG: TürkAnime tamamlandý: 0.69s
+DEBUG: AnimeciX tamamlandý - 8 bölüm
+DEBUG: AnimeciX tamamlandý: 0.77s
+INFO: Baþarýyla yüklenen kaynaklar: TürkAnime, AnimeciX, AniList
+DEBUG: all_episodes set to: ['AniList', 'TürkAnime', 'AnimeciX']
+DEBUG: render_sources_page scheduled
+DEBUG: render_sources_page çaðrýldý, all_episodes: ['AniList', 'TürkAnime', 'AnimeciX']
+DEBUG: render_sources_page tamamlandý
+DEBUG: create_accordion baþladý
+DEBUG: create_accordion tamamlandý
+DEBUG: show_anime_details çaðrýldý: {'romaji': 'ONE PIECE', 'english': 'ONE PIECE', 'native': 'ONE PIECE'}
+DEBUG: Thread baþlatýlýyor
+DEBUG: Thread baþlatýldý
+DEBUG: load_sources_worker baþladý
+DEBUG: show_anime_details tamamlandý
+DEBUG: TürkAnime aramasý baþlatýlýyor (timeout: 8s)
+DEBUG: AnimeciX aramasý baþlatýlýyor (timeout: 8s)
+DEBUG: AniList aramasý baþlatýlýyor (timeout: 5s)
+DEBUG: AnimeciX - sonuç bulunamadý
+DEBUG: AnimeciX tamamlandý: 0.01s
+DEBUG: AniList - sonuç bulunamadý
+DEBUG: AniList tamamlandý: 0.27s
+DEBUG: TürkAnime - sonuç bulunamadý
+DEBUG: TürkAnime tamamlandý: 0.47s
+INFO: Sonuç bulunmayan kaynaklar: TürkAnime, AnimeciX, AniList
+DEBUG: all_episodes set to: []
+DEBUG: render_sources_page scheduled
+DEBUG: render_sources_page çaðrýldý, all_episodes: None
+DEBUG: show_anime_details çaðrýldý: One Piece
+DEBUG: Thread baþlatýlýyor
+DEBUG: Thread baþlatýldý
+DEBUG: load_sources_worker baþladý
+DEBUG: show_anime_details tamamlandý
+DEBUG: TürkAnime aramasý baþlatýlýyor (timeout: 8s)
+DEBUG: AnimeciX aramasý baþlatýlýyor (timeout: 8s)
+DEBUG: AniList aramasý baþlatýlýyor (timeout: 5s)
+DEBUG: AniList tamamlandý - 1 sonuç
+DEBUG: AniList tamamlandý: 0.29s
+DEBUG: AnimeciX tamamlandý - 8 bölüm
+DEBUG: AnimeciX tamamlandý: 0.55s
+DEBUG: TürkAnime tamamlandý - 5 bölüm
+DEBUG: TürkAnime tamamlandý: 0.68s
+INFO: Baþarýyla yüklenen kaynaklar: TürkAnime, AnimeciX, AniList
+DEBUG: all_episodes set to: ['AniList', 'AnimeciX', 'TürkAnime']
+DEBUG: render_sources_page scheduled
+DEBUG: render_sources_page çaðrýldý, all_episodes: ['AniList', 'AnimeciX', 'TürkAnime']
+DEBUG: render_sources_page tamamlandý
+DEBUG: create_accordion baþladý
+DEBUG: create_accordion tamamlandý
+DEBUG: show_anime_details çaðrýldý: ONE PIECE
+DEBUG: Thread baþlatýlýyor
+DEBUG: Thread baþlatýldý
+DEBUG: load_sources_worker baþladý
+DEBUG: show_anime_details tamamlandý
+DEBUG: TürkAnime aramasý baþlatýlýyor (timeout: 8s)
+DEBUG: AnimeciX aramasý baþlatýlýyor (timeout: 8s)
+DEBUG: AniList aramasý baþlatýlýyor (timeout: 5s)
+DEBUG: AniList tamamlandý - 1 sonuç
+DEBUG: AniList tamamlandý: 0.29s
+DEBUG: AnimeciX tamamlandý - 8 bölüm
+DEBUG: AnimeciX tamamlandý: 0.57s
+DEBUG: TürkAnime tamamlandý - 5 bölüm
+DEBUG: TürkAnime tamamlandý: 1.32s
+INFO: Baþarýyla yüklenen kaynaklar: TürkAnime, AnimeciX, AniList
+DEBUG: all_episodes set to: ['AniList', 'AnimeciX', 'TürkAnime']
+DEBUG: render_sources_page scheduled
+DEBUG: render_sources_page çaðrýldý, all_episodes: ['AniList', 'AnimeciX', 'TürkAnime']
+DEBUG: render_sources_page tamamlandý
+DEBUG: create_accordion baþladý
+DEBUG: create_accordion tamamlandý
+DEBUG: show_anime_details çaðrýldý: ONE PIECE
+DEBUG: Thread baþlatýlýyor
+DEBUG: load_sources_worker baþladý
+DEBUG: Thread baþlatýldý
+DEBUG: show_anime_details tamamlandý
+DEBUG: TürkAnime aramasý baþlatýlýyor (timeout: 8s)
+DEBUG: AnimeciX aramasý baþlatýlýyor (timeout: 8s)
+DEBUG: AniList aramasý baþlatýlýyor (timeout: 5s)
+DEBUG: AniList tamamlandý - 1 sonuç
+DEBUG: AniList tamamlandý: 0.30s
+DEBUG: AnimeciX tamamlandý - 8 bölüm
+DEBUG: AnimeciX tamamlandý: 0.57s
+DEBUG: TürkAnime tamamlandý - 5 bölüm
+DEBUG: TürkAnime tamamlandý: 0.74s
+INFO: Baþarýyla yüklenen kaynaklar: TürkAnime, AnimeciX, AniList
+DEBUG: all_episodes set to: ['AniList', 'AnimeciX', 'TürkAnime']
+DEBUG: render_sources_page scheduled
+DEBUG: render_sources_page çaðrýldý, all_episodes: ['AniList', 'AnimeciX', 'TürkAnime']
+DEBUG: render_sources_page tamamlandý
+DEBUG: create_accordion baþladý
+DEBUG: create_accordion tamamlandý
+DEBUG: show_anime_details çaðrýldý: ONE PIECE
+DEBUG: Thread baþlatýlýyor
+DEBUG: Thread baþlatýldý
+ baþladý
+DEBUG: show_anime_details tamamlandý
+DEBUG: TürkAnime aramasý baþlatýlýyor (timeout: 8s)
+DEBUG: AnimeciX aramasý baþlatýlýyor (timeout: 8s)
+DEBUG: AniList aramasý baþlatýlýyor (timeout: 5s)
+DEBUG: AniList tamamlandý - 1 sonuç
+DEBUG: AniList tamamlandý: 0.29s
+DEBUG: AnimeciX tamamlandý - 8 bölüm
+DEBUG: AnimeciX tamamlandý: 0.58s
+DEBUG: TürkAnime tamamlandý - 5 bölüm
+DEBUG: TürkAnime tamamlandý: 0.72s
+INFO: Baþarýyla yüklenen kaynaklar: TürkAnime, AnimeciX, AniList
+DEBUG: all_episodes set to: ['AniList', 'AnimeciX', 'TürkAnime']
+DEBUG: render_sources_page scheduled
+DEBUG: render_sources_page çaðrýldý, all_episodes: ['AniList', 'AnimeciX', 'TürkAnime']
+DEBUG: render_sources_page tamamlandý
+DEBUG: create_accordion baþladý
+DEBUG: create_accordion tamamlandý
+DEBUG: show_anime_details çaðrýldý: One Piece
+DEBUG: Thread baþlatýlýyor
+DEBUG: load_sources_worker baþladý
+DEBUG: Thread baþlatýldý
+DEBUG: show_anime_details tamamlandý
+DEBUG: TürkAnime aramasý baþlatýlýyor (timeout: 8s)
+DEBUG: AnimeciX aramasý baþlatýlýyor (timeout: 8s)
+DEBUG: AniList aramasý baþlatýlýyor (timeout: 5s)
+DEBUG: AniList tamamlandý - 1 sonuç
+DEBUG: AniList tamamlandý: 0.30s
+DEBUG: AnimeciX tamamlandý - 8 bölüm
+DEBUG: AnimeciX tamamlandý: 0.57s
+DEBUG: TürkAnime tamamlandý - 5 bölüm
+DEBUG: TürkAnime tamamlandý: 0.74s
+INFO: Baþarýyla yüklenen kaynaklar: TürkAnime, AnimeciX, AniList
+DEBUG: all_episodes set to: ['AniList', 'AnimeciX', 'TürkAnime']
+DEBUG: render_sources_page scheduled
+DEBUG: render_sources_page çaðrýldý, all_episodes: ['AniList', 'AnimeciX', 'TürkAnime']
+DEBUG: render_sources_page tamamlandý
+DEBUG: create_accordion baþladý
+DEBUG: create_accordion tamamlandý
+DEBUG: show_anime_details çaðrýldý: ONE PIECE
+DEBUG: Thread baþlatýlýyor
+DEBUG: load_sources_worker baþladý
+DEBUG: Thread baþlatýldý
+DEBUG: show_anime_details tamamlandý
+DEBUG: TürkAnime aramasý baþlatýlýyor (timeout: 8s)
+DEBUG: AnimeciX aramasý baþlatýlýyor (timeout: 8s)
+DEBUG: AniList aramasý baþlatýlýyor (timeout: 5s)
+DEBUG: AniList tamamlandý - 1 sonuç
+DEBUG: AniList tamamlandý: 0.29s
+DEBUG: TürkAnime tamamlandý - 5 bölüm
+DEBUG: TürkAnime tamamlandý: 0.69s
+DEBUG: AnimeciX tamamlandý - 8 bölüm
+DEBUG: AnimeciX tamamlandý: 1.57s
+INFO: Baþarýyla yüklenen kaynaklar: TürkAnime, AnimeciX, AniList
+DEBUG: all_episodes set to: ['AniList', 'TürkAnime', 'AnimeciX']
+DEBUG: render_sources_page scheduled
+DEBUG: render_sources_page çaðrýldý, all_episodes: ['AniList', 'TürkAnime', 'AnimeciX']
+DEBUG: render_sources_page tamamlandý
+DEBUG: create_accordion baþladý
+DEBUG: create_accordion tamamlandý
+DEBUG: show_anime_details çaðrýldý: ONE PIECE
+DEBUG: Thread baþlatýlýyor
+DEBUG: Thread baþlatýldý
+DEBUG: load_sources_worker baþladý
+DEBUG: show_anime_details tamamlandý
+DEBUG: TürkAnime aramasý baþlatýlýyor (timeout: 8s)
+DEBUG: AniList aramasý baþlatýlýyor (timeout: 5s)
+DEBUG: AnimeciX aramasý baþlatýlýyor (timeout: 8s)
+DEBUG: AniList tamamlandý - 1 sonuç
+DEBUG: AniList tamamlandý: 0.28s
+DEBUG: AnimeciX tamamlandý - 8 bölüm
+DEBUG: AnimeciX tamamlandý: 0.59s
+DEBUG: TürkAnime tamamlandý - 5 bölüm
+DEBUG: TürkAnime tamamlandý: 0.74s
+INFO: Baþarýyla yüklenen kaynaklar: TürkAnime, AnimeciX, AniList
+DEBUG: all_episodes set to: ['AniList', 'AnimeciX', 'TürkAnime']
+DEBUG: render_sources_page scheduled
+DEBUG: render_sources_page çaðrýldý, all_episodes: ['AniList', 'AnimeciX', 'TürkAnime']
+DEBUG: render_sources_page tamamlandý
+DEBUG: create_accordion baþladý
+DEBUG: create_accordion tamamlandý
+DEBUG: show_anime_details çaðrýldý: One Piece
+DEBUG: Thread baþlatýlýyor
+DEBUG: load_sources_worker baþladý
+DEBUG: Thread baþlatýldý
+DEBUG: show_anime_details tamamlandý
+DEBUG: TürkAnime aramasý baþlatýlýyor (timeout: 8s)
+DEBUG: AnimeciX aramasý baþlatýlýyor (timeout: 8s)
+DEBUG: AniList aramasý baþlatýlýyor (timeout: 5s)
+DEBUG: AniList tamamlandý - 1 sonuç
+DEBUG: AniList tamamlandý: 0.30s
+DEBUG: AnimeciX tamamlandý - 8 bölüm
+DEBUG: AnimeciX tamamlandý: 0.58s
+DEBUG: TürkAnime tamamlandý - 5 bölüm
+DEBUG: TürkAnime tamamlandý: 0.66s
+INFO: Baþarýyla yüklenen kaynaklar: TürkAnime, AnimeciX, AniList
+DEBUG: all_episodes set to: ['AniList', 'AnimeciX', 'TürkAnime']
+DEBUG: render_sources_page scheduled
+DEBUG: render_sources_page çaðrýldý, all_episodes: ['AniList', 'AnimeciX', 'TürkAnime']
+DEBUG: render_sources_page tamamlandý
+DEBUG: create_accordion baþladý
+DEBUG: create_accordion tamamlandý
+DEBUG: show_anime_details çaðrýldý: ONE PIECE
+DEBUG: Thread baþlatýlýyor
+DEBUG: load_sources_worker baþladý
+DEBUG: Thread baþlatýldý
+DEBUG: show_anime_details tamamlandý
+DEBUG: TürkAnime aramasý baþlatýlýyor (timeout: 8s)
+DEBUG: AnimeciX aramasý baþlatýlýyor (timeout: 8s)
+DEBUG: AniList aramasý baþlatýlýyor (timeout: 5s)
+DEBUG: AniList tamamlandý - 1 sonuç
+DEBUG: AniList tamamlandý: 0.30s
+DEBUG: AnimeciX tamamlandý - 8 bölüm
+DEBUG: AnimeciX tamamlandý: 0.56s
+DEBUG: TürkAnime tamamlandý - 5 bölüm
+DEBUG: TürkAnime tamamlandý: 1.32s
+INFO: Baþarýyla yüklenen kaynaklar: TürkAnime, AnimeciX, AniList
+DEBUG: all_episodes set to: ['AniList', 'AnimeciX', 'TürkAnime']
+DEBUG: render_sources_page scheduled
+DEBUG: render_sources_page çaðrýldý, all_episodes: ['AniList', 'AnimeciX', 'TürkAnime']
+DEBUG: render_sources_page tamamlandý
+DEBUG: create_accordion baþladý
+DEBUG: create_accordion tamamlandý
+DEBUG: show_anime_details çaðrýldý: ONE PIECE
+DEBUG: Thread baþlatýlýyor
+DEBUG: load_sources_worker baþladý
+DEBUG: Thread baþlatýldý
+DEBUG: show_anime_details tamamlandý
+DEBUG: TürkAnime aramasý baþlatýlýyor (timeout: 8s)
+DEBUG: AnimeciX aramasý baþlatýlýyor (timeout: 8s)
+DEBUG: AniList aramasý baþlatýlýyor (timeout: 5s)
+DEBUG: AniList tamamlandý - 1 sonuç
+DEBUG: AniList tamamlandý: 0.31s
+DEBUG: AnimeciX tamamlandý - 8 bölüm
+DEBUG: AnimeciX tamamlandý: 0.54s
+DEBUG: TürkAnime tamamlandý - 5 bölüm
+DEBUG: TürkAnime tamamlandý: 0.73s
+INFO: Baþarýyla yüklenen kaynaklar: TürkAnime, AnimeciX, AniList
+DEBUG: all_episodes set to: ['AniList', 'AnimeciX', 'TürkAnime']
+DEBUG: render_sources_page scheduled
+DEBUG: render_sources_page çaðrýldý, all_episodes: ['AniList', 'AnimeciX', 'TürkAnime']
+DEBUG: render_sources_page tamamlandý
+DEBUG: create_accordion baþladý
+DEBUG: create_accordion tamamlandý
+DEBUG: show_anime_details çaðrýldý: One Piece
+DEBUG: Thread baþlatýlýyor
+DEBUG: load_sources_worker baþladý
+DEBUG: Thread baþlatýldý
+DEBUG: show_anime_details tamamlandý
+DEBUG: TürkAnime aramasý baþlatýlýyor (timeout: 8s)
+DEBUG: AnimeciX aramasý baþlatýlýyor (timeout: 8s)
+DEBUG: AniList aramasý baþlatýlýyor (timeout: 5s)
+DEBUG: AniList tamamlandý - 1 sonuç
+DEBUG: AniList tamamlandý: 0.33s
+DEBUG: AnimeciX tamamlandý - 8 bölüm
+DEBUG: AnimeciX tamamlandý: 0.58s
+DEBUG: TürkAnime tamamlandý - 5 bölüm
+DEBUG: TürkAnime tamamlandý: 0.74s
+INFO: Baþarýyla yüklenen kaynaklar: TürkAnime, AnimeciX, AniList
+DEBUG: all_episodes set to: ['AniList', 'AnimeciX', 'TürkAnime']
+DEBUG: render_sources_page scheduled
+DEBUG: render_sources_page çaðrýldý, all_episodes: ['AniList', 'AnimeciX', 'TürkAnime']
+DEBUG: render_sources_page tamamlandý
+DEBUG: create_accordion baþladý
+DEBUG: create_accordion tamamlandý
+DEBUG: show_anime_details çaðrýldý: Dandadan 2nd Season
+DEBUG: Thread baþlatýlýyor
+DEBUG: Thread baþlatýldý
+DEBUG: load_sources_worker baþladý
+DEBUG: show_anime_details tamamlandý
+DEBUG: TürkAnime aramasý baþlatýlýyor (timeout: 8s)
+DEBUG: AnimeciX aramasý baþlatýlýyor (timeout: 8s)
+DEBUG: AniList aramasý baþlatýlýyor (timeout: 5s)
+DEBUG: AniList tamamlandý - 1 sonuç
+DEBUG: AniList tamamlandý: 0.33s
+DEBUG: TürkAnime tamamlandý - 12 bölüm
+DEBUG: TürkAnime tamamlandý: 0.76s
+DEBUG: AnimeciX tamamlandý - 24 bölüm
+DEBUG: AnimeciX tamamlandý: 0.87s
+INFO: Baþarýyla yüklenen kaynaklar: TürkAnime, AnimeciX, AniList
+DEBUG: all_episodes set to: ['AniList', 'TürkAnime', 'AnimeciX']
+DEBUG: render_sources_page scheduled
+DEBUG: render_sources_page çaðrýldý, all_episodes: ['AniList', 'TürkAnime', 'AnimeciX']
+DEBUG: render_sources_page tamamlandý
+DEBUG: create_accordion baþladý
+DEBUG: create_accordion tamamlandý
+DEBUG: show_anime_details çaðrýldý: Dandadan
+DEBUG: Thread baþlatýlýyor
+DEBUG: load_sources_worker baþladý
+DEBUG: Thread baþlatýldý
+DEBUG: show_anime_details tamamlandý
+DEBUG: TürkAnime aramasý baþlatýlýyor (timeout: 8s)
+DEBUG: AnimeciX aramasý baþlatýlýyor (timeout: 8s)
+DEBUG: AniList aramasý baþlatýlýyor (timeout: 5s)
+DEBUG: AniList tamamlandý - 1 sonuç
+DEBUG: AniList tamamlandý: 0.30s
+DEBUG: TürkAnime tamamlandý - 12 bölüm
+DEBUG: TürkAnime tamamlandý: 0.72s
+DEBUG: AnimeciX tamamlandý - 24 bölüm
+DEBUG: AnimeciX tamamlandý: 0.89s
+INFO: Baþarýyla yüklenen kaynaklar: TürkAnime, AnimeciX, AniList
+DEBUG: all_episodes set to: ['AniList', 'TürkAnime', 'AnimeciX']
+DEBUG: render_sources_page scheduled
+DEBUG: render_sources_page çaðrýldý, all_episodes: ['AniList', 'TürkAnime', 'AnimeciX']
+DEBUG: render_sources_page tamamlandý
+DEBUG: create_accordion baþladý
+DEBUG: create_accordion tamamlandý
+DEBUG: show_anime_details çaðrýldý: Dandadan 2nd Season
+DEBUG: Thread baþlatýlýyor
+DEBUG: load_sources_worker baþladý
+DEBUG: Thread baþlatýldý
+DEBUG: show_anime_details tamamlandý
+DEBUG: TürkAnime aramasý baþlatýlýyor (timeout: 8s)
+DEBUG: AnimeciX aramasý baþlatýlýyor (timeout: 8s)
+DEBUG: AniList aramasý baþlatýlýyor (timeout: 5s)
+DEBUG: AniList tamamlandý - 1 sonuç
+DEBUG: AniList tamamlandý: 0.31s
+DEBUG: AnimeciX tamamlandý - 24 bölüm
+DEBUG: AnimeciX tamamlandý: 0.86s
+DEBUG: TürkAnime tamamlandý - 12 bölüm
+DEBUG: TürkAnime tamamlandý: 1.33s
+INFO: Baþarýyla yüklenen kaynaklar: TürkAnime, AnimeciX, AniList
+DEBUG: all_episodes set to: ['AniList', 'AnimeciX', 'TürkAnime']
+DEBUG: render_sources_page scheduled
+DEBUG: render_sources_page çaðrýldý, all_episodes: ['AniList', 'AnimeciX', 'TürkAnime']
+DEBUG: render_sources_page tamamlandý
+DEBUG: create_accordion baþladý
+DEBUG: create_accordion tamamlandý

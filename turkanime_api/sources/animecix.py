@@ -21,23 +21,23 @@ HEADERS = {"Accept": "application/json", "User-Agent": "Mozilla/5.0"}
 VIDEO_PLAYERS = ["tau-video.xyz", "sibnet"]
 
 
-def _http_get(url: str) -> bytes:
+def _http_get(url: str, timeout: int = 10) -> bytes:
     # Non-ASCII pathleri ASCII'ye uygun hale getirmek için yüzde-encode et
     sp = urlsplit(url)
     safe_path = quote(sp.path, safe="/:%@")
     # Query kısmı zaten ASCII ise aynen kullan; aksi durumda çağıran taraf urlencode etmelidir
     safe_url = urlunsplit((sp.scheme, sp.netloc, safe_path, sp.query, sp.fragment))
     req = urllib.request.Request(safe_url, headers=HEADERS)
-    with urllib.request.urlopen(req) as resp:
+    with urllib.request.urlopen(req, timeout=timeout) as resp:
         return resp.read()
 
 
-def search_animecix(query: str) -> List[Tuple[str, str]]:
+def search_animecix(query: str, timeout: int = 8) -> List[Tuple[str, str]]:
     # Boşluk -> '-' ve non-ASCII karakterleri encode et
     q = (query or "").strip().replace(" ", "-")
     q_enc = quote(q, safe="-")
     url = f"{BASE_URL}secure/search/{q_enc}?type=&limit=20"
-    data = json.loads(_http_get(url))
+    data = json.loads(_http_get(url, timeout=timeout))
     results = []
     res = data.get("results") or []
     for item in res:
@@ -50,7 +50,13 @@ def search_animecix(query: str) -> List[Tuple[str, str]]:
 
 
 def _seasons_for_title(title_id: int) -> List[int]:
-    url = f"{ALT_URL}secure/related-videos?episode=1&season=1&titleId={title_id}&videoId=637113"
+    # title_id'yi güvenli şekilde int'e çevir
+    try:
+        safe_id = int(title_id)
+    except (ValueError, TypeError):
+        safe_id = hash(str(title_id)) % 1000000 if title_id else 0
+    
+    url = f"{ALT_URL}secure/related-videos?episode=1&season=1&titleId={safe_id}&videoId=637113"
     data = json.loads(_http_get(url))
     videos = data.get("videos") or []
     if not videos:
@@ -61,12 +67,18 @@ def _seasons_for_title(title_id: int) -> List[int]:
 
 
 def _episodes_for_title(title_id: int) -> List[Dict[str, Any]]:
+    # title_id'yi güvenli şekilde int'e çevir
+    try:
+        safe_id = int(title_id)
+    except (ValueError, TypeError):
+        safe_id = hash(str(title_id)) % 1000000 if title_id else 0
+    
     episodes: List[Dict[str, Any]] = []
     seen = set()
-    for sidx in _seasons_for_title(title_id):
+    for sidx in _seasons_for_title(safe_id):
         url = (
             f"{ALT_URL}secure/related-videos?"
-            f"episode=1&season={sidx+1}&titleId={title_id}&videoId=637113"
+            f"episode=1&season={sidx+1}&titleId={safe_id}&videoId=637113"
         )
         data = json.loads(_http_get(url))
         for v in data.get("videos", []):
@@ -123,12 +135,19 @@ class CixAnime:
     Not: Bu sınıf, yalnızca isim ve bölümleri sağlar. Oynatma/indirme için
     mevcut Video/Bolum akışı kullanılmaya devam edilir.
     """
-    id: int
+    id: str  # ID artık string olabilir
     title: str
 
     @property
     def episodes(self) -> List[CixEpisode]:
-        eps = _episodes_for_title(self.id)
+        # ID'yi güvenli şekilde int'e çevir
+        try:
+            title_id = int(self.id)
+        except (ValueError, TypeError):
+            # String ID ise hash değeri al
+            title_id = hash(self.id) % 1000000 if isinstance(self.id, str) and self.id else 0
+        
+        eps = _episodes_for_title(title_id)
         out: List[CixEpisode] = []
         for i, e in enumerate(eps):
             out.append(CixEpisode(title=e.get("name") or f"Bölüm {i+1}", url=e.get("url") or ""))

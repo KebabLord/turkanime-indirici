@@ -128,11 +128,11 @@ def get_video_resolution_mpv(url: str) -> Optional[int]:
 def extract_video_info(url: str, ydl_opts: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     """YoutubeDL kullanarak video bilgilerini çıkarır."""
     try:
-        with YoutubeDL(ydl_opts) as ydl:
+        with YoutubeDL(ydl_opts) as ydl:  # type: ignore
             raw_info = ydl.extract_info(url, download=False)
             info = ydl.sanitize_info(raw_info)
         if info and isinstance(info, dict):
-            return info
+            return info  # type: ignore
         return {}
     except Exception:
         return {}

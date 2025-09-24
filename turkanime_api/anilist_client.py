@@ -341,6 +341,46 @@ class AniListClient:
         result = self._make_request(mutation, variables)
         return result is not None and 'data' in result and result['data']['SaveMediaListEntry'] is not None
 
+    def get_anime_by_id(self, anime_id: int) -> Optional[Dict]:
+        """Get anime details by ID."""
+        query = """
+        query ($id: Int) {
+            Media(id: $id, type: ANIME) {
+                id
+                title {
+                    romaji
+                    english
+                    native
+                }
+                coverImage {
+                    large
+                    medium
+                }
+                description
+                episodes
+                duration
+                genres
+                averageScore
+                popularity
+                status
+                season
+                seasonYear
+                studios {
+                    nodes {
+                        name
+                    }
+                }
+            }
+        }
+        """
+
+        variables = {'id': anime_id}
+        result = self._make_request(query, variables)
+
+        if result and 'data' in result and result['data']['Media']:
+            return result['data']['Media']
+        return None
+
     # --- token persistence ---
     def _tokens_path(self) -> str:
         try:

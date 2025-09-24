@@ -148,8 +148,18 @@ class UpdateManager:
                     response.raise_for_status()
 
                     filename = download_url.split("/")[-1]
-                    temp_dir = tempfile.gettempdir()
-                    filepath = os.path.join(temp_dir, filename)
+                    
+                    # Default downloads klasörünü kullan
+                    if self.platform.startswith("windows"):
+                        download_dir = os.path.join(os.path.expanduser("~"), "Downloads")
+                    else:
+                        # Linux/macOS için ~/Downloads
+                        download_dir = os.path.join(os.path.expanduser("~"), "Downloads")
+                    
+                    # Downloads klasörü yoksa oluştur
+                    os.makedirs(download_dir, exist_ok=True)
+                    
+                    filepath = os.path.join(download_dir, filename)
 
                     total_size = int(response.headers.get('content-length', 0))
                     downloaded = 0
@@ -235,7 +245,7 @@ class UpdateManager:
         if self.platform == "windows":
             text = (
                 "1. Mevcut uygulamayı kapatın\n"
-                f"2. İndirilen dosya: {filename}\n"
+                f"2. İndirilen dosya: Downloads/{filename}\n"
                 "3. Eski uygulama dosyasını yedekleyin\n"
                 "4. Yeni dosyayı eski dosyanın yerine kopyalayın\n"
                 "5. Uygulamayı yeniden başlatın"
@@ -244,8 +254,8 @@ class UpdateManager:
             text = (
                 "1. Mevcut uygulamayı kapatın\n"
                 "2. Terminal açın\n"
-                f"3. chmod +x {filename}\n"
-                f"4. ./ {filename} komutu ile çalıştırın"
+                f"3. chmod +x ~/Downloads/{filename}\n"
+                f"4. ~/Downloads/{filename} komutu ile çalıştırın"
             )
         elif self.platform == "macos":
             text = (
@@ -254,7 +264,7 @@ class UpdateManager:
                 "3. Güvenlik ayarlarından uygulamaya izin verin"
             )
         else:
-            text = f"Dosya indirildi: {filepath}\nPlatformunuz için manuel kurulum gerekebilir."
+            text = f"Dosya Downloads klasörüne indirildi: {filename}\nPlatformunuz için manuel kurulum gerekebilir."
 
         text_label = ctk.CTkLabel(instructions, text=text, wraplength=350)
         text_label.pack(pady=(0, 20))
@@ -262,11 +272,14 @@ class UpdateManager:
         def open_download_location():
             """İndirme konumunu aç."""
             if self.platform == "windows":
-                os.startfile(os.path.dirname(filepath))
+                download_dir = os.path.join(os.path.expanduser("~"), "Downloads")
+                os.startfile(download_dir)
             elif self.platform == "linux":
-                subprocess.run(["xdg-open", os.path.dirname(filepath)])
+                download_dir = os.path.join(os.path.expanduser("~"), "Downloads")
+                subprocess.run(["xdg-open", download_dir])
             elif self.platform == "macos":
-                subprocess.run(["open", os.path.dirname(filepath)])
+                download_dir = os.path.join(os.path.expanduser("~"), "Downloads")
+                subprocess.run(["open", download_dir])
 
         open_btn = ctk.CTkButton(instructions, text="📂 İndirme Konumunu Aç",
                                command=open_download_location)

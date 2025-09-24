@@ -13,6 +13,8 @@ from yt_dlp import YoutubeDL
 
 from .animecix import _video_streams
 from ..common.utils import get_ydl_opts, get_video_resolution_mpv, extract_video_info
+from turkanime_api.sources.animecix import search_animecix
+from turkanime_api.objects import Anime
 
 
 def _slugify(text: str) -> str:
@@ -102,7 +104,7 @@ class AdapterVideo:
         opts['outtmpl'] = {'default': out_tmpl_dir + r'.%(ext)s'}
         with NamedTemporaryFile("w", delete=False) as tmp:
             json.dump(self.info, tmp)
-        with YoutubeDL(opts) as ydl:
+        with YoutubeDL(opts) as ydl:  # type: ignore
             ydl.download_with_info_file(tmp.name)
 
     def get(self, key, default=None):
@@ -217,3 +219,28 @@ class AdapterBolum:
             return vid
         callback({"current": 1, "total": 1, "player": "ANIMECIX", "status": "çalışmıyor"})
         return None
+
+
+class SearchEngine:
+    def __init__(self):
+        from ..common.adapters import AniListAdapter, TurkAnimeAdapter, AnimeciXAdapter
+        self.adapters = {
+            "AniList": AniListAdapter(),
+            "TürkAnime": TurkAnimeAdapter(),
+            "AnimeciX": AnimeciXAdapter()
+        }
+    
+    def search_all_sources(self, query, limit_per_source=10):
+        results = {}
+        # Tüm adapter'ları kullanarak arama yap
+        for source_name, adapter in self.adapters.items():
+            try:
+                results[source_name] = adapter.search_anime(query, limit=limit_per_source)
+            except Exception:
+                results[source_name] = []
+        
+        return results
+    
+    def get_adapter(self, source_name):
+        """Kaynak adına göre adapter döndürür."""
+        return self.adapters.get(source_name)

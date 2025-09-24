@@ -8,6 +8,7 @@ from os import path,mkdir,getcwd
 from tempfile import NamedTemporaryFile
 from shutil import move
 import json
+import uuid
 
 # yt-dlp, mpv gibi gereksinimlerin indirme linklerinin bulunduğu dosya.
 DL_URL="https://raw.githubusercontent.com/KebabLord/turkanime-indirici/master/gereksinimler.json"
@@ -51,10 +52,19 @@ class Dosyalar:
             for ayar,value in default_ayarlar.items():
                 if not ayar in ayarlar:
                     self.set_ayar(ayar,value)
+            # User ID kontrolü - eğer yoksa oluştur
+            if 'user_id' not in ayarlar or not ayarlar.get('user_id'):
+                user_id = str(uuid.uuid4())
+                self.set_ayar('user_id', user_id)
+                print(f"Yeni kullanıcı kimliği oluşturuldu: {user_id}")
         else:
             with open(self.ayar_path,"w",encoding="utf-8") as fp:
                 fp.write('{}')
             self.set_ayar(ayar_list=default_ayarlar)
+            # İlk çalıştırmada user_id oluştur
+            user_id = str(uuid.uuid4())
+            self.set_ayar('user_id', user_id)
+            print(f"İlk çalıştırma - kullanıcı kimliği oluşturuldu: {user_id}")
         if not path.isfile(self.gecmis_path):
             with open(self.gecmis_path,"w",encoding="utf-8") as fp:
                 fp.write('{"izlendi":{},"indirildi":{}}\n')

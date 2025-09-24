@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from typing import List, Dict, Optional
 import sys
@@ -33,6 +33,11 @@ from turkanime_api.anilist_client import anilist_client, AniListAuthServer
 from turkanime_api.gui.update_manager import UpdateManager
 from turkanime_api.common.utils import get_platform, get_arch
 from turkanime_api.common.ui_helpers import create_progress_section
+from turkanime_api.common.db import APIManager
+from turkanime_api.common.adapters import SearchEngine
+
+# SearchEngine instance oluştur
+search_engine = SearchEngine()
 
 try:
     from pypresence import Presence
@@ -558,7 +563,12 @@ class SearchWorker:
                         results.append({"source": "TürkAnime", "slug": slug, "title": name})
             else:
                 for _id, name in search_animecix(q):
-                    results.append({"source": "AnimeciX", "id": int(_id), "title": name})
+                    # _id'yi güvenli şekilde int'e çevir
+                    try:
+                        safe_id = int(_id)
+                    except (ValueError, TypeError):
+                        safe_id = hash(str(_id)) % 1000000
+                    results.append({"source": "AnimeciX", "id": safe_id, "title": name})
             self.signals.emit_found(results)
         except Exception as e:
             self.signals.emit_error(str(e))
@@ -584,7 +594,14 @@ class EpisodesWorker:
                 anime_id = self.anime_item.get("id")
                 anime_title = self.anime_item.get("title")
                 if anime_id and anime_title:
-                    cix = CixAnime(id=int(anime_id), title=anime_title)
+                    # anime_id'yi güvenli şekilde int'e çevir
+                    try:
+                        safe_anime_id = int(anime_id)
+                    except (ValueError, TypeError):
+                        # String ID ise hash değeri al
+                        safe_anime_id = hash(str(anime_id)) % 1000000
+
+                    cix = CixAnime(id=str(safe_anime_id), title=anime_title)
                     cix_eps = cix.episodes
                     ada = AdapterAnime(slug=str(cix.id), title=cix.title)
                     for e in cix_eps:
@@ -657,11 +674,40 @@ class MainWindow(ctk.CTk):
         self.selected_source = "AnimeciX"  # Varsayılan kaynak
         self.downloaded_episodes = []  # İndirilen bölümler listesi
 
+        # Episodes listesi için değişkenler
+        self.episodes_vars = []  # [(var, obj)]
+        self.episodes_objs = []
+        self.episodes_list = None
+        self.source_accordion = None
+
         # Discord Rich Presence değişkenleri
         self.discord_rpc = None
         self.discord_connected = False
         self.discord_update_timer = None
 
+        # Manager değişkenleri
+        self.requirements_manager: Optional[RequirementsManager] = None
+        self.update_manager: Optional[UpdateManager] = None
+
+        # Performans iyileştirmesi: UI'yi adım adım yükle
+        self._init_ui_async()
+
+    def _init_ui_async(self):
+        """UI'yi adım adım yükleyerek performans iyileştirmesi."""
+        # İlk adım: Temel yapıyı oluştur
+        self._create_basic_structure()
+
+        # İkinci adım: Ana içeriği oluştur (50ms sonra)
+        self.after(50, self._create_main_content)
+
+        # Üçüncü adım: Gereksinimler ve güncellemeleri kontrol et (100ms sonra)
+        self.after(100, self._create_requirements_and_updates)
+
+        # Dördüncü adım: Discord RPC'yi başlat (150ms sonra)
+        self.after(150, self._init_discord_async)
+
+    def _create_basic_structure(self):
+        """Temel UI yapısını oluştur."""
         # Ana container
         self.main_container = ctk.CTkFrame(self, fg_color="#0f0f0f")
         self.main_container.pack(fill="both", expand=True)
@@ -673,19 +719,53 @@ class MainWindow(ctk.CTk):
         self.content_area = ctk.CTkScrollableFrame(self.main_container, fg_color="transparent")
         self.content_area.pack(fill="both", expand=True, padx=20, pady=(0, 20))
 
+        # UI güncellemesi için update_idletasks kullan
+        self.update_idletasks()
+
+    def _create_main_content(self):
+        """Ana içeriği oluştur."""
         # Ana sayfa içeriği
         self.create_home_content()
 
         # Alt bar
         self.create_bottom_bar()
 
-        # Gereksinimler kontrolü
-        self.requirements_manager = RequirementsManager(self)
-        self.update_manager = UpdateManager(self, current_version="1.0.0")
-        self.check_requirements_on_startup()
+        # UI güncellemesi için update_idletasks kullan
+        self.update_idletasks()
 
-        # Discord Rich Presence'i başlat
-        self.init_discord_rpc()
+    def _create_requirements_and_updates(self):
+        """Gereksinimler ve güncellemeleri thread ile başlat."""
+        # Gereksinimler kontrolü - thread ile
+        def init_requirements():
+            try:
+                self.requirements_manager = RequirementsManager(self)
+                self.update_manager = UpdateManager(self, current_version="1.0.0")
+                # Ana thread'de çalıştır
+                self.after(0, self.check_requirements_on_startup)
+            except Exception as e:
+                print(f"Gereksinimler başlatma hatası: {e}")
+
+        # Thread ile başlat
+        threading.Thread(target=init_requirements, daemon=True).start()
+
+        # UI güncellemesi için update_idletasks kullan
+        self.update_idletasks()
+
+    def _init_discord_async(self):
+        """Discord RPC'yi başlat."""
+        # Discord Rich Presence'i başlat - thread ile
+        def init_discord():
+            try:
+                # Ana thread'de çalıştır
+                self.after(0, self.init_discord_rpc)
+            except Exception as e:
+                print(f"Discord RPC başlatma hatası: {e}")
+
+        # Thread ile başlat
+        threading.Thread(target=init_discord, daemon=True).start()
+
+        # UI güncellemesi için update_idletasks kullan
+        self.update_idletasks()
 
     def init_discord_rpc(self):
         """Discord Rich Presence'i başlat."""
@@ -969,6 +1049,19 @@ class MainWindow(ctk.CTk):
                                        width=100, height=32,
                                        command=self.on_source_change)
         self.cmbSource.pack(side="left")
+
+        # Başlık seçimi
+        title_frame = ctk.CTkFrame(search_frame, fg_color="transparent")
+        title_frame.pack(side="left", padx=(0, 8))
+
+        title_label = ctk.CTkLabel(title_frame, text="Başlık:",
+                                  font=ctk.CTkFont(size=9, weight="bold"))
+        title_label.pack(side="left", padx=(0, 5))
+
+        self.cmbTitle = ctk.CTkComboBox(title_frame, values=["🇺🇸 İngilizce: Bilinmiyor", "🇯🇵 Romanji: Bilinmiyor"],
+                                       width=150, height=32,
+                                       command=self.on_title_change)
+        self.cmbTitle.pack(side="left")
 
         self.searchEntry = ctk.CTkEntry(search_frame, placeholder_text="Anime ara...",
                                       width=120, height=32,
@@ -1329,10 +1422,11 @@ class MainWindow(ctk.CTk):
 
             def download_worker():
                 try:
-                    results = self.requirements_manager.download_requirements(missing_deps, progress_callback)
+                    if self.requirements_manager:
+                        results = self.requirements_manager.download_requirements(missing_deps, progress_callback)
 
-                    # Sonuçları göster
-                    success_count = sum(1 for r in results if r["success"])
+                        # Sonuçları göster
+                        success_count = sum(1 for r in results if r["success"])
                     total_count = len(results)
 
                     if success_count == total_count:
@@ -1375,6 +1469,583 @@ class MainWindow(ctk.CTk):
         x = (dialog.winfo_screenwidth() - dialog.winfo_width()) // 2
         y = (dialog.winfo_screenheight() - dialog.winfo_height()) // 2
         dialog.geometry(f"+{x}+{y}")
+
+    def open_anime_search_dialog(self):
+        """Anime arama diyalog penceresi aç."""
+        # Dialog penceresi oluştur
+        dialog = ctk.CTkToplevel(self)
+        dialog.title("Anime Ara")
+        dialog.geometry("600x500")
+        dialog.transient(self)
+        dialog.grab_set()
+
+        # Başlık
+        title_label = ctk.CTkLabel(dialog, text="🔍 Anime Ara",
+                                 font=ctk.CTkFont(size=20, weight="bold"),
+                                 text_color="#ffffff")
+        title_label.pack(pady=(20, 10))
+
+        # Arama giriş alanı
+        search_frame = ctk.CTkFrame(dialog, fg_color="transparent")
+        search_frame.pack(fill="x", padx=20, pady=(0, 10))
+
+        search_label = ctk.CTkLabel(search_frame, text="Anime adı:",
+                                  font=ctk.CTkFont(size=14))
+        search_label.pack(anchor="w", pady=(0, 5))
+
+        self.search_entry = ctk.CTkEntry(search_frame, placeholder_text="Anime adını yazın...",
+                                       font=ctk.CTkFont(size=14), height=40)
+        self.search_entry.pack(fill="x", pady=(0, 10))
+        self.search_entry.focus()
+
+        # Adaptör seçimi
+        adapter_frame = ctk.CTkFrame(dialog, fg_color="transparent")
+        adapter_frame.pack(fill="x", padx=20, pady=(0, 10))
+
+        adapter_label = ctk.CTkLabel(adapter_frame, text="Arama Kaynağı:",
+                                   font=ctk.CTkFont(size=14))
+        adapter_label.pack(anchor="w", pady=(0, 5))
+
+        # Mevcut kaynak seçimini kullan (TürkAnime/AnimeciX)
+        current_source = getattr(self, 'selected_source', 'AnimeciX')
+        adapter_options = ["AnimeciX", "TürkAnime", "AniList"]
+        self.adapter_combo = ctk.CTkComboBox(adapter_frame, values=adapter_options,
+                                           width=200, height=35,
+                                           command=self._on_adapter_change)
+        self.adapter_combo.pack(side="left", padx=(0, 10))
+
+        # Varsayılan seçimi ayarla
+        if current_source in adapter_options:
+            self.adapter_combo.set(current_source)
+        else:
+            self.adapter_combo.set("AnimeciX")
+
+        # Kaynak değiştir butonu
+        switch_btn = ctk.CTkButton(adapter_frame, text="🔄 Kaynak Değiştir",
+                                 command=self._switch_search_source,
+                                 fg_color="#4ecdc4", hover_color="#45b7aa",
+                                 width=120, height=35)
+        switch_btn.pack(side="left")
+
+        # Sonuç listesi
+        results_frame = ctk.CTkFrame(dialog, fg_color="#1a1a1a")
+        results_frame.pack(fill="both", expand=True, padx=20, pady=(0, 20))
+
+        results_label = ctk.CTkLabel(results_frame, text="Arama Sonuçları:",
+                                   font=ctk.CTkFont(size=14, weight="bold"))
+        results_label.pack(anchor="w", padx=15, pady=(15, 10))
+
+        # Scrollable frame for results
+        self.results_scrollable = ctk.CTkScrollableFrame(results_frame, fg_color="transparent")
+        self.results_scrollable.pack(fill="both", expand=True, padx=15, pady=(0, 15))
+
+        # Loading label
+        self.loading_label = ctk.CTkLabel(self.results_scrollable, text="Arama yapmak için yazmaya başlayın...",
+                                        font=ctk.CTkFont(size=12),
+                                        text_color="#888888")
+        self.loading_label.pack(pady=20)
+
+        # Butonlar
+        buttons_frame = ctk.CTkFrame(dialog, fg_color="transparent")
+        buttons_frame.pack(fill="x", padx=20, pady=(0, 20))
+
+        cancel_btn = ctk.CTkButton(buttons_frame, text="❌ İptal",
+                                 command=dialog.destroy,
+                                 fg_color="#666666", width=100)
+        cancel_btn.pack(side="right")
+
+        # Arama değişkenlerini sakla
+        self.search_timer = None
+        self.current_results = []
+
+        # Event binding - arama girişi değiştiğinde
+        self.search_entry.bind("<KeyRelease>", lambda e: self._on_search_input_change(dialog))
+
+        # Dialog'u ortala
+        dialog.update_idletasks()
+        x = (dialog.winfo_screenwidth() - dialog.winfo_width()) // 2
+        y = (dialog.winfo_screenheight() - dialog.winfo_height()) // 2
+        dialog.geometry(f"+{x}+{y}")
+
+        # Dialog kapatıldığında timer'ı iptal et
+        def on_dialog_close():
+            if hasattr(self, 'search_timer') and self.search_timer:
+                self.after_cancel(self.search_timer)
+                self.search_timer = None
+            dialog.destroy()
+
+        dialog.protocol("WM_DELETE_WINDOW", on_dialog_close)
+
+    def _on_adapter_change(self, selected_adapter):
+        """Adaptör seçildiğinde çağrılır."""
+        self.selected_search_adapter = selected_adapter
+        print(f"Seçilen arama adaptörü: {selected_adapter}")
+
+    def _switch_search_source(self):
+        """Arama kaynağını değiştir."""
+        if hasattr(self, 'selected_search_adapter'):
+            # Ana uygulama kaynağını güncelle
+            if self.selected_search_adapter in ["TürkAnime", "AnimeciX"]:
+                self.selected_source = self.selected_search_adapter
+                # Ana kaynak selector'ünü güncelle
+                if hasattr(self, 'cmbSource'):
+                    self.cmbSource.set(self.selected_search_adapter)
+                self.message(f"Arama kaynağı {self.selected_search_adapter} olarak değiştirildi!")
+            else:
+                self.message("Bu kaynak sadece arama için kullanılabilir", error=True)
+
+    def _on_search_input_change(self, dialog):
+        """Arama girişi değiştiğinde çağrılır."""
+        # Önceki timer'ı iptal et
+        if hasattr(self, 'search_timer') and self.search_timer:
+            self.after_cancel(self.search_timer)
+
+        # Yeni timer başlat (300ms gecikme)
+        self.search_timer = self.after(300, lambda: self._perform_search(dialog))
+
+    def _perform_search(self, dialog):
+        """Anime arama işlemini gerçekleştir - tüm kaynaklarda paralel arama."""
+        query = self.search_entry.get().strip()
+        if not query or len(query) < 2:
+            self._clear_results()
+            self.loading_label.configure(text="En az 2 karakter yazın...")
+            self.loading_label.pack(pady=20)
+            return
+
+        # Loading göster
+        self._clear_results()
+        self.loading_label.configure(text="🔍 Tüm kaynaklarda aranıyor...")
+        self.loading_label.pack(pady=20)
+
+        # Arama işlemini thread'de çalıştır
+        def search_worker():
+            try:
+                # Tüm kaynaklarda paralel arama yap
+                all_results = search_engine.search_all_sources(query, limit_per_source=10)
+
+                # Sonuçları birleştir ve kaynak bilgisi ekle
+                combined_results = []
+                for source_name, results in all_results.items():
+                    for anime_id, anime_name in results:
+                        combined_results.append({
+                            'id': anime_id,
+                            'name': anime_name,
+                            'source': source_name
+                        })
+
+                # Ana thread'de sonuçları göster
+                self.after(0, lambda: self._display_combined_search_results(combined_results, dialog))
+            except Exception as e:
+                self.after(0, lambda err=e: self._show_search_error(str(err), dialog))
+
+        threading.Thread(target=search_worker, daemon=True).start()
+
+    def _clear_results(self):
+        """Sonuçları temizle."""
+        # Mevcut sonuç widget'larını temizle
+        for widget in self.results_scrollable.winfo_children():
+            if widget != self.loading_label:
+                widget.destroy()
+
+    def _display_search_results(self, results, dialog):
+        """Arama sonuçlarını göster."""
+        self._clear_results()
+        self.current_results = results
+
+        if not results:
+            no_results = ctk.CTkLabel(self.results_scrollable, text="Sonuç bulunamadı",
+                                    font=ctk.CTkFont(size=14),
+                                    text_color="#888888")
+            no_results.pack(pady=20)
+            return
+
+        # Sonuçları göster
+        for i, (anime_id, anime_name) in enumerate(results[:20]):  # Max 20 sonuç
+            result_frame = ctk.CTkFrame(self.results_scrollable, fg_color="#2a2a2a",
+                                       border_width=1, border_color="#444444")
+            result_frame.pack(fill="x", pady=2, padx=5)
+
+            # Anime adı
+            name_label = ctk.CTkLabel(result_frame, text=anime_name,
+                                    font=ctk.CTkFont(size=13),
+                                    text_color="#ffffff",
+                                    anchor="w")
+            name_label.pack(side="left", fill="x", expand=True, padx=10, pady=8)
+
+            # ID göster
+            id_label = ctk.CTkLabel(result_frame, text=f"#{anime_id}",
+                                  font=ctk.CTkFont(size=11),
+                                  text_color="#cccccc")
+            id_label.pack(side="right", padx=10, pady=8)
+
+            # Tıklama eventi
+            def make_click_handler(aid=anime_id, aname=anime_name, dlg=dialog):
+                return lambda e: self._on_anime_selected(aid, aname, dlg)
+
+            result_frame.bind("<Button-1>", make_click_handler(aid=anime_id, aname=anime_name, dlg=dialog))
+            name_label.bind("<Button-1>", make_click_handler(aid=anime_id, aname=anime_name, dlg=dialog))
+            id_label.bind("<Button-1>", make_click_handler(aid=anime_id, aname=anime_name, dlg=dialog))
+
+            # Hover efekti
+            def on_enter(e, frame=result_frame):
+                frame.configure(fg_color="#3a3a3a")
+
+            def on_leave(e, frame=result_frame):
+                frame.configure(fg_color="#2a2a2a")
+
+            result_frame.bind("<Enter>", on_enter)
+            result_frame.bind("<Leave>", on_leave)
+
+    def _display_combined_search_results(self, results, dialog):
+        """Birleştirilmiş arama sonuçlarını göster - kaynak bilgisi ile."""
+        self._clear_results()
+        self.current_results = results
+
+        if not results:
+            no_results = ctk.CTkLabel(self.results_scrollable, text="Sonuç bulunamadı",
+                                    font=ctk.CTkFont(size=14),
+                                    text_color="#888888")
+            no_results.pack(pady=20)
+            return
+
+        # Sonuçları kaynaklara göre grupla
+        source_groups = {}
+        for result in results:
+            source = result['source']
+            if source not in source_groups:
+                source_groups[source] = []
+            source_groups[source].append(result)
+
+        # Her kaynak için sonuçları göster
+        for source_name, source_results in source_groups.items():
+            # Kaynak başlığı
+            source_label = ctk.CTkLabel(self.results_scrollable,
+                                      text=f"📺 {source_name} ({len(source_results)} sonuç)",
+                                      font=ctk.CTkFont(size=14, weight="bold"),
+                                      text_color="#4ecdc4")
+            source_label.pack(anchor="w", padx=5, pady=(10, 5))
+
+            # Kaynak sonuçları
+            for result in source_results[:10]:  # Kaynak başına max 10 sonuç
+                result_frame = ctk.CTkFrame(self.results_scrollable, fg_color="#2a2a2a",
+                                           border_width=1, border_color="#444444")
+                result_frame.pack(fill="x", pady=2, padx=10)
+
+                # Anime adı
+                name_label = ctk.CTkLabel(result_frame, text=result['name'],
+                                        font=ctk.CTkFont(size=13),
+                                        text_color="#ffffff",
+                                        anchor="w")
+                name_label.pack(side="left", fill="x", expand=True, padx=10, pady=8)
+
+                # Kaynak ve ID göster
+                info_label = ctk.CTkLabel(result_frame,
+                                        text=f"{result['source']} #{result['id']}",
+                                        font=ctk.CTkFont(size=11),
+                                        text_color="#cccccc")
+                info_label.pack(side="right", padx=10, pady=8)
+
+                # Tıklama eventi
+                def make_click_handler(aid=result['id'], aname=result['name'],
+                                     source=result['source'], dlg=dialog):
+                    return lambda e: self._on_anime_selected_with_source(aid, aname, source, dlg)
+
+                result_frame.bind("<Button-1>", make_click_handler(aid=result['id'],
+                                                                aname=result['name'],
+                                                                source=result['source'], dlg=dialog))
+                name_label.bind("<Button-1>", make_click_handler(aid=result['id'],
+                                                               aname=result['name'],
+                                                               source=result['source'], dlg=dialog))
+                info_label.bind("<Button-1>", make_click_handler(aid=result['id'],
+                                                               aname=result['name'],
+                                                               source=result['source'], dlg=dialog))
+
+                # Hover efekti
+                def on_enter(e, frame=result_frame):
+                    frame.configure(fg_color="#3a3a3a")
+
+                def on_leave(e, frame=result_frame):
+                    frame.configure(fg_color="#2a2a2a")
+
+                result_frame.bind("<Enter>", on_enter)
+                result_frame.bind("<Leave>", on_leave)
+
+    def _show_search_error(self, error_msg, dialog):
+        """Arama hatası göster."""
+        self._clear_results()
+        error_label = ctk.CTkLabel(self.results_scrollable,
+                                 text=f"Arama hatası: {error_msg}",
+                                 font=ctk.CTkFont(size=12),
+                                 text_color="#ff6b6b")
+        error_label.pack(pady=20)
+
+    def _on_anime_selected(self, anime_id, anime_name, dialog):
+        """Anime seçildiğinde çağrılır."""
+        try:
+            # JSON dosyasına kaydet
+            self._save_anime_to_json(anime_id, anime_name)
+
+            # Ana pencereyle eşleştir
+            self._match_anime_with_main(anime_id, anime_name)
+
+            # Dialog'u kapat
+            dialog.destroy()
+
+            # Başarı mesajı
+            self.message(f"'{anime_name}' seçildi ve kaydedildi!")
+
+        except Exception as e:
+            self.message(f"Anime seçme hatası: {e}", error=True)
+
+    def _on_anime_selected_with_source(self, anime_id, anime_name, source, dialog):
+        """Kaynak bilgisi ile anime seçildiğinde çağrılır."""
+        try:
+            # JSON dosyasına kaydet
+            self._save_anime_to_json(anime_id, anime_name)
+
+            # Veritabanına kaydet (eğer API mevcutsa)
+            try:
+                db = APIManager()
+                db.save_anime_match(source, anime_id, anime_name)
+            except Exception as db_e:
+                print(f"API kaydetme hatası (normal): {db_e}")
+
+            # Ana pencereyle eşleştir - kaynak bilgisi ile
+            self._match_anime_with_main_and_source(anime_id, anime_name, source)
+
+            # Dialog'u kapat
+            dialog.destroy()
+
+            # Başarı mesajı
+            self.message(f"'{anime_name}' ({source}) seçildi ve kaydedildi!")
+
+        except Exception as e:
+            self.message(f"Anime seçme hatası: {e}", error=True)
+
+    def _save_anime_to_json(self, anime_id, anime_name):
+        """Anime'yi anime_names.json dosyasına kaydet."""
+        try:
+            json_path = os.path.join(os.path.dirname(__file__), "anime_names.json")
+
+            # Mevcut veriyi oku
+            existing_data = {}
+            if os.path.exists(json_path):
+                try:
+                    with open(json_path, 'r', encoding='utf-8') as f:
+                        existing_data = json.load(f)
+                except (json.JSONDecodeError, FileNotFoundError):
+                    existing_data = {}
+
+            # Tekrar eden kayıt kontrolü
+            if str(anime_id) in existing_data:
+                # Zaten varsa güncelleme yap
+                existing_data[str(anime_id)]['name'] = anime_name
+                existing_data[str(anime_id)]['last_updated'] = time.time()
+            else:
+                # Yeni kayıt ekle
+                existing_data[str(anime_id)] = {
+                    'name': anime_name,
+                    'added_date': time.time(),
+                    'last_updated': time.time()
+                }
+
+            # JSON dosyasına yaz
+            with open(json_path, 'w', encoding='utf-8') as f:
+                json.dump(existing_data, f, ensure_ascii=False, indent=2)
+
+        except Exception as e:
+            raise Exception(f"JSON kaydetme hatası: {e}")
+
+    def _match_anime_with_main(self, anime_id, anime_name):
+        """Seçilen anime'yi ana pencereyle eşleştir."""
+        try:
+            # Animecix'ten detayları al
+            from turkanime_api.sources.animecix import CixAnime
+
+            # anime_id'yi güvenli şekilde int'e çevir
+            safe_anime_id = self._safe_int_conversion(anime_id)
+
+            # Yeni anime nesnesi oluştur
+            anime_obj = CixAnime(str(safe_anime_id), anime_name)
+
+            # AniList eşleştirmesi için basit veri oluştur
+            anilist_data = {
+                'id': safe_anime_id,
+                'title': {
+                    'romaji': anime_name,
+                    'english': anime_name
+                },
+                'episodes': None,  # Bilinmiyor
+                'coverImage': {'large': None},
+                'averageScore': None,
+                'popularity': None,
+                'description': f"{anime_name} - Animecix'ten eklendi"
+            }
+
+            # Ana pencerede göster
+            self.show_anime_details(anilist_data)
+
+        except Exception as e:
+            raise Exception(f"Ana pencere eşleştirme hatası: {e}")
+
+    def _safe_int_conversion(self, value, default=0):
+        """Güvenli int dönüşümü - string ID'ler için."""
+        try:
+            return int(value)
+        except (ValueError, TypeError):
+            # String ID ise hash değeri al veya default kullan
+            if isinstance(value, str) and value:
+                # String ID için basit bir hash oluştur
+                return hash(value) % 1000000  # 6 haneli sayı
+            return default
+
+    def _match_anime_with_main_and_source(self, anime_id, anime_name, source):
+        """Kaynak bilgisi ile seçilen anime'yi ana pencereyle eşleştir."""
+        try:
+            # anime_id'yi güvenli şekilde int'e çevir
+            safe_anime_id = self._safe_int_conversion(anime_id)
+
+            # Kaynağa göre uygun anime nesnesi oluştur
+            if source == "AnimeciX":
+                from turkanime_api.sources.animecix import CixAnime
+                anime_obj = CixAnime(str(safe_anime_id), anime_name)
+                anilist_data = {
+                    'id': safe_anime_id,
+                    'title': {
+                        'romaji': anime_name,
+                        'english': anime_name
+                    },
+                    'episodes': len(anime_obj.episodes) if hasattr(anime_obj, 'episodes') else None,
+                    'coverImage': {'large': None},
+                    'averageScore': None,
+                    'popularity': None,
+                    'description': f"{anime_name} - {source}'ten eklendi"
+                }
+
+            elif source == "TürkAnime":
+                from turkanime_api.objects import Anime
+                anime_obj = Anime(anime_id)  # TürkAnime string ID kabul edebilir
+                anilist_data = {
+                    'id': safe_anime_id,
+                    'title': {
+                        'romaji': anime_obj.title if hasattr(anime_obj, 'title') else anime_name,
+                        'english': anime_name
+                    },
+                    'episodes': len(anime_obj.bolumler) if hasattr(anime_obj, 'bolumler') else None,
+                    'coverImage': {'large': None},
+                    'averageScore': None,
+                    'popularity': None,
+                    'description': f"{anime_name} - {source}'ten eklendi"
+                }
+
+            elif source == "AniList":
+                # AniList için adaptör kullanarak detayları al
+                adapter = search_engine.get_adapter("AniList")
+                anime_details = None
+                if adapter:
+                    anime_details = adapter.get_anime_details(str(anime_id))
+                if anime_details:
+                    anilist_data = {
+                        'id': safe_anime_id,
+                        'title': {
+                            'romaji': anime_details.get('title', anime_name),
+                            'english': anime_name
+                        },
+                        'episodes': anime_details.get('episodes'),
+                        'coverImage': {'large': None},
+                        'averageScore': None,
+                        'popularity': None,
+                        'description': f"{anime_name} - {source}'ten eklendi"
+                    }
+                else:
+                    # Fallback
+                    anilist_data = {
+                        'id': safe_anime_id,
+                        'title': {
+                            'romaji': anime_name,
+                            'english': anime_name
+                        },
+                        'episodes': None,
+                        'coverImage': {'large': None},
+                        'averageScore': None,
+                        'popularity': None,
+                        'description': f"{anime_name} - {source}'ten eklendi"
+                    }
+
+            else:
+                # Bilinmeyen kaynak için varsayılan
+                anilist_data = {
+                    'id': safe_anime_id,
+                    'title': {
+                        'romaji': anime_name,
+                        'english': anime_name
+                    },
+                    'episodes': None,
+                    'coverImage': {'large': None},
+                    'averageScore': None,
+                    'popularity': None,
+                    'description': f"{anime_name} - {source}'ten eklendi"
+                }
+
+            # Ana pencerede göster
+            self.show_anime_details(anilist_data)
+
+        except Exception as e:
+            raise Exception(f"Ana pencere eşleştirme hatası ({source}): {e}")
+
+    def get_anime_titles(self):
+        """Mevcut anime'den başlıkları al (Romanji, İngilizce, vb.)"""
+        titles = []
+        
+        if hasattr(self, 'selected_anime') and self.selected_anime:
+            anime_data = self.selected_anime
+            title_data = anime_data.get('title', {})
+            
+            # Romanji başlığı
+            romaji = title_data.get('romaji')
+            if romaji:
+                titles.append(f"🇯🇵 Romanji: {romaji}")
+            
+            # İngilizce başlığı
+            english = title_data.get('english')
+            if english:
+                titles.append(f"🇺🇸 İngilizce: {english}")
+            
+            # Diğer diller
+            native = title_data.get('native')
+            if native:
+                titles.append(f"🇯🇵 Orijinal: {native}")
+        
+        # Eğer hiç başlık yoksa varsayılan ekle
+        if not titles:
+            titles = ["🇺🇸 İngilizce: Bilinmiyor", "🇯🇵 Romanji: Bilinmiyor"]
+        
+        return titles
+
+    def update_title_selector(self):
+        """Başlık selector'ünü güncelle."""
+        if hasattr(self, 'cmbTitle'):
+            titles = self.get_anime_titles()
+            self.cmbTitle.configure(values=titles)
+            
+            # Default olarak İngilizce'yi seç
+            english_title = None
+            for title in titles:
+                if "İngilizce:" in title:
+                    english_title = title
+                    break
+            
+            if english_title:
+                self.cmbTitle.set(english_title)
+            elif titles:
+                self.cmbTitle.set(titles[0])
+
+    def on_title_change(self, selected_title):
+        """Başlık seçildiğinde çağrılır."""
+        if selected_title:
+            # Seçilen başlığı sakla
+            self.selected_title = selected_title
+            print(f"Seçilen başlık: {selected_title}")
 
     def on_open_settings(self):
         """Ayarlar panelini içeride aç."""
@@ -1817,10 +2488,15 @@ class MainWindow(ctk.CTk):
 
     def show_anime_details(self, anime_data):
         """Anime detaylarını göster."""
+        with open("debug.log", "a") as f:
+            f.write(f"DEBUG: show_anime_details çağrıldı: {anime_data.get('title', {}).get('romaji', 'Unknown')}\n")
         # Detay görünümü oluştur
         self.clear_content_area()
-    # Seçili animeyi sakla (global oynat/indir butonları için)
+        # Seçili animeyi sakla (global oynat/indir butonları için)
         self.selected_anime = anime_data
+
+        # Başlık selector'ünü güncelle
+        self.update_title_selector()
 
         # Discord Rich Presence güncelle - AniList button'u ile
         anime_title = anime_data.get('title', {}).get('romaji', 'Bilinmeyen Anime')
@@ -1955,7 +2631,18 @@ class MainWindow(ctk.CTk):
                                               command=lambda: self.open_anilist_page(anilist_id),
                                               fg_color="#02a9ff", hover_color="#0099e5",
                                               width=100, height=40)
-            self.btnAniListPage.pack(side="left")
+            self.btnAniListPage.pack(side="left", padx=(0, 10))
+
+        # Özel anime arama butonu - sadece bölüm bulunamadığında gösterilsin
+        self.btnCustomSearch = ctk.CTkButton(buttons_frame, text="🔍 İstediğin Anime Değil Mi?",
+                                          command=self.open_anime_search_dialog,
+                                          fg_color="transparent", border_width=2,
+                                          border_color="#ffd93d", text_color="#ffd93d",
+                                          width=180, height=40,
+                                          font=ctk.CTkFont(size=12, weight="bold"),
+                                          corner_radius=20)
+        # Başlangıçta gizli
+        self.btnCustomSearch.pack_forget()
 
         # Sağ taraf - Özet ve detaylar
         right_frame = ctk.CTkFrame(content_frame, fg_color="transparent")
@@ -2003,13 +2690,13 @@ class MainWindow(ctk.CTk):
                                        text_color="#cccccc")
             studios_label.pack(anchor="w")
 
-        # Bölümler bölümü (AnimeciX üzerinden)
+        # Bölümler bölümü (Kaynaklar accordion içinde)
         episodes_section = ctk.CTkFrame(details_frame, fg_color="transparent")
         episodes_section.pack(fill="both", expand=True, padx=20, pady=(0, 20))
 
         ep_title_row = ctk.CTkFrame(episodes_section, fg_color="transparent")
         ep_title_row.pack(fill="x")
-        ep_title = ctk.CTkLabel(ep_title_row, text="📺 Bölümler",
+        ep_title = ctk.CTkLabel(ep_title_row, text="",
                                font=ctk.CTkFont(size=18, weight="bold"),
                                text_color="#ffffff")
         ep_title.pack(side="left")
@@ -2027,7 +2714,7 @@ class MainWindow(ctk.CTk):
         btnDlSel.pack(side="left", padx=(0, 8))
         btnSearchAgain = ctk.CTkButton(bulk_actions, text="🔍 İstediğin Anime Değil Mi?",
                                       width=180, height=34,
-                                      command=lambda: self._search_anime_again())
+                                      command=self.open_anime_search_dialog)
         btnSearchAgain.pack(side="left")
 
         # Liste alanı
@@ -2040,9 +2727,9 @@ class MainWindow(ctk.CTk):
         self.episodes_loaded = 0
         self.episodes_per_page = 20
         self.is_loading_episodes = False
-        self.all_episodes = []  # Tüm bölümler burada saklanacak
+        self.all_episodes = {}  # Kaynak bazlı bölümler: {"AniList": [...], "TürkAnime": [...], "AnimeciX": [...]}
 
-        ep_loading = ctk.CTkLabel(self.episodes_list, text="Bölümler yükleniyor…",
+        ep_loading = ctk.CTkLabel(self.episodes_list, text="Kaynaklar yükleniyor…",
                                   font=ctk.CTkFont(size=14), text_color="#cccccc")
         ep_loading.pack(pady=20)
 
@@ -2051,63 +2738,507 @@ class MainWindow(ctk.CTk):
         english = anime_data.get('title', {}).get('english') or ""
         query_title = romaji if romaji else english
 
-        def load_eps_worker():
+        # DB'den önceki eşleşmeleri kontrol et
+        db_matches = self._load_anime_matches_from_db(query_title)
+
+        def load_sources_worker():
+            """Kaynakları yükle - SearchEngine ile ve timeout atlama ile."""
+            with open("debug.log", "a") as f:
+                f.write("DEBUG: load_sources_worker başladı\n")
             try:
-                # Tüm bölümleri yükle
-                all_items = []
-                if self.selected_source == "TürkAnime":
-                    # TürkAnime'de ara
-                    from turkanime_api.objects import Anime
-                    all_list = Anime.get_anime_listesi()
-                    pick = None
-                    for slug, name in all_list:
-                        if str(name).strip().lower() == query_title.strip().lower():
-                            pick = (slug, name)
-                            break
-                    if not pick and all_list:
-                        # İlk sonucu al
-                        pick = all_list[0]
-                    
-                    if pick:
-                        slug, name = pick
-                        ani = Anime(slug)
-                        bolumler = ani.bolumler
-                        for b in bolumler:
-                            all_items.append({"title": b.title, "obj": b})
-                else:
-                    # AnimeciX'te ara
-                    results = search_animecix(query_title)
-                    pick = None
-                    if results:
-                        # Önce exact eşleşme ara (case-insensitive)
-                        for _id, name in results:
-                            if str(name).strip().lower() == query_title.strip().lower():
-                                pick = (_id, name)
-                                break
-                        if not pick:
-                            pick = results[0]
-                    
-                    if pick:
-                        _id, name = pick
-                        cix = CixAnime(id=int(_id), title=str(name))
-                        eps = cix.episodes
-                        ada = AdapterAnime(slug=str(cix.id), title=cix.title)
-                        for e in eps:
-                            ab = AdapterBolum(url=e.url, title=e.title, anime=ada)
-                            all_items.append({"title": e.title, "obj": ab})
+                # Tüm kaynaklarda paralel arama yap
+                sources_data = {}
+                source_status = {}  # Her kaynağın durumunu takip et
+                source_timeouts = {
+                    "TürkAnime": 8,   # 8 saniye
+                    "AnimeciX": 8,    # 8 saniye
+                    "AniList": 5      # 5 saniye (daha hızlı)
+                }
+
+                def search_source_with_timeout(source_name, timeout_seconds):
+                    """Kaynak arama işlemi - timeout ile ve hata loglaması ile."""
+                    def timeout_handler():
+                        """Timeout durumunda çağrılır."""
+                        if source_status.get(source_name) == "loading":
+                            source_status[source_name] = "timeout"
+                            sources_data[source_name] = []
+                            with open("debug.log", "a") as f:
+                                f.write(f"ERROR: {source_name} timeout ({timeout_seconds}s) - kaynak atlandı\n")
+
+                    # Timeout timer'ı başlat
+                    timer = threading.Timer(timeout_seconds, timeout_handler)
+                    timer.start()
+
+                    try:
+                        source_status[source_name] = "loading"
+                        start_time = time.time()
+                        with open("debug.log", "a") as f:
+                            f.write(f"DEBUG: {source_name} araması başlatılıyor (timeout: {timeout_seconds}s)\n")
+
+                        if source_name == "AniList":
+                            # AniList'te ara (sadece bilgi amaçlı)
+                            results = anilist_client.search_anime(query_title, per_page=1)
+                            if results:
+                                anime_data = results[0]
+                                sources_data[source_name] = [{"title": anime_data.get('title', {}).get('romaji'), "obj": anime_data, "anime_title": anime_data.get('title', {}).get('romaji')}]
+                                source_status[source_name] = "completed"
+                                with open("debug.log", "a") as f:
+                                    f.write(f"DEBUG: {source_name} tamamlandı - {len(sources_data[source_name])} sonuç\n")
+                            else:
+                                source_status[source_name] = "no_results"
+                                with open("debug.log", "a") as f:
+                                    f.write(f"DEBUG: {source_name} - sonuç bulunamadı\n")
+
+                        elif source_name == "TürkAnime":
+                            # SearchEngine kullanarak TürkAnime'de ara
+                            adapter = search_engine.get_adapter(source_name)
+                            if adapter:
+                                search_results = adapter.search_anime(query_title, limit=1)
+                                if search_results:
+                                    slug, name = search_results[0]
+                                    # Anime objesi oluştur ve bölümleri al
+                                    ani = Anime(slug)
+                                    episodes = []
+                                    for b in ani.bolumler:
+                                        episodes.append({
+                                            "title": b.title,
+                                            "obj": b,
+                                            "anime_title": name
+                                        })
+                                    sources_data[source_name] = episodes
+                                    source_status[source_name] = "completed"
+                                    with open("debug.log", "a") as f:
+                                        f.write(f"DEBUG: {source_name} tamamlandı - {len(episodes)} bölüm\n")
+                                else:
+                                    source_status[source_name] = "no_results"
+                                    with open("debug.log", "a") as f:
+                                        f.write(f"DEBUG: {source_name} - sonuç bulunamadı\n")
+                            else:
+                                source_status[source_name] = "error"
+                                with open("debug.log", "a") as f:
+                                    f.write(f"ERROR: {source_name} adapter bulunamadı\n")
+
+                        elif source_name == "AnimeciX":
+                            # SearchEngine kullanarak AnimeciX'te ara
+                            adapter = search_engine.get_adapter(source_name)
+                            if adapter:
+                                search_results = adapter.search_anime(query_title, limit=1)
+                                if search_results:
+                                    _id, name = search_results[0]
+                                    # _id'yi güvenli şekilde int'e çevir
+                                    try:
+                                        safe_id = int(_id)
+                                    except (ValueError, TypeError):
+                                        safe_id = hash(str(_id)) % 1000000
+
+                                    cix = CixAnime(id=str(safe_id), title=str(name))
+                                    eps = cix.episodes
+                                    episodes = []
+                                    ada = AdapterAnime(slug=str(cix.id), title=cix.title)
+                                    for e in eps:
+                                        ab = AdapterBolum(url=e.url, title=e.title, anime=ada)
+                                        episodes.append({
+                                            "title": e.title,
+                                            "obj": ab,
+                                            "anime_title": name
+                                        })
+                                    sources_data[source_name] = episodes
+                                    source_status[source_name] = "completed"
+                                    with open("debug.log", "a") as f:
+                                        f.write(f"DEBUG: {source_name} tamamlandı - {len(episodes)} bölüm\n")
+                                else:
+                                    source_status[source_name] = "no_results"
+                                    with open("debug.log", "a") as f:
+                                        f.write(f"DEBUG: {source_name} - sonuç bulunamadı\n")
+                            else:
+                                source_status[source_name] = "error"
+                                with open("debug.log", "a") as f:
+                                    f.write(f"ERROR: {source_name} adapter bulunamadı\n")
+
+                        # Başarılı tamamlandı, timer'ı iptal et
+                        timer.cancel()
+                        elapsed_time = time.time() - start_time
+                        with open("debug.log", "a") as f:
+                            f.write(f"DEBUG: {source_name} tamamlandı: {elapsed_time:.2f}s\n")
+
+                    except Exception as e:
+                        # Timer'ı iptal et
+                        timer.cancel()
+                        elapsed_time = time.time() - start_time if 'start_time' in locals() else 0
+                        with open("debug.log", "a") as f:
+                            f.write(f"ERROR: {source_name} arama hatası ({elapsed_time:.2f}s): {str(e)}\n")
+                        sources_data[source_name] = []
+                        source_status[source_name] = "error"
+
+                # Paralel arama - her kaynak için ayrı thread
+                threads = []
+                for source_name in ["TürkAnime", "AnimeciX", "AniList"]:
+                    timeout = source_timeouts.get(source_name, 10)
+                    thread = threading.Thread(
+                        target=search_source_with_timeout,
+                        args=(source_name, timeout),
+                        daemon=True
+                    )
+                    threads.append(thread)
+                    thread.start()
+
+                # Tüm thread'lerin bitmesini bekle (maksimum toplam süre)
+                total_timeout = 15  # Toplam maksimum 15 saniye
+                start_total = time.time()
+
+                for i, thread in enumerate(threads):
+                    source_name = ["TürkAnime", "AnimeciX", "AniList"][i]
+                    # Eğer bu kaynak zaten timeout olduysa, bekleme
+                    if source_status.get(source_name) == "timeout":
+                        with open("debug.log", "a") as f:
+                            f.write(f"DEBUG: {source_name} zaten timeout oldu, beklenmiyor\n")
+                        continue
+
+                    remaining_time = total_timeout - (time.time() - start_total)
+                    if remaining_time > 0:
+                        thread.join(timeout=remaining_time)
+                        # Thread hala çalışıyorsa ve timeout olduysa işaretle
+                        if thread.is_alive() and source_status.get(source_name) != "completed":
+                            source_status[source_name] = "timeout"
+                            sources_data[source_name] = []
+                            with open("debug.log", "a") as f:
+                                f.write(f"ERROR: {source_name} thread timeout - kaynak atlandı\n")
+                    else:
+                        # Toplam timeout aşıldı
+                        if source_status.get(source_name) != "completed":
+                            source_status[source_name] = "timeout"
+                            sources_data[source_name] = []
+                        with open("debug.log", "a") as f:
+                            f.write(f"ERROR: Toplam timeout ({total_timeout}s) aşıldı, {source_name} atlandı\n")
+
+                # Hangi kaynakların tamamlandığını kontrol et ve logla
+                completed_sources = [s for s, status in source_status.items() if status == "completed"]
+                failed_sources = [s for s, status in source_status.items() if status in ["error", "timeout"]]
+                no_results_sources = [s for s, status in source_status.items() if status == "no_results"]
+
+                with open("debug.log", "a") as f:
+                    if completed_sources:
+                        f.write(f"INFO: Başarıyla yüklenen kaynaklar: {', '.join(completed_sources)}\n")
+                    if failed_sources:
+                        f.write(f"ERROR: Başarısız olan kaynaklar: {', '.join(failed_sources)}\n")
+                    if no_results_sources:
+                        f.write(f"INFO: Sonuç bulunmayan kaynaklar: {', '.join(no_results_sources)}\n")
 
                 # Bölümleri sakla ve render et
-                self.all_episodes = all_items
-                self.after(0, lambda: self.render_episodes_page())
-            except Exception as e:
-                def render_err():
-                    try:
-                        ep_loading.configure(text=f"Hata: {e}", text_color="#ff6b6b")
-                    except Exception:
-                        pass
-                self.after(0, render_err)
+                self.all_episodes = sources_data
+                with open("debug.log", "a") as f:
+                    f.write(f"DEBUG: all_episodes set to: {list(sources_data.keys())}\n")
+                self.after(0, lambda: self._update_loading_status("Kaynaklar işleniyor..."))
+                self.after(100, lambda: self.render_sources_page(db_matches))
+                with open("debug.log", "a") as f:
+                    f.write("DEBUG: render_sources_page scheduled\n")
 
-        threading.Thread(target=load_eps_worker, daemon=True).start()
+            except Exception as e:
+                with open("debug.log", "a") as f:
+                    f.write(f"ERROR: load_sources_worker genel hata: {str(e)}\n")
+                import traceback
+                traceback.print_exc()
+                # Hata durumunda boş veri ile devam et
+                self.all_episodes = {}
+                self.after(0, lambda: self.render_sources_page(db_matches))
+
+        # Kaynak yükleme worker'ını başlat
+        with open("debug.log", "a") as f:
+            f.write("DEBUG: Thread başlatılıyor\n")
+        worker_thread = threading.Thread(target=load_sources_worker, daemon=True)
+        worker_thread.start()
+        with open("debug.log", "a") as f:
+            f.write("DEBUG: Thread başlatıldı\n")
+
+        def _update_loading_status(self, message):
+            """Loading durumunu güncelle."""
+            try:
+                # Loading label'ını bul ve güncelle
+                if self.episodes_list:
+                    for widget in self.episodes_list.winfo_children():
+                        if hasattr(widget, 'configure') and hasattr(widget, 'cget'):
+                            try:
+                                current_text = widget.cget('text')
+                                if "yükleniyor" in current_text.lower() or "işleniyor" in current_text.lower():
+                                    widget.configure(text=message)
+                                    break
+                            except:
+                                continue
+            except Exception as e:
+                print(f"Loading status güncelleme hatası: {e}")
+
+        with open("debug.log", "a") as f:
+            f.write("DEBUG: show_anime_details tamamlandı\n")
+
+    def _check_and_correct_anime_name(self):
+        """Anime adını API'den kontrol et ve gerekirse düzelt."""
+        if not hasattr(self, 'selected_anime') or not self.selected_anime:
+            return
+
+        try:
+            from turkanime_api.common.db import api_manager
+
+            # Mevcut anime adını al
+            current_name = self.selected_anime.get('title', {}).get('romaji', '') or \
+                         self.selected_anime.get('title', {}).get('english', '') or \
+                         self.selected_anime.get('title', {}).get('native', '')
+
+            if not current_name:
+                return
+
+            # API'den eşleştirmeleri ara
+            matches = api_manager.get_anime_matches(current_name)
+            if not matches:
+                return
+
+            # En çok eşleştirilen anime adını bul
+            name_counts = {}
+            for match in matches:
+                anime_title = match.get('anime_title', '')
+                if anime_title:
+                    name_counts[anime_title] = name_counts.get(anime_title, 0) + 1
+
+            if not name_counts:
+                return
+
+            # En çok kullanılan anime adını al
+            correct_name = max(name_counts.items(), key=lambda x: x[1])[0]
+
+            # Eğer farklıysa güncelle
+            if correct_name != current_name:
+                print(f"Anime adı otomatik düzeltildi: {current_name} -> {correct_name}")
+
+                # Anime adını güncelle
+                if 'title' not in self.selected_anime:
+                    self.selected_anime['title'] = {}
+                self.selected_anime['title']['romaji'] = correct_name
+                self.selected_anime['title']['english'] = correct_name
+                self.selected_anime['title']['native'] = correct_name
+
+                # Kullanıcıya bilgi ver
+                self.message(f"Anime adı düzeltildi: {correct_name}", error=False)
+
+        except Exception as e:
+            print(f"Anime adı kontrolü hatası: {e}")
+
+    def render_sources_page(self, db_matches=None):
+        """Kaynakları accordion tarzında göster - performans iyileştirmesi ile."""
+        with open("debug.log", "a") as f:
+            f.write(f"DEBUG: render_sources_page çağrıldı, all_episodes: {list(self.all_episodes.keys()) if self.all_episodes else 'None'}\n")
+
+        # Anime adı kontrolü ve otomatik düzeltme
+        self._check_and_correct_anime_name()
+
+        # Discord Rich Presence güncelle
+        if hasattr(self, 'selected_anime') and self.selected_anime:
+            anime_title = self.selected_anime.get('title', {}).get('romaji', 'Bilinmeyen Anime')
+            self.update_discord_presence(f"{anime_title} kaynaklarına bakıyor", "TürkAnimu GUI")
+
+        try:
+            # Loading label'ı kaldır
+            if self.episodes_list:
+                for widget in self.episodes_list.winfo_children():
+                    if hasattr(widget, 'cget') and widget.cget('text') == "Kaynaklar yükleniyor…":
+                        widget.destroy()
+                        break
+        except:
+            pass
+
+        if not self.all_episodes or not any(episodes for episodes in self.all_episodes.values()):
+            # Bölüm bulunamadı - koşullu butonu göster
+            if hasattr(self, 'btnCustomSearch'):
+                try:
+                    self.btnCustomSearch.pack(side="left")
+                except:
+                    pass
+
+            # Bölüm bulunamadı mesajı
+            not_found_frame = ctk.CTkFrame(self.episodes_list, fg_color="transparent")
+            not_found_frame.pack(fill="x", padx=10, pady=10)
+
+            not_found_label = ctk.CTkLabel(not_found_frame,
+                                         text="Hiçbir kaynakta bölüm bulunamadı",
+                                         text_color="#ff6b6b")
+            not_found_label.pack(pady=(0, 10))
+
+            return
+
+        # Sadece bölümler için kullanılacak kaynakları ayır (AniList hariç)
+        display_sources = {k: v for k, v in self.all_episodes.items() if k in ["TürkAnime", "AnimeciX"]}
+
+        # Kaynak durumlarını kontrol et ve kullanıcıya bildir
+        loaded_sources = [k for k, v in display_sources.items() if v and len(v) > 0]
+        failed_sources = [k for k in ["TürkAnime", "AnimeciX"] if k not in display_sources or not display_sources.get(k)]
+
+        if loaded_sources:
+            status_msg = f"✅ {len(loaded_sources)} kaynak yüklendi: {', '.join(loaded_sources)}"
+            if failed_sources:
+                status_msg += f"\n⚠️ {len(failed_sources)} kaynak yüklenemedi: {', '.join(failed_sources)}"
+            self.message(status_msg, error=False)
+        elif failed_sources:
+            self.message(f"❌ Tüm kaynaklar yüklenemedi: {', '.join(failed_sources)}", error=True)
+
+        # İlk adım: Loading mesajı göster
+        if self.episodes_list:
+            loading_frame = ctk.CTkFrame(self.episodes_list, fg_color="transparent")
+            loading_frame.pack(fill="x", padx=10, pady=10)
+
+            loading_label = ctk.CTkLabel(loading_frame, text="Bölümler hazırlanıyor...",
+                                       font=ctk.CTkFont(size=14), text_color="#cccccc")
+            loading_label.pack(pady=20)
+
+        # UI güncellemesi için update_idletasks kullan
+        self.update_idletasks()
+        
+        def create_accordion():
+            try:
+                with open("debug.log", "a") as f:
+                    f.write("DEBUG: create_accordion başladı\n")
+                # Loading frame'i kaldır
+                loading_frame.destroy()
+                
+                # AccordionSourceEpisodeList ile kaynakları göster (sadece bölümler için)
+                from turkanime_api.common.ui import AccordionSourceEpisodeList
+                
+                # Anime adını al
+                anime_name = "unknown"
+                if hasattr(self, 'selected_anime') and self.selected_anime:
+                    anime_name = self.selected_anime.get('title', {}).get('romaji', 
+                                self.selected_anime.get('title', {}).get('english', 
+                                self.selected_anime.get('title', {}).get('native', 'unknown')))
+                
+                self.source_accordion = AccordionSourceEpisodeList(
+                    self.episodes_list, display_sources, max_episodes_per_source=50,
+                    on_play=self._play_episode, on_download=self._download_episode,
+                    on_match=self._handle_anime_match, db_matches=db_matches,
+                    user_id=self.dosya.ayarlar.get('user_id'), anime_name=anime_name
+                )
+
+                # Bölüm bulunduğunda koşullu butonu gizle
+                if hasattr(self, 'btnCustomSearch'):
+                    try:
+                        self.btnCustomSearch.pack_forget()
+                    except:
+                        pass
+                        
+                # UI güncellemesi için update_idletasks kullan
+                self.update_idletasks()
+                with open("debug.log", "a") as f:
+                    f.write("DEBUG: create_accordion tamamlandı\n")
+                
+            except Exception as e:
+                with open("debug.log", "a") as f:
+                    f.write(f"ERROR: create_accordion hatası: {str(e)}\n")
+                print(f"Accordion oluşturma hatası: {e}")
+                # Hata durumunda loading label'ını güncelle
+                try:
+                    loading_label.configure(text=f"Hata: {e}", text_color="#ff6b6b")
+                except:
+                    pass
+
+        # Kısa bir bekleme sonrası accordion'u oluştur (performans için)
+        self.after(50, create_accordion)  # Bu çağrı render_sources_page içinde yapılıyor
+
+        with open("debug.log", "a") as f:
+            f.write("DEBUG: render_sources_page tamamlandı\n")
+
+    def _handle_anime_match(self, selected_anime):
+        """Anime eşleştirmesini işle ve DB'ye kaydet."""
+        try:
+            print("DEBUG: _handle_anime_match başladı")
+            # Geçerli seçimleri kontrol et
+            valid_selections = {}
+            for source, anime_title in selected_anime.items():
+                if anime_title and anime_title not in ["Arama yapın...", "Sonuç bulunamadı", "Arama hatası"]:
+                    # DB'den gelen eşleşmeler için prefix'i kaldır
+                    clean_title = anime_title.replace("📚 ", "") if anime_title.startswith("📚 ") else anime_title
+                    valid_selections[source] = clean_title
+
+            print(f"DEBUG: selected_anime = {selected_anime}")
+            print(f"DEBUG: valid_selections = {valid_selections}")
+            print(f"DEBUG: len(valid_selections) = {len(valid_selections)}")
+
+            if not valid_selections or len(valid_selections) < 2:
+                self.message("Tüm kaynaklardan geçerli anime seçmelisiniz!", error=True)
+                return
+
+            # Eşleşen anime'leri DB'ye kaydet
+            from turkanime_api.common.db import api_manager
+            
+            saved_count = 0
+            for source, anime_title in selected_anime.items():
+                try:
+                    # Anime ID'sini bul (mevcut anime'den)
+                    anime_id = None
+                    if source in self.all_episodes and self.all_episodes[source]:
+                        # İlk bölümün objesinden anime ID'sini al
+                        first_episode = self.all_episodes[source][0]
+                        if hasattr(first_episode['obj'], 'anime'):
+                            anime_id = first_episode['obj'].anime.slug
+                    
+                    if anime_id:
+                        success = api_manager.save_anime_match(source, str(anime_id), anime_title)
+                        if success:
+                            saved_count += 1
+                except Exception as e:
+                    print(f"{source} eşleştirme hatası: {e}")
+
+            if saved_count > 0:
+                self.message(f"{saved_count} kaynak eşleştirildi ve kaydedildi!", error=False)
+
+                # Anime adını güncelle (eğer farklıysa)
+                if hasattr(self, 'selected_anime') and self.selected_anime:
+                    # Tüm kaynaklardan aynı anime adını kullan (ilk geçerli olanı)
+                    correct_anime_name = None
+                    for source, anime_title in valid_selections.items():
+                        if anime_title and anime_title not in ["Arama yapın...", "Sonuç bulunamadı", "Arama hatası"]:
+                            correct_anime_name = anime_title
+                            break
+
+                    if correct_anime_name:
+                        # Mevcut anime adını kontrol et ve güncelle
+                        current_name = self.selected_anime.get('title', {}).get('romaji', '') or \
+                                     self.selected_anime.get('title', {}).get('english', '') or \
+                                     self.selected_anime.get('title', {}).get('native', '')
+
+                        if current_name != correct_anime_name:
+                            print(f"Anime adı güncellendi: {current_name} -> {correct_anime_name}")
+                            # Anime adını güncelle (title alanını değiştir)
+                            if 'title' not in self.selected_anime:
+                                self.selected_anime['title'] = {}
+                            self.selected_anime['title']['romaji'] = correct_anime_name
+                            self.selected_anime['title']['english'] = correct_anime_name
+                            self.selected_anime['title']['native'] = correct_anime_name
+            else:
+                self.message("Eşleştirme kaydedilemedi!", error=True)
+        except Exception as e:
+            print(f"DEBUG: _handle_anime_match exception: {e}")
+            import traceback
+            traceback.print_exc()
+            self.message(f"Eşleştirme hatası: {e}", error=True)
+
+    def _load_anime_matches_from_db(self, anime_title: str) -> Dict[str, Dict]:
+        """DB'den anime eşleşmelerini yükle."""
+        from turkanime_api.common.db import api_manager
+        
+        matches = {}
+        try:
+            # Tüm eşleşmeleri al (şimdilik basit yaklaşım)
+            # Gerçek uygulamada anime_title ile filtreleme yapılabilir
+            all_matches = api_manager.get_anime_matches()
+            
+            for match in all_matches:
+                source = match['source']
+                # Basit eşleştirme: anime_title ile karşılaştır
+                if anime_title.lower() in match['anime_title'].lower():
+                    matches[source] = {
+                        'anime_id': match['anime_id'],
+                        'anime_title': match['anime_title']
+                    }
+        except Exception as e:
+            print(f"DB eşleşme yükleme hatası: {e}")
+        
+        return matches
 
     # --- Bölüm oynatma/indirme yardımcıları ---
     def _play_episode(self, episode_obj):
@@ -2150,7 +3281,7 @@ class MainWindow(ctk.CTk):
         self.message("Önce bölüm seçin", error=True)
 
     def _search_anime_again(self):
-        """Mevcut kaynak ile anime'yi yeniden ara ve bölümleri yükle."""
+        """Yeni arama penceresi aç ve anime eşleştir.""" 
         if not hasattr(self, 'selected_anime') or not self.selected_anime:
             self.message("Önce bir anime seçin", error=True)
             return
@@ -2159,76 +3290,20 @@ class MainWindow(ctk.CTk):
         anime_data = self.selected_anime
         romaji = anime_data.get('title', {}).get('romaji') or ""
         english = anime_data.get('title', {}).get('english') or ""
-        query_title = romaji if romaji else english
+        original_title = romaji if romaji else english
 
-        if not query_title:
-            self.message("Anime başlığı bulunamadı", error=True)
-            return
+        # Discord Rich Presence güncelle
+        self.update_discord_presence(f"'{original_title}' arıyor", "TürkAnimu GUI")
 
-        # Bölümler alanını temizle ve yükleniyor mesajı göster
-        for widget in self.episodes_list.winfo_children():
-            widget.destroy()
-
-        loading_label = ctk.CTkLabel(self.episodes_list, text="Anime yeniden aranıyor...",
-                                   font=ctk.CTkFont(size=14), text_color="#cccccc")
-        loading_label.pack(pady=20)
+        # AniList'te ara
+        self.message("AniList'te aranıyor…")
 
         def search_worker():
             try:
-                # Mevcut kaynak ile arama yap
-                all_items = []
-                if self.selected_source == "TürkAnime":
-                    # TürkAnime'de ara
-                    from turkanime_api.objects import Anime
-                    all_list = Anime.get_anime_listesi()
-                    pick = None
-                    for slug, name in all_list:
-                        if str(name).strip().lower() == query_title.strip().lower():
-                            pick = (slug, name)
-                            break
-                    if not pick and all_list:
-                        # İlk sonucu al
-                        pick = all_list[0]
-
-                    if pick:
-                        slug, name = pick
-                        ani = Anime(slug)
-                        bolumler = ani.bolumler
-                        for b in bolumler:
-                            all_items.append({"title": b.title, "obj": b})
-                else:
-                    # AnimeciX'te ara
-                    results = search_animecix(query_title)
-                    pick = None
-                    if results:
-                        # Önce exact eşleşme ara (case-insensitive)
-                        for _id, name in results:
-                            if str(name).strip().lower() == query_title.strip().lower():
-                                pick = (_id, name)
-                                break
-                        if not pick:
-                            pick = results[0]
-                    
-                    if pick:
-                        _id, name = pick
-                        cix = CixAnime(id=int(_id), title=str(name))
-                        eps = cix.episodes
-                        ada = AdapterAnime(slug=str(cix.id), title=cix.title)
-                        for e in eps:
-                            ab = AdapterBolum(url=e.url, title=e.title, anime=ada)
-                            all_items.append({"title": e.title, "obj": ab})
-
-                # Bölümleri sakla ve render et
-                self.all_episodes = all_items
-                self.after(0, lambda: self.render_episodes_page())
-
+                results = anilist_client.search_anime(original_title)
+                self.after(0, lambda: self.display_anilist_search_results(results, f"AniList Arama: {original_title}"))
             except Exception as e:
-                def render_error():
-                    try:
-                        loading_label.configure(text=f"Hata: {e}", text_color="#ff6b6b")
-                    except Exception:
-                        pass
-                self.after(0, render_error)
+                self.after(0, lambda: self.message(f"AniList arama hatası: {e}", error=True))
 
         threading.Thread(target=search_worker, daemon=True).start()
 
@@ -2283,6 +3358,9 @@ class MainWindow(ctk.CTk):
         # Discord Rich Presence güncelle
         self.update_discord_presence("Ana sayfada", "TürkAnimu GUI")
 
+        # Başlık selector'ünü güncelle
+        self.update_title_selector()
+
         self.create_home_content()
 
     def show_trending(self):
@@ -2310,7 +3388,7 @@ class MainWindow(ctk.CTk):
                                font=ctk.CTkFont(size=14, weight="bold"))
         back_btn.pack(side="left")
 
-        trending_title = ctk.CTkLabel(title_frame, text="🔥 Trend Animeler",
+        trending_title = ctk.CTkLabel(title_frame, text="🔥 Bu Hafta Trend",
                     font=ctk.CTkFont(size=28, weight="bold"),
                     text_color="#ffffff")
         trending_title.pack(side="left", padx=30)
@@ -2455,7 +3533,6 @@ class MainWindow(ctk.CTk):
 
         if not downloads:
             no_downloads_label = ctk.CTkLabel(self.downloads_grid,
-                                            text="Henüz indirilen dosya bulunamadı.\nİndirilenler klasörünü ayarlar'dan kontrol edin.",
                                             font=ctk.CTkFont(size=16),
                                             text_color="#888888")
             no_downloads_label.pack(pady=50)
@@ -2796,6 +3873,11 @@ class MainWindow(ctk.CTk):
 
         card_frame.bind("<Button-1>", lambda e: on_click())
 
+    def _update_loading_status(self, message):
+        """Loading durumunu güncelle."""
+        if hasattr(self, 'status_label'):
+            self.status_label.configure(text=message, text_color="#cccccc")
+
     def message(self, text, error=False):
         """Durum mesajı göster."""
         if hasattr(self, 'status_label'):
@@ -2850,16 +3932,34 @@ class MainWindow(ctk.CTk):
             self.message("Arama terimi girin", error=True)
             return
 
+        # Seçilen başlıktan başlık kısmını al
+        selected_title = ""
+        if hasattr(self, 'cmbTitle') and hasattr(self, 'selected_title'):
+            selected_title = getattr(self, 'selected_title', "")
+            if selected_title:
+                # "🇺🇸 İngilizce: " veya "🇯🇵 Romanji: " kısmını çıkar
+                if "İngilizce: " in selected_title:
+                    selected_title = selected_title.split("İngilizce: ")[1]
+                elif "Romanji: " in selected_title:
+                    selected_title = selected_title.split("Romanji: ")[1]
+                elif "Orijinal: " in selected_title:
+                    selected_title = selected_title.split("Orijinal: ")[1]
+                else:
+                    selected_title = ""
+
+        # Başlık seçimi varsa onu kullan, yoksa normal arama yap
+        search_query = selected_title if selected_title else query
+
         # Discord Rich Presence güncelle
-        self.update_discord_presence(f"'{query}' arıyor", "TürkAnimu GUI")
+        self.update_discord_presence(f"'{search_query}' arıyor", "TürkAnimu GUI")
 
         # AniList'te ara
         self.message("AniList'te aranıyor…")
 
         def search_worker():
             try:
-                results = anilist_client.search_anime(query)
-                self.after(0, lambda: self.display_anilist_search_results(results, f"AniList Arama: {query}"))
+                results = anilist_client.search_anime(search_query)
+                self.after(0, lambda: self.display_anilist_search_results(results, f"AniList Arama: {search_query}"))
             except Exception as e:
                 self.after(0, lambda: self.message(f"AniList arama hatası: {e}", error=True))
 
@@ -3619,124 +4719,6 @@ class MainWindow(ctk.CTk):
             load_more_btn = ctk.CTkButton(load_more_frame, text="Daha Fazla Bölüm Yükle",
                                         command=self.load_more_episodes)
             load_more_btn.pack()
-
-    def render_episodes_page(self):
-        """Bölümleri sayfalama ile göster."""
-        # Discord Rich Presence güncelle
-        if hasattr(self, 'selected_anime') and self.selected_anime:
-            anime_title = self.selected_anime.get('title', {}).get('romaji', 'Bilinmeyen Anime')
-            self.update_discord_presence(f"{anime_title} bölümlerine bakıyor", "TürkAnimu GUI")
-        
-        try:
-            # Loading label'ı kaldır
-            for widget in self.episodes_list.winfo_children():
-                if hasattr(widget, 'cget') and widget.cget('text') == "Bölümler yükleniyor…":
-                    widget.destroy()
-                    break
-        except:
-            pass
-
-        if not self.all_episodes:
-            # Bölüm bulunamadı - manuel arama ekle
-            not_found_frame = ctk.CTkFrame(self.episodes_list, fg_color="transparent")
-            not_found_frame.pack(fill="x", padx=10, pady=10)
-            
-            not_found_label = ctk.CTkLabel(not_found_frame, 
-                                         text=f"{self.selected_source} kaynağında bölüm bulunamadı",
-                                         text_color="#ff6b6b")
-            not_found_label.pack(pady=(0, 10))
-            
-            # Manuel arama kutusu
-            search_frame = ctk.CTkFrame(not_found_frame, fg_color="#2a2a2a")
-            search_frame.pack(fill="x", pady=(0, 10))
-            
-            search_entry = ctk.CTkEntry(search_frame, placeholder_text="Bu kaynakta ara...",
-                                      width=250)
-            search_entry.pack(side="left", padx=10, pady=10)
-            
-            def manual_search():
-                search_query = search_entry.get().strip()
-                if not search_query:
-                    return
-                
-                # Arama butonunu devre dışı bırak
-                search_btn.configure(state="disabled", text="Aranıyor...")
-                
-                def search_worker():
-                    try:
-                        search_results = []
-                        if self.selected_source == "TürkAnime":
-                            from turkanime_api.objects import Anime
-                            all_list = Anime.get_anime_listesi()
-                            for slug, name in all_list:
-                                if search_query.lower() in (name or "").lower():
-                                    search_results.append({"source": "TürkAnime", "slug": slug, "title": name})
-                        else:
-                            for _id, name in search_animecix(search_query):
-                                search_results.append({"source": "AnimeciX", "id": int(_id), "title": name})
-                        
-                        self.after(0, lambda: show_search_results(search_results))
-                    except Exception as e:
-                        self.after(0, lambda: self.message(f"Arama hatası: {e}", error=True))
-                        self.after(0, lambda: search_btn.configure(state="normal", text="🔍 Ara"))
-                
-                threading.Thread(target=search_worker, daemon=True).start()
-            
-            def show_search_results(results):
-                search_btn.configure(state="normal", text="🔍 Ara")
-                if not results:
-                    self.message("Arama sonucu bulunamadı", error=True)
-                    return
-                
-                # Sonuçları göster
-                results_window = ctk.CTkToplevel(self)
-                results_window.title(f"{self.selected_source} Arama Sonuçları")
-                results_window.geometry("600x400")
-                
-                results_frame = ctk.CTkScrollableFrame(results_window, fg_color="transparent")
-                results_frame.pack(fill="both", expand=True, padx=10, pady=10)
-                
-                for result in results[:10]:  # İlk 10 sonucu göster
-                    result_btn = ctk.CTkButton(results_frame, 
-                                             text=result["title"],
-                                             command=lambda r=result: select_manual_result(r, results_window))
-                    result_btn.pack(fill="x", pady=2)
-            
-            def select_manual_result(result, window):
-                window.destroy()
-                # Seçili sonucu işle
-                if result["source"] == "TürkAnime":
-                    ani = Anime(result["slug"])
-                    manual_items = [{"title": b.title, "obj": b} for b in ani.bolumler]
-                else:
-                    cix = CixAnime(id=int(result["id"]), title=result["title"])
-                    eps = cix.episodes
-                    ada = AdapterAnime(slug=str(cix.id), title=cix.title)
-                    manual_items = [{"title": e.title, "obj": AdapterBolum(url=e.url, title=e.title, anime=ada)} for e in eps]
-                
-                # Eski içeriği temizle ve yeni bölümleri göster
-                for widget in self.episodes_list.winfo_children():
-                    widget.destroy()
-                
-                if manual_items:
-                    self.all_episodes = manual_items
-                    self.episodes_loaded = 0
-                    self.load_more_episodes()
-                else:
-                    ctk.CTkLabel(self.episodes_list, text="Bu anime için bölüm bulunamadı",
-                               text_color="#ff6b6b").pack(pady=10)
-            
-            search_btn = ctk.CTkButton(search_frame, text="🔍 Ara", width=80,
-                                     command=manual_search)
-            search_btn.pack(side="left", padx=(0, 10), pady=10)
-            
-            return
-        
-        # İlk sayfayı yükle
-        self.episodes_loaded = 0
-        self.load_more_episodes()
-
-
 
     def toggle_anilist_panel(self):
         """AniList panelini göster/gizle."""

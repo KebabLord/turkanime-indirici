@@ -14,6 +14,7 @@ a = Analysis([
              binaries=[],
              datas=[
                  ('docs/TurkAnimu.ico', 'docs'),
+                 ('docs/TurkAnimu.png', 'docs'),
                  ('gereksinimler.json', '.'),
              ] + bin_data,
              hiddenimports=hiddenimports,
