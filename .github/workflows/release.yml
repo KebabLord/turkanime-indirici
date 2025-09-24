@@ -171,7 +171,7 @@ jobs:
                   }
               }
           }
-          with open('../../dist/version.json', 'w') as f:
+          with open('../../docs/version.json', 'w') as f:
               json.dump(version_data, f, indent=2)
           "
 
@@ -186,7 +186,7 @@ jobs:
             dist/turkanime-cli-windows.exe
             dist/turkanime-cli-linux
             dist/turkanime-cli-macos
-            dist/version.json
+            docs/version.json
           if-no-files-found: ignore
 
   release:
@@ -205,5 +205,6 @@ jobs:
         with:
           files: |
             dist/**
+            docs/version.json
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
