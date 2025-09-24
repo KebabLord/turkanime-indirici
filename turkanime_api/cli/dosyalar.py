@@ -9,6 +9,7 @@ from tempfile import NamedTemporaryFile
 from shutil import move
 import json
 import uuid
+import platform
 
 # yt-dlp, mpv gibi gereksinimlerin indirme linklerinin bulunduğu dosya.
 DL_URL="https://raw.githubusercontent.com/KebabLord/turkanime-indirici/master/gereksinimler.json"
@@ -30,11 +31,14 @@ class Dosyalar:
             self.ta_path = getcwd()
         self.ayar_path = path.join(self.ta_path, "ayarlar.json")
         self.gecmis_path = path.join(self.ta_path, "gecmis.json")
+        # Platforma göre indirilenler klasörü
+        downloads_dir = path.join(path.expanduser("~"), "Downloads")
+        
         # Ayar isimleri ascii karakterlerden oluşmalı.
         default_ayarlar = {
             "manuel fansub" : False,
             "izlerken kaydet" : False,
-            "indirilenler" : ".",
+            "indirilenler" : downloads_dir,
             "izlendi ikonu" : True,
             "paralel indirme sayisi" : 3,
             "max resolution" : True,

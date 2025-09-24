@@ -5,16 +5,31 @@ import subprocess
 import tempfile
 from tkinter import messagebox
 import customtkinter as ctk
+import toml
 from turkanime_api.common.utils import get_platform, get_arch
 from turkanime_api.common.ui_helpers import create_progress_section
+from turkanime_api.cli.dosyalar import Dosyalar
 
 
 class UpdateManager:
     """GUI için otomatik güncelleme yönetim sistemi."""
 
-    def __init__(self, parent_window, current_version="1.0.0"):
+    def __init__(self, parent_window, current_version=None, dosyalar=None):
         self.parent = parent_window
+        
+        # pyproject.toml'dan versiyonu çek
+        if current_version is None:
+            try:
+                pyproject_path = os.path.join(os.path.dirname(__file__), '..', '..', 'pyproject.toml')
+                with open(pyproject_path, 'r', encoding='utf-8') as f:
+                    pyproject_data = toml.load(f)
+                current_version = pyproject_data['tool']['poetry']['version']
+            except Exception as e:
+                print(f"Versiyon okunamadı: {e}")
+                current_version = "1.0.0"
+        
         self.current_version = current_version
+        self.dosyalar = dosyalar or Dosyalar()
         self.version_url = (
             "https://github.com/barkeser2002/turkanime-indirici/"
             "releases/latest/download/version.json"
@@ -149,12 +164,8 @@ class UpdateManager:
 
                     filename = download_url.split("/")[-1]
                     
-                    # Default downloads klasörünü kullan
-                    if self.platform.startswith("windows"):
-                        download_dir = os.path.join(os.path.expanduser("~"), "Downloads")
-                    else:
-                        # Linux/macOS için ~/Downloads
-                        download_dir = os.path.join(os.path.expanduser("~"), "Downloads")
+                    # Ayarlar.json'dan indirilenler klasörünü kullan
+                    download_dir = self.dosyalar.ayarlar.get("indirilenler", os.path.join(os.path.expanduser("~"), "Downloads"))
                     
                     # Downloads klasörü yoksa oluştur
                     os.makedirs(download_dir, exist_ok=True)

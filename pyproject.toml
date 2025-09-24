@@ -1,8 +1,8 @@
 [tool.poetry]
 name = "turkanime-gui"
-version = "9.3.4"
+version = "9.3.5"
 description = "Türkanime video oynatıcı ve indirici"
-authors = ["Junicchi <junicchi@waifu.club>","barkeser2002 <bariskeser@bariskeser.com>"]
+authors = ["barkeser2002 <bariskeser@bariskeser.com>", "Junicchi <junicchi@waifu.club>"]
 readme = "README.md"
 license = "CC-BY-NC-ND-4.0"
 repository = "https://github.com/barkeser2002/turkanime-indirici"
@@ -19,6 +19,13 @@ classifiers = [
 
 packages = [
   { include = "turkanime_api" }
+]
+
+include = [
+    { path = "docs/TurkAnimu.png", format = "sdist" },
+    { path = "docs/TurkAnimu.ico", format = "sdist" },
+    { path = "docs/TurkAnimu.png", format = "wheel" },
+    { path = "docs/TurkAnimu.ico", format = "wheel" },
 ]
 
 [tool.poetry.dependencies]
@@ -39,7 +46,8 @@ customtkinter = { version = ">=5.2.0", optional = true }
 [tool.poetry.extras]
 gui = ["customtkinter"]
 
-[tool.poetry.dev-dependencies]
+[tool.poetry.group.dev.dependencies]
+toml = "*"
 
 [build-system]
 requires = ["poetry-core"]

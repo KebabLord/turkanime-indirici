@@ -739,9 +739,11 @@ class MainWindow(ctk.CTk):
         def init_requirements():
             try:
                 self.requirements_manager = RequirementsManager(self)
-                self.update_manager = UpdateManager(self, current_version="1.0.0")
+                self.update_manager = UpdateManager(self, dosyalar=self.dosya)
                 # Ana thread'de çalıştır
                 self.after(0, self.check_requirements_on_startup)
+                # Otomatik güncelleme kontrolü
+                self.after(2000, self.check_for_updates_silent)
             except Exception as e:
                 print(f"Gereksinimler başlatma hatası: {e}")
 
@@ -2253,6 +2255,25 @@ class MainWindow(ctk.CTk):
         self.chkDiscordRPC.pack(side="left")
         self.chkDiscordRPC.select() if a.get("discord_rich_presence", True) else None
 
+        # Diğer ayarlar
+        other_frame = ctk.CTkFrame(content_frame, fg_color="#1a1a1a")
+        other_frame.pack(fill="x", pady=(0, 20))
+
+        other_title = ctk.CTkLabel(other_frame, text="Diğer Ayarlar",
+                                 font=ctk.CTkFont(size=16, weight="bold"))
+        other_title.pack(pady=(10, 5))
+
+        # User ID
+        userid_frame = ctk.CTkFrame(other_frame, fg_color="transparent")
+        userid_frame.pack(fill="x", padx=10, pady=(5, 10))
+
+        userid_label = ctk.CTkLabel(userid_frame, text="User ID:")
+        userid_label.pack(side="left")
+
+        self.txtUserId = ctk.CTkEntry(userid_frame, width=300)
+        self.txtUserId.pack(side="right")
+        self.txtUserId.insert(0, a.get("user_id", ""))
+
         # Güncelleme ayarları
         update_frame = ctk.CTkFrame(content_frame, fg_color="#1a1a1a")
         update_frame.pack(fill="x", pady=(0, 20))
@@ -2317,6 +2338,19 @@ class MainWindow(ctk.CTk):
                 self.message(f"Güncelleme kontrolü hatası: {e}", error=True)
         threading.Thread(target=worker, daemon=True).start()
 
+    def check_for_updates_silent(self):
+        """Sessiz güncelleme kontrolü - otomatik."""
+        def worker():
+            try:
+                if hasattr(self, "update_manager") and self.update_manager:
+                    has_update, version_data = self.update_manager.check_for_updates(silent=True)
+                    if has_update and version_data:
+                        # Güncelleme varsa dialog göster
+                        self.update_manager._show_update_dialog(version_data)
+            except Exception as e:
+                print(f"Otomatik güncelleme kontrolü hatası: {e}")
+        threading.Thread(target=worker, daemon=True).start()
+
     def on_choose_dir(self):
         """İndirilenler klasörü seç."""
         d = filedialog.askdirectory()
@@ -2337,6 +2371,7 @@ class MainWindow(ctk.CTk):
             self.dosya.set_ayar("aria2c kullan", self.chkAria2.get())
             self.dosya.set_ayar("indirilenler", self.txtDownloads.get())
             self.dosya.set_ayar("discord_rich_presence", self.chkDiscordRPC.get())
+            self.dosya.set_ayar("user_id", self.txtUserId.get())
 
             # Discord Rich Presence ayarını uygula
             if self.chkDiscordRPC.get():
