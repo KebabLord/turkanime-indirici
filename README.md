@@ -57,7 +57,7 @@ Tüm metodları görmek için [dökümantasyona](https://github.com/KebabLord/tu
  'Japonca': 'のんのんびより',
  'Kategori': 'TV',
  'Puanı': 8.54,
- 'Resim': 'http://www.turkanime.co/imajlar/serilerb/1825.jpg',
+ 'Resim': 'http://www.turkanime.tv/imajlar/serilerb/1825.jpg',
  'Stüdyo': 'Silver Link.',
  'Özet': "İlkokula giden Hotaru Ichijou, ailesiyle birlikte Tokyo'dan "
          'memleketine taşınmıştır. Farklı yaşıtlardaki 5 öğrencinin bulunduğu '
