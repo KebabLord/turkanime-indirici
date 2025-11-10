@@ -28,6 +28,7 @@ from turkanime_api.cli.dosyalar import Dosyalar
 from turkanime_api.cli.cli_tools import VidSearchCLI, indir_aria2c
 from turkanime_api.cli.gereksinimler import Gereksinimler
 from turkanime_api.sources.animecix import CixAnime, search_animecix
+from turkanime_api.sources.anizle import AnizleAnime, search_anizle, get_episode_streams
 from turkanime_api.sources.adapter import AdapterAnime, AdapterBolum
 from turkanime_api.anilist_client import anilist_client, AniListAuthServer
 from turkanime_api.gui.update_manager import UpdateManager
@@ -1047,7 +1048,7 @@ class MainWindow(ctk.CTk):
                                   font=ctk.CTkFont(size=9, weight="bold"))
         source_label.pack(side="left", padx=(0, 5))
 
-        self.cmbSource = ctk.CTkComboBox(source_frame, values=["TürkAnime", "AnimeciX"],
+        self.cmbSource = ctk.CTkComboBox(source_frame, values=["TürkAnime", "AnimeciX", "Anizle (deneysel)"],
                                        width=100, height=32,
                                        command=self.on_source_change)
         self.cmbSource.pack(side="left")
@@ -2890,6 +2891,45 @@ class MainWindow(ctk.CTk):
                                 with open("debug.log", "a") as f:
                                     f.write(f"ERROR: {source_name} adapter bulunamadı\n")
 
+                        elif source_name == "Anizle":
+                            # SearchEngine kullanarak Anizle'de ara
+                            adapter = search_engine.get_adapter(source_name)
+                            if adapter:
+                                search_results = adapter.search_anime(query_title, limit=1)
+                                if search_results:
+                                    slug, name = search_results[0]
+                                    
+                                    anizle_anime = AnizleAnime(slug=slug, title=name)
+                                    eps = anizle_anime.episodes
+                                    episodes = []
+                                    ada = AdapterAnime(slug=anizle_anime.slug, title=anizle_anime.title)
+                                    stream_provider = lambda slug, _timeout=10: get_episode_streams(slug, timeout=_timeout)
+                                    for e in eps:
+                                        ab = AdapterBolum(
+                                            url=e.url, 
+                                            title=e.title, 
+                                            anime=ada,
+                                            stream_provider=stream_provider,
+                                            player_name="ANIZLE"
+                                        )
+                                        episodes.append({
+                                            "title": e.title,
+                                            "obj": ab,
+                                            "anime_title": name
+                                        })
+                                    sources_data[source_name] = episodes
+                                    source_status[source_name] = "completed"
+                                    with open("debug.log", "a") as f:
+                                        f.write(f"DEBUG: {source_name} tamamlandı - {len(episodes)} bölüm\n")
+                                else:
+                                    source_status[source_name] = "no_results"
+                                    with open("debug.log", "a") as f:
+                                        f.write(f"DEBUG: {source_name} - sonuç bulunamadı\n")
+                            else:
+                                source_status[source_name] = "error"
+                                with open("debug.log", "a") as f:
+                                    f.write(f"ERROR: {source_name} adapter bulunamadı\n")
+
                         # Başarılı tamamlandı, timer'ı iptal et
                         timer.cancel()
                         elapsed_time = time.time() - start_time
@@ -2907,7 +2947,7 @@ class MainWindow(ctk.CTk):
 
                 # Paralel arama - her kaynak için ayrı thread
                 threads = []
-                for source_name in ["TürkAnime", "AnimeciX", "AniList"]:
+                for source_name in ["TürkAnime", "AnimeciX", "AniList", "Anizle"]:
                     timeout = source_timeouts.get(source_name, 10)
                     thread = threading.Thread(
                         target=search_source_with_timeout,
@@ -2922,7 +2962,7 @@ class MainWindow(ctk.CTk):
                 start_total = time.time()
 
                 for i, thread in enumerate(threads):
-                    source_name = ["TürkAnime", "AnimeciX", "AniList"][i]
+                    source_name = ["TürkAnime", "AnimeciX", "AniList", "Anizle"][i]
                     # Eğer bu kaynak zaten timeout olduysa, bekleme
                     if source_status.get(source_name) == "timeout":
                         with open("debug.log", "a") as f:

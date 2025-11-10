@@ -6,7 +6,7 @@ Accordion tarzı bölüm listesi ve diğer UI yardımcıları.
 import customtkinter as ctk
 from typing import List, Dict, Any, Callable, Optional
 import threading
-from .adapters import AniListAdapter, TurkAnimeAdapter, AnimeciXAdapter
+from .adapters import AniListAdapter, TurkAnimeAdapter, AnimeciXAdapter, AnizleAdapter
 
 
 
@@ -52,7 +52,8 @@ class AccordionSourceEpisodeList:
         self.adapters = {
             "AniList": AniListAdapter(),
             "TürkAnime": TurkAnimeAdapter(),
-            "AnimeciX": AnimeciXAdapter()
+            "AnimeciX": AnimeciXAdapter(),
+            "Anizle": AnizleAdapter()
         }
 
         # Ana frame
@@ -267,7 +268,8 @@ class AccordionSourceEpisodeList:
         colors = {
             "AniList": "#4ecdc4",  # Turkuaz
             "TürkAnime": "#ffd93d",  # Sarı
-            "AnimeciX": "#ff6b6b"  # Kırmızı
+            "AnimeciX": "#ff6b6b",  # Kırmızı
+            "Anizle": "#9b59b6"  # Mor
         }
         return colors.get(source_name, "#666666")
 

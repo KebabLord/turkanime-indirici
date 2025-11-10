@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import List, Optional, Any, Dict
+from typing import List, Optional, Any, Dict, Callable
 import json
 from tempfile import NamedTemporaryFile
 from os.path import join
@@ -47,11 +47,17 @@ class AdapterAnime:
 class AdapterVideo:
     """TürkAnime Video arayüzüne minimum uyumlu basit video nesnesi."""
 
-    def __init__(self, bolum: 'AdapterBolum', url: Optional[str], label: Optional[str] = None):
+    def __init__(
+        self,
+        bolum: 'AdapterBolum',
+        url: Optional[str],
+        label: Optional[str] = None,
+        player: str = "ANIMECIX",
+    ):
         self.bolum = bolum
         self._url = url or ""
         self.label = label
-        self.player = "ANIMECIX"
+        self.player = player or "ANIMECIX"
         self._info: Optional[Dict[str, Any]] = None
         self.is_supported = True
         self._is_working: Optional[bool] = None
@@ -154,10 +160,19 @@ class AdapterVideo:
 
 
 class AdapterBolum:
-    def __init__(self, url: Optional[str], title: str, anime: AdapterAnime):
+    def __init__(
+        self,
+        url: Optional[str],
+        title: str,
+        anime: AdapterAnime,
+        stream_provider: Optional[Callable[[str], List[Dict[str, str]]]] = None,
+        player_name: str = "ANIMECIX",
+    ):
         self.url = url
         self._title = title
         self.anime = anime
+        self._stream_provider = stream_provider
+        self._player_name = player_name or "ANIMECIX"
         # TürkAnime ile uyumlu: animeadı-bolumadı (klasör: anime.slug, dosya adı: animeadı-bolumadı)
         self.slug = _slugify(f"{anime.title}-{title}" if anime else title)
 
@@ -183,14 +198,17 @@ class AdapterBolum:
             callback({"current": 1, "total": 1, "player": "ANIMECIX", "status": "URL bulunamadı"})
             return None
 
-        # AnimeciX embed path üzerinden stream listesi
-        callback({"current": 0, "total": 1, "player": "ANIMECIX", "status": "üstbilgi çekiliyor"})
-        streams = _video_streams(self.url)
+        # Kaynağa uygun stream sağlayıcısını kullan
+        provider = self._stream_provider or _video_streams
+        player_label = self._player_name
+
+        callback({"current": 0, "total": 1, "player": player_label, "status": "üstbilgi çekiliyor"})
+        streams = provider(self.url)
         if not streams:
             callback({
                 "current": 1,
                 "total": 1,
-                "player": "ANIMECIX",
+                "player": player_label,
                 "status": "hiçbiri çalışmıyor"
             })
             return None
@@ -208,16 +226,16 @@ class AdapterBolum:
             callback({
                 "current": 1,
                 "total": 1,
-                "player": "ANIMECIX",
+                "player": player_label,
                 "status": "video URL bulunamadı"
             })
             return None
 
-        vid = AdapterVideo(self, video_url, picked.get("label"))
+        vid = AdapterVideo(self, video_url, picked.get("label"), player=player_label)
         if vid.is_working:
-            callback({"current": 1, "total": 1, "player": "ANIMECIX", "status": "çalışıyor"})
+            callback({"current": 1, "total": 1, "player": player_label, "status": "çalışıyor"})
             return vid
-        callback({"current": 1, "total": 1, "player": "ANIMECIX", "status": "çalışmıyor"})
+        callback({"current": 1, "total": 1, "player": player_label, "status": "çalışmıyor"})
         return None
 
 

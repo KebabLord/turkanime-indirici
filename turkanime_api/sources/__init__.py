@@ -1,10 +1,11 @@
-"""Kaynaklar (TürkAnime, AnimeciX) için facade.
+"""Kaynaklar (TürkAnime, AnimeciX, Anizle) için facade.
 
-Şimdilik yalnızca AnimeciX ek kaynağı dışa aktarılır.
-Ayrıca adapter sistemi ile yeni sağlayıcılar eklenebilir.
+Ek sağlayıcılar bu modülden dışa aktarılır ve `register_provider`
+yardımıyla sisteme kaydedilebilir.
 """
 
 from .animecix import CixAnime, search_animecix  # noqa: F401
+from .anizle import AnizleAnime, search_anizle  # noqa: F401
 
 # Mevcut sağlayıcılar
 PROVIDERS = {
@@ -13,6 +14,12 @@ PROVIDERS = {
         "adapter": None,  # Eski sistem kullanılıyor
         "enabled": True,
         "priority": 1
+    },
+    "anizle": {
+        "name": "Anizle",
+        "adapter": None,
+        "enabled": True,
+        "priority": 2
     }
 }
 

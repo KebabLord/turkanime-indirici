@@ -7,6 +7,7 @@ from typing import List, Tuple, Optional, Dict, Any
 from ..anilist_client import anilist_client
 from ..objects import Anime
 from ..sources.animecix import search_animecix
+from ..sources.anizle import search_anizle
 
 
 class AniListAdapter:
@@ -96,6 +97,17 @@ class AnimeciXAdapter:
             return []
 
 
+class AnizleAdapter:
+    """Adapter for Anizle website search."""
+
+    def search_anime(self, query: str, limit: int = 10) -> List[Tuple[str, str]]:
+        try:
+            results = search_anizle(query, limit=limit)
+            return results[:limit]
+        except Exception:
+            return []
+
+
 class SearchEngine:
     """Unified search engine for all anime sources."""
     
@@ -103,7 +115,8 @@ class SearchEngine:
         self.adapters = {
             "AniList": AniListAdapter(),
             "TürkAnime": TurkAnimeAdapter(),
-            "AnimeciX": AnimeciXAdapter()
+            "AnimeciX": AnimeciXAdapter(),
+            "Anizle": AnizleAdapter()
         }
     
     def search_all_sources(self, query: str, limit_per_source: int = 10) -> Dict[str, List[Tuple[str, str]]]:

@@ -4,71 +4,18 @@ from time import sleep
 import sys
 import atexit
 import concurrent.futures as cf
-from rich import print as rprint
-from rich.table import Table
+import easygui
+
 from rich.live import Live
+from rich.table import Table
+from rich import print as rprint
 import questionary as qa
-from easygui import diropenbox
-
-# Tkinter import - cross-platform klasör seçimi için
-try:
-    import tkinter as tk
-    from tkinter import filedialog
-    TKINTER_AVAILABLE = True
-except ImportError:
-    TKINTER_AVAILABLE = False
-
-
-def select_download_folder(current_path=None):
-    """
-    Cross-platform klasör seçme fonksiyonu.
-    Tkinter'i tercih eder, fallback olarak easygui kullanır.
-    """
-    if TKINTER_AVAILABLE:
-        try:
-            # Tkinter root window oluştur (görünmez)
-            root = tk.Tk()
-            root.withdraw()
-            root.attributes('-topmost', True)  # Windows'ta üstte tut
-
-            # Başlangıç dizinini ayarla
-            initial_dir = None
-            if current_path and path.exists(path.expanduser(current_path)):
-                initial_dir = path.expanduser(current_path)
-            elif current_path:
-                # current_path bir değişken ise onu kullan
-                initial_dir = current_path
-
-            # Klasör seçme dialog'u
-            folder_path = filedialog.askdirectory(
-                title="TürkAnimu - İndirme Klasörünü Seçin",
-                initialdir=initial_dir,
-                mustexist=True
-            )
-
-            root.destroy()
-
-            if folder_path:  # Kullanıcı bir klasör seçti
-                return folder_path
-
-        except Exception as e:
-            print(f"Tkinter dialog hatası: {e}")
-
-    # Fallback: easygui kullan
-    try:
-        return diropenbox(
-            msg="İndirme klasörünü seçin",
-            title="TürkAnimu - İndirme Klasörü Seçimi",
-            default=current_path or "~/Downloads"
-        )
-    except Exception as e:
-        print(f"Easygui dialog hatası: {e}")
-        return None
 
 from ..bypass import fetch
 from ..objects import Anime
-from ..sources import search_animecix
+from ..sources import search_animecix, search_anizle
 from ..sources.animecix import CixAnime
+from ..sources.anizle import AnizleAnime, get_episode_streams
 from ..sources.adapter import AdapterAnime, AdapterBolum
 from .dosyalar import Dosyalar
 from .gereksinimler import gereksinim_kontrol_cli
@@ -78,6 +25,17 @@ from .version import guncel_surum, update_type
 # Uygulama dizinini sistem PATH'ına ekle
 SEP = ";" if name == "nt" else ":"
 environ["PATH"] += SEP + Dosyalar().ta_path + SEP
+
+
+def select_download_folder(current_path):
+    """Klasör seçimi için easygui kullan"""
+    if current_path and path.exists(current_path):
+        default = current_path
+    else:
+        default = path.expanduser("~")
+    
+    folder = easygui.diropenbox("İndirme klasörünü seçin", "Klasör Seç", default)
+    return folder if folder else current_path
 
 
 def eps_to_choices(liste, mark_type):
@@ -102,13 +60,24 @@ def eps_to_choices(liste, mark_type):
     return choices, recent
 
 
+SOURCE_TITLES = {
+    "turkanime": "TürkAnime",
+    "animecix": "AnimeciX (deneysel)",
+    "anizle": "Anizle (deneysel)",
+}
+
+
 def _norm_source(val: str) -> str:
     s = str(val or "").lower()
-    return "animecix" if "animecix" in s else "turkanime"
+    if "animecix" in s:
+        return "animecix"
+    if "anizle" in s:
+        return "anizle"
+    return "turkanime"
 
 
 def _source_title(code: str) -> str:
-    return "AnimeciX (deneysel)" if _norm_source(code) == "animecix" else "TürkAnime"
+    return SOURCE_TITLES.get(_norm_source(code), "TürkAnime")
 
 
 def menu_loop():
@@ -125,10 +94,16 @@ def menu_loop():
             break
 
         if "Anime" in islem:
-            # Seriyi seç
             try:
-                kay = _norm_source(Dosyalar().ayarlar.get("kaynak", "turkanime"))
-                if kay == "animecix":
+                source = _norm_source(Dosyalar().ayarlar.get("kaynak", "turkanime"))
+                anime = None
+                cix_anime = None
+                anizle_anime = None
+                adapter_anime = None
+                seri_slug = ""
+                seri_ismi = ""
+
+                if source == "animecix":
                     q = qa.text("AnimeciX: aramak için yazın", style=prompt_tema).ask(kbi_msg="")
                     if not q:
                         continue
@@ -137,13 +112,38 @@ def menu_loop():
                     if not found:
                         raise KeyError
                     choices = [qa.Choice(name, (aid, name)) for (aid, name) in found]
-                    pick = qa.select("Seri seç", choices=choices, style=prompt_tema,
-                                      instruction="Yukarı/Aşağı • Enter").ask()
+                    pick = qa.select(
+                        "Seri seç",
+                        choices=choices,
+                        style=prompt_tema,
+                        instruction="Yukarı/Aşağı • Enter"
+                    ).ask()
                     if not pick:
                         continue
-                    seri_id, seri_ismi = pick
-                    anime = None
-                    seri_slug = str(seri_id)
+                    seri_slug, seri_ismi = pick
+                    seri_slug = str(seri_slug)
+                    cix_anime = CixAnime(seri_slug, seri_ismi)
+                    adapter_anime = AdapterAnime(slug=str(cix_anime.id), title=cix_anime.title)
+                elif source == "anizle":
+                    q = qa.text("Anizle: aramak için yazın", style=prompt_tema).ask(kbi_msg="")
+                    if not q:
+                        continue
+                    with CliStatus("Anizle aranıyor.."):
+                        found = search_anizle(q) or []
+                    if not found:
+                        raise KeyError
+                    choices = [qa.Choice(title, (slug, title)) for (slug, title) in found]
+                    pick = qa.select(
+                        "Seri seç",
+                        choices=choices,
+                        style=prompt_tema,
+                        instruction="Yukarı/Aşağı • Enter"
+                    ).ask()
+                    if not pick:
+                        continue
+                    seri_slug, seri_ismi = pick
+                    anizle_anime = AnizleAnime(slug=seri_slug, title=seri_ismi)
+                    adapter_anime = AdapterAnime(slug=anizle_anime.slug, title=anizle_anime.title)
                 else:
                     with CliStatus("Anime listesi getiriliyor.."):
                         animeler = Anime.get_anime_listesi()
@@ -152,24 +152,47 @@ def menu_loop():
                     ).ask()
                     if seri_ismi is None:
                         continue
-                    seri_slug = [s for s, n in animeler if n == seri_ismi][0]
+                    seri_slug = next(s for s, n in animeler if n == seri_ismi)
                     anime = Anime(seri_slug)
             except (KeyError, IndexError):
                 rprint("[red][strong]Aradığınız anime bulunamadı.[/strong][red]")
                 sleep(1.5)
                 continue
 
+            anizle_stream_provider = (
+                (lambda slug, _timeout=10: get_episode_streams(slug, timeout=_timeout))
+                if source == "anizle" else None
+            )
+
             while True:
                 dosya = Dosyalar()
                 if "izle" in islem:
                     with CliStatus("Bölümler getiriliyor.."):
-                        if anime is None:
-                            cix = CixAnime(int(seri_slug), seri_ismi)
-                            eps = cix.episodes
-                            an = AdapterAnime(slug=str(cix.id), title=cix.title)
-                            bolumler = [AdapterBolum(e.url, e.title, an) for e in eps]
-                        else:
+                        if source == "animecix" and cix_anime is not None:
+                            adapter = adapter_anime or AdapterAnime(slug=str(cix_anime.id), title=cix_anime.title)
+                            bolumler = [
+                                AdapterBolum(e.url, e.title, adapter)
+                                for e in cix_anime.episodes
+                            ]
+                        elif source == "anizle" and anizle_anime is not None and anizle_stream_provider:
+                            adapter = adapter_anime or AdapterAnime(slug=anizle_anime.slug, title=anizle_anime.title)
+                            bolumler = [
+                                AdapterBolum(
+                                    e.url,
+                                    e.title,
+                                    adapter,
+                                    stream_provider=anizle_stream_provider,
+                                    player_name="ANIZLE"
+                                )
+                                for e in anizle_anime.episodes
+                            ]
+                        elif anime is not None:
                             bolumler = anime.bolumler
+                        else:
+                            bolumler = []
+                        if not bolumler:
+                            rprint("[red]Bölüm bulunamadı.[/red]")
+                            break
                         choices, recent = eps_to_choices(bolumler, mark_type="izlendi")
                     bolum = qa.select(
                         message='Bölüm seç', choices=choices, style=prompt_tema, default=recent,
@@ -185,13 +208,14 @@ def menu_loop():
                         ).ask(kbi_msg="")
                         if not sub:
                             break
-                    # En iyi videoyu bul ve oynat, 3 deneme
                     success = False
                     for _ in range(3):
                         vid_cli = VidSearchCLI()
                         with vid_cli.progress:
                             best_video = bolum.best_video(
-                                by_res=dosya.ayarlar["max resolution"], by_fansub=sub, callback=vid_cli.callback
+                                by_res=dosya.ayarlar["max resolution"],
+                                by_fansub=sub,
+                                callback=vid_cli.callback
                             )
                         if not best_video:
                             break
@@ -205,16 +229,32 @@ def menu_loop():
                     if success and getattr(bolum, 'anime', None):
                         dosya.set_gecmis(bolum.anime.slug, bolum.slug, "izlendi")
                 else:
-                    if anime is None:
-                        cix = CixAnime(int(seri_slug), seri_ismi)
-                        eps = cix.episodes
-                        an = AdapterAnime(slug=str(cix.id), title=cix.title)
-                        b_list = [AdapterBolum(e.url, e.title, an) for e in eps]
-                        choices, recent = eps_to_choices(b_list, mark_type="indirildi")
-                    else:
+                    if source == "animecix" and cix_anime is not None:
+                        adapter = adapter_anime or AdapterAnime(slug=str(cix_anime.id), title=cix_anime.title)
+                        bolum_kayitlari = [AdapterBolum(e.url, e.title, adapter) for e in cix_anime.episodes]
+                        choices, recent = eps_to_choices(bolum_kayitlari, mark_type="indirildi")
+                    elif source == "anizle" and anizle_anime is not None and anizle_stream_provider:
+                        adapter = adapter_anime or AdapterAnime(slug=anizle_anime.slug, title=anizle_anime.title)
+                        bolum_kayitlari = [
+                            AdapterBolum(
+                                e.url,
+                                e.title,
+                                adapter,
+                                stream_provider=anizle_stream_provider,
+                                player_name="ANIZLE"
+                            )
+                            for e in anizle_anime.episodes
+                        ]
+                        choices, recent = eps_to_choices(bolum_kayitlari, mark_type="indirildi")
+                    elif anime is not None:
                         choices, recent = eps_to_choices(anime.bolumler, mark_type="indirildi")
+                    else:
+                        choices, recent = ([], None)
 
-                    # Büyük listelerde önce basit bir filtre soralım
+                    if not choices:
+                        rprint("[red]Bölüm bulunamadı.[/red]")
+                        break
+
                     if len(choices) > 10:
                         filt = qa.text("Bölüm ara/filtre (boş geçilebilir)", style=prompt_tema).ask(kbi_msg="")
                         if filt:
@@ -245,8 +285,8 @@ def menu_loop():
             kay = _norm_source(ds.ayarlar.get("kaynak", "turkanime"))
             # Questionary sürümleri arasında Choice(name,value) ile default eşleşmesi sorun çıkarabiliyor.
             # Bu yüzden düz string seçenekler kullanıp başlıktan koda map ediyoruz.
-            secenekler = ["TürkAnime", "AnimeciX (deneysel)"]
-            varsayilan = _source_title(kay)  # "TürkAnime" veya "AnimeciX (deneysel)"
+            secenekler = ["TürkAnime", "AnimeciX (deneysel)", "Anizle (deneysel)"]
+            varsayilan = _source_title(kay)  # "TürkAnime" veya "AnimeciX (deneysel)" veya "Anizle (deneysel)"
             sec_title = qa.select(
                 "Kaynak seç",
                 choices=secenekler,

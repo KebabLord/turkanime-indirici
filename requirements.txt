@@ -7,6 +7,9 @@ rich>=13.0.0
 easygui
 questionary
 requests
+cloudscraper
 Pillow
 pypresence
 toml
+selenium==4.22.0
+webdriver-manager==4.0.1
