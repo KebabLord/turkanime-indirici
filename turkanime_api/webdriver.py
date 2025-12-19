@@ -41,7 +41,7 @@ def find_firefox_executable():
     raise SessionNotCreatedException("firefox'un konumu bulunamadı.")
 
 
-def create_webdriver(options=None,headless=True,firefox_path=None,preload_ta=True):
+def create_webdriver(options=None,headless=False,firefox_path=None,preload_ta=True):
     """ Selenium webdriver'ı hazırla. """
     if not options:
         options = Options()
@@ -78,7 +78,7 @@ def elementi_bekle(selector,_driver):
         boyunca yanıt alamazsa error verir.
     """
     start=round(time())
-    while round(time())-start<10:
+    while round(time())-start<300:
         try:
             _driver.find_element(By.CSS_SELECTOR, selector)
         except NoSuchElementException:

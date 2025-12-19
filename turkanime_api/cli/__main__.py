@@ -229,8 +229,12 @@ def main():
 
     # Türkanime'ye bağlan.
     try:
-        with CliStatus("Türkanime'ye bağlanılıyor.."):
+        with CliStatus("Türkanime'ye bağlanılıyor..") as prg:
             driver.get("https://turkanime.co/kullanici/anonim")
+            sleep(2)
+            if "diagnostic-wrapper" in driver.page_source: # Cloudflare engeli ile karşılaşıldı
+                prg.columns[1].text_format = "[cyan]Captcha'yı çözmeniz bekleniyor.."
+                prg.refresh()
             elementi_bekle(".navbar-nav",driver)
     except (ConnectionError,WebDriverException):
         rprint("[red][strong]TürkAnime'ye ulaşılamıyor.[/strong][red]")
