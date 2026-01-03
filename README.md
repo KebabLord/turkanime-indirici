@@ -34,9 +34,8 @@ Vidmoly   Dailymotion   Yandisk   Uqload   Drive
 
 
 ## Kurulum
-Önceden derlenmiş "exe" sürümleri [buradan indirebilirsiniz](https://github.com/KebabLord/turkanime-indirici/releases/latest).
-
-Ya da pip ile kolayca kurabilirsiniz: `py -m pip install turkanime-cli`
+Önceden derlenmiş EXE sürümü [indirme sayfasından](https://github.com/KebabLord/turkanime-indirici/releases/latest) indirip kullanmaya başlayabilirsiniz.
+Veya `pip` kullanarak `py -m pip install turkanime-cli` kurup, ardından `turkanime` komutunu çalıştırarak da script'i kullanabilirsiniz.
 
 Kuruluma dair daha fazlası için [wiki sayfasını](https://github.com/KebabLord/turkanime-indirici/wiki/Herhangi-bir-uygulamay%C4%B1-system-path'%C4%B1na-ekleme) ziyaret edebilirsiniz.
 
@@ -70,9 +69,9 @@ Tüm metodları görmek için [dökümantasyona](https://github.com/KebabLord/tu
 
 ## Diğer Türkçe Anime Projeleri
 Aşağıdaki projeler de farklı sitelerden anime indirmeyi ve izlemeyi mümkün kılıyor, her birinin kendi avantajları var, göz atmanızı öneririm.
+- [Turkanime-GUI](https://github.com/barkeser2002/turkanime-gui/): Bu script'e GUI eklenmiş versiyon, başka onlarca özellik de barındırıyor
 - [AniTR-cli](https://github.com/xeyossr/anitr-cli): Go ile yazılmış terminal tabanlı anime oynatıcı, Arch linux AUR reposunda da mevcut 
 - [AnimeciX-Desktop](https://github.com/CaptainSP/animecix-desktop): AnimeciX üstünden anime indirici ve oynatıcı, electron ile yaratılmış güzel bir gui sunuyor
-- [Turkanime-indiriciGUI](https://github.com/qweeren/turkanime-indirici/tree/master): Bu script'e Tkinter ile gui yaratılmış fork
 
 ## Yapılacaklar:
  - [x] ~~Selenium'dan kurtulma~~
