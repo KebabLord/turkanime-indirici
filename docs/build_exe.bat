@@ -23,7 +23,7 @@ echo Surum dosyasi yaratiliyor..
     echo     company_name="TurkAnimu Dev",
     echo     file_description="Anime İndirici & Oynatıcı",
     echo     internal_name="TurkAnimu",
-    echo     legal_copyright="© KebabLord, All rights reserved.",
+    echo     legal_copyright="© KebabLord. CC BY-NC-ND 4.0",
     echo     original_filename="TurkAnimu.exe",
     echo     product_name="TurkAnimu İndirici"
     echo ^)
@@ -36,10 +36,10 @@ echo compiled.py yaratiliyor..
     echo from turkanime_api.cli.__main__ import main
     echo if __name__ == "__main__":
     echo     main^(^)
-) > ..\compiled.py
+) > compiled.py
 
 echo EXE derleniyor..
-pyinstaller --noconfirm --onefile --console --icon "docs\TurkAnimu.ico" --name "TurkAnimu" --version-file versionfile.txt "compiled.py" && (
+pyinstaller --clean --noconfirm --onefile --console --icon "docs\TurkAnimu.ico" --name "TurkAnimu" --version-file versionfile.txt "compiled.py" && (
   echo Hersey yolunda gitti, calistirilabilir dosya: dist/TurkAnimu.exe
 )
 
