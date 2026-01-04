@@ -28,7 +28,6 @@ curl-cffi = ">=0.13"
 pycryptodome = "*"
 appdirs = "*"
 questionary = "*"
-py7zr = "*"
 rich = ">=13.0.0"
 easygui = ">=0.98.2"
 

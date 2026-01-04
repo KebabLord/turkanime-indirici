@@ -6,7 +6,6 @@ import re
 import subprocess as sp
 import json
 from zipfile import ZipFile
-from py7zr import SevenZipFile
 import requests
 import questionary as qa
 
@@ -29,8 +28,10 @@ class Gereksinimler:
 
     def app_kontrol(self,app):
         """ Gereksinimi çalıştırmayı deneyip exit kodunu öğren. """
-        process = sp.Popen(f'{app} --version', stdout=sp.PIPE, stderr=sp.PIPE, shell=True)
-        exit_code, stdout = process.wait(), process.stdout.read().decode()
+        param = "--help" if app == "7zr" else "--version"
+        process = sp.Popen(f'{app} {param}', stdout=sp.PIPE, stderr=sp.PIPE, shell=True)
+        exit_code = process.wait()
+        #stdout = process.stdout.read().decode()
         if exit_code == 0:
             return SUCCESS
         if exit_code in (1,127,32512):
@@ -47,6 +48,10 @@ class Gereksinimler:
                     if self.app_kontrol(gereksinim) is SUCCESS:
                         continue
                     self._eksikler.append((gereksinim,exit_code))
+                    # mpv yoksa, 7zr'de lazım
+                    if gereksinim == "mpv":
+                        if self.app_kontrol("7zr") != SUCCESS:
+                            self._eksikler = [("7zr",MISSING)] + self._eksikler
         return self._eksikler
 
     @property
@@ -58,6 +63,7 @@ class Gereksinimler:
 
     def otomatik_indir(self, url_liste=None, break_on_fail = False, callback = None):
         """ Tüm eksik dosyaları otomatik olarak indir. """
+        # FIXME: Hiçbir exception yakalamıyoruz, bağlantı veya kurulum hatası olursa program patlar.
         fail = []
         url_liste = self.url_liste if url_liste is None else url_liste
         for eksik, _ in self.eksikler:
@@ -106,8 +112,7 @@ class Gereksinimler:
             to_ = path.join(self.folder, file_name)
 
         if file_type == "7z":
-            with SevenZipFile(file_path, mode='r') as szip:
-                szip.extractall(path=tmp.name)
+            sp.run(["7zr.exe", "x", file_path, f"-o{tmp.name}", "-y"], check=True, stdout=sp.DEVNULL)
         elif file_type == "zip":
             with ZipFile(file_path, 'r') as zipf:
                 zipf.extractall(tmp.name)
