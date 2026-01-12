@@ -37,7 +37,7 @@ The maintainers have no ties with the websites this tool is accessing. This proj
 A browser is a tool, and the maliciousness of the tool is directly based on the user.
 </b>
 
-This project uses client-side content access mechanisms. Hence, the copyright infrigements or DMCA in this project's regards are to be forwarded to the associated site by the associated notifier of any such claims. As of writing this is [TürkAnime](https://turkanime.co)
+This project uses client-side content access mechanisms. Hence, the copyright infrigements or DMCA in this project's regards are to be forwarded to the associated site by the associated notifier of any such claims. As of writing this is [TürkAnime](https://turkanime.tv)
 
 
 <b> Do not harass the maintainer. </b>

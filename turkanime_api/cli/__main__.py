@@ -88,7 +88,8 @@ def menu_loop():
                         message='Bölüm seç',
                         choices=choices,
                         style=prompt_tema,
-                        default=recent
+                        default=recent,
+                        instruction="(Ok tuşlarını kullan)"
                     ).ask(kbi_msg="")
                     if not bolum:
                         break
@@ -127,7 +128,8 @@ def menu_loop():
                         message = "Bölüm seç",
                         choices=choices,
                         style=prompt_tema,
-                        initial_choice=recent
+                        initial_choice=recent,
+                        instruction="(\"boşluk\" ile seç, \"a\" ile tümünü seç, \"i\" ile tersini seç)"
                     ).ask(kbi_msg="")
                     if not bolumler:
                         break

@@ -3,8 +3,8 @@
     "name":"mpv",
     "type":"7z",
     "is_setup":false,
-    "url":"https://master.dl.sourceforge.net/project/mpv-player-windows/64bit/mpv-x86_64-20231231-git-abc2a74.7z",
-    "url_x32":"https://master.dl.sourceforge.net/project/mpv-player-windows/32bit/mpv-i686-20231231-git-abc2a74.7z"
+    "url":"https://master.dl.sourceforge.net/project/mpv-player-windows/64bit/mpv-x86_64-20251228-git-a58dd8a.7z",
+    "url_x32":"https://master.dl.sourceforge.net/project/mpv-player-windows/32bit/mpv-i686-20251228-git-a58dd8a.7z"
   },
   {
     "name":"youtube-dl",

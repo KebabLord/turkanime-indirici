@@ -23,7 +23,7 @@ from Crypto.Cipher import AES
 from curl_cffi import requests
 
 session = None
-BASE_URL = "https://turkanime.co/"
+BASE_URL = "https://turkanime.tv/"
 
 def fetch(path, headers={}):
     """Curl-cffi kullanarak HTTP/3 ve Firefox TLS Fingerprint Impersonation
@@ -149,7 +149,7 @@ def get_real_url(url_cipher: str, cache=True) -> str:
 
 """
 TürkAnime'nin kendi player'larından url çıkartan fonksiyonlar (Alucard, Bankai, Amaterasu vs.)
-örn: http://turkanime.co/sources/UW1EN2VPcExLUXpiaDRqcnV0d -> https://alucard.stream/cdn/playlist/3S3CtAJxAZ
+örn: http://turkanime.tv/sources/UW1EN2VPcExLUXpiaDRqcnV0d -> https://alucard.stream/cdn/playlist/3S3CtAJxAZ
 """
 
 PLAYERJS_URL = "/js/player.js"

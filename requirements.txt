@@ -1,8 +1,7 @@
-yt-dlp[default,curl-cffi]
+yt-dlp[default,curl-cffi]>=2025.10.22
 curl-cffi
 pycryptodome
 appdirs
-py7zr
 rich>=13.0.0
 easygui
 questionary
