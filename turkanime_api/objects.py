@@ -112,12 +112,34 @@ class Anime:
         anime_id = self.anime_id
         src = fetch(f'/ajax/bolumler&animeId={anime_id}')
         return re.findall(r'\/video\/(.*?)\\?".*?title=.*?"(.*?)\\?"',src)
-
+    
     @staticmethod
-    def get_anime_listesi():
-        """ Anime serilerinin [(slug,isim),] formatında listesi. """
-        src = fetch("/ajax/tamliste")
-        return re.findall(r'\/anime\/(.*?)".*?animeAdi">(.*?)<',src)
+    def arama_yap(query):
+        """ Kullanıcının girdiği kelimeye göre arama yapar ve (slug, isim) döndürür. """
+        src = fetch("/arama", data={"arama": query})
+        
+        sonuclar = re.findall(r'\/anime\/([^"\'\?\&]+)["\'][^>]*>(.*?)<\/a>', src)
+        
+        temiz_sonuclar = []
+        gorulen_sluglar = set() # Aynı seriyi tekrar eklememek için
+        
+        for slug, isim in sonuclar:
+            isim = re.sub(r'<.*?>', '', isim).strip() 
+            
+            # Eğer isim sadece rakam ve noktadan oluşuyorsa (puan) atla
+            if re.match(r'^\d+(\.\d+)?$', isim):
+                continue
+            
+            # Eğer isim '...' ile bitiyorsa (kısaltılmış isim) atla
+            if isim.endswith('...'):
+                continue
+                
+            if slug and isim and slug not in gorulen_sluglar:
+                if "bolum" not in slug.lower():
+                    gorulen_sluglar.add(slug)
+                    temiz_sonuclar.append((slug, isim))
+                    
+        return temiz_sonuclar
 
     @property
     def bolumler(self):
@@ -167,6 +189,20 @@ class Bolum:
         if self._title is None:
             self._title = re.findall(r'<title>(.*?)<\/title>',self.html)[0]
         return self._title
+    
+    @property
+    def mal_bolum_no(self):
+        """ MyAnimeList eşleştirmesi için temizlenmiş bölüm numarası """
+        import re
+        baslik = self.title
+        match = re.search(r'(\d+(?:[.,]\d+)?)\.\s*Bölüm', baslik, re.IGNORECASE)
+        
+        if match:
+            b_str = match.group(1)
+            if '.' in b_str or ',' in b_str:
+                return None
+            return int(b_str)
+        return 1
 
     @property
     def videos(self):
