@@ -191,20 +191,6 @@ class Bolum:
         return self._title
     
     @property
-    def mal_bolum_no(self):
-        """ MyAnimeList eşleştirmesi için temizlenmiş bölüm numarası """
-        import re
-        baslik = self.title
-        match = re.search(r'(\d+(?:[.,]\d+)?)\.\s*Bölüm', baslik, re.IGNORECASE)
-        
-        if match:
-            b_str = match.group(1)
-            if '.' in b_str or ',' in b_str:
-                return None
-            return int(b_str)
-        return 1
-
-    @property
     def videos(self):
         if not self._videos:
             self.get_videos()
