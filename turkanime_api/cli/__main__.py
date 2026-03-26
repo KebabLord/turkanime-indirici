@@ -62,22 +62,39 @@ def menu_loop():
         # Anime izle veya indir seçildiyse.
         if "Anime" in islem:
             # Seriyi seç.
+            arama_metni = qa.text(
+                'Animeyi yazın',
+                style=prompt_tema
+            ).ask()
+            
+            if not arama_metni:
+                continue
+            
             try:
-                with CliStatus("Anime listesi getiriliyor.."):
-                    animeler = Anime.get_anime_listesi()
-                seri_ismi = qa.autocomplete(
-                    'Animeyi yazın',
-                    choices = [n for s,n in animeler],
-                    style = prompt_tema
-                ).ask()
-                if seri_ismi is None:
-                    continue
-                seri_slug = [s for s,n in animeler if n==seri_ismi][0]
-                anime = Anime(seri_slug)
-            except (KeyError,IndexError):
-                rprint("[red][strong]Aradığınız anime bulunamadı.[/strong][red]")
+                with CliStatus(f"'{arama_metni}' için sitede aranıyor.."):
+                    animeler = Anime.arama_yap(arama_metni)
+            except Exception as e:
+                rprint("[red][strong]Arama yapılırken bir hata oluştu.[/strong][/red]")
                 sleep(1.5)
                 continue
+            
+            if not animeler:
+                rprint("[red][strong]Aradığınız anime bulunamadı.[/strong][/red]")
+                sleep(1.5)
+                continue
+
+            seri_ismi = qa.select(
+                'Bulunan sonuçlardan birini seçin:',
+                choices = [n for s, n in animeler],
+                style = prompt_tema,
+                instruction="(Ok tuşlarını kullan)"
+            ).ask()
+            
+            if seri_ismi is None:
+                continue
+                
+            seri_slug = [s for s,n in animeler if n==seri_ismi][0]
+            anime = Anime(seri_slug)
 
             while True:
                 dosya = Dosyalar()
