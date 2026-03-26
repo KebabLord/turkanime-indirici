@@ -2,7 +2,7 @@
 BYPASS Modülü, TürkAnime'deki şifreyle saklanan elementlerini çözmek
 ve firewall'i kandirmak için gerekli fonksiyonlari / rutinleri içerir.
 
-- Fetch(url)->str                   Firefox TLS & HTTP/3 taklitli GET Request fonksiyonu
+- Fetch(url)->str                   Firefox TLS & HTTP/3 taklitli GET/POST Request fonksiyonu
 
 - obtain_key()->bytes               TürkAnime'nin iframe şifrelerken kullandigi AES anahtari bulur
 - decrypt_cipher(key, data)->str    CryptoJS.AES.decrypt python implementasyonu
@@ -25,9 +25,9 @@ from curl_cffi import requests
 session = None
 BASE_URL = "https://turkanime.tv/"
 
-def fetch(path, headers={}):
+def fetch(path, headers={}, data=None):
     """Curl-cffi kullanarak HTTP/3 ve Firefox TLS Fingerprint Impersonation
-       eyleyerek GET request atmak IUAM aktif olmadigi sürece CF'yi bypassliyor. """
+       eyleyerek GET veya POST request atmak IUAM aktif olmadigi sürece CF'yi bypassliyor. """
     global session, BASE_URL
     # Init: Çerezleri cart curt oluştur, yeni domain geldiyse yönlendir.
     if session is None:
@@ -38,11 +38,13 @@ def fetch(path, headers={}):
         BASE_URL = BASE_URL[:-1] if BASE_URL.endswith('/') else BASE_URL
     if path is None:
         return ""
-    # Get request'i yolla
+    # Get/Post request'i yolla
     path = path if path.startswith("/") else "/" + path
     headers["X-Requested-With"] = "XMLHttpRequest"
+    
+    if data:
+        return session.post(BASE_URL + path, headers=headers, data=data).text
     return session.get(BASE_URL + path, headers=headers).text
-
 
 """
 Videoların gerçek URL'lerini decryptleyen fonksiyonlar
