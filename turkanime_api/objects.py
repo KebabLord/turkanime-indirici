@@ -7,6 +7,7 @@
 from os import remove
 from os.path import join
 from tempfile import NamedTemporaryFile
+from html import unescape
 import subprocess as sp
 import re
 import json
@@ -127,32 +128,11 @@ class Anime:
         return re.findall(r'\/anime\/(.*?)".*?animeAdi">(.*?)<',src)
 
     @staticmethod
-    def arama_yap(query):
+    def arama_yap(query): # FIXME: Çok fazla request'de rate limit'e takılıyor.
         """ Kullanıcının girdiği kelimeye göre arama yapar ve (slug, isim) döndürür. """
         src = fetch("/arama", data={"arama": query})
-
-        sonuclar = re.findall(r'\/anime\/([^"\'\?\&]+)["\'][^>]*>(.*?)<\/a>', src)
-
-        temiz_sonuclar = []
-        gorulen_sluglar = set() # Aynı seriyi tekrar eklememek için
-
-        for slug, isim in sonuclar:
-            isim = re.sub(r'<.*?>', '', isim).strip()
-
-            # Eğer isim sadece rakam ve noktadan oluşuyorsa (puan) atla
-            if re.match(r'^\d+(\.\d+)?$', isim):
-                continue
-
-            # Eğer isim '...' ile bitiyorsa (kısaltılmış isim) atla
-            if isim.endswith('...'):
-                continue
-
-            if slug and isim and slug not in gorulen_sluglar:
-                if "bolum" not in slug.lower():
-                    gorulen_sluglar.add(slug)
-                    temiz_sonuclar.append((slug, isim))
-
-        return temiz_sonuclar
+        res = re.findall(r'/anime/([^"\'>]+)["\'] [^>]*?title=["\']([^"]+?) izle', src)
+        return [ (slug, unescape(isim_)) for slug, isim_ in res ]
 
     @property
     def bolumler(self):
