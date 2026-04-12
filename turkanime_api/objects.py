@@ -10,6 +10,7 @@ from tempfile import NamedTemporaryFile
 import subprocess as sp
 import re
 import json
+import warnings
 from yt_dlp import YoutubeDL
 from yt_dlp.networking.impersonate import ImpersonateTarget
 
@@ -112,33 +113,45 @@ class Anime:
         anime_id = self.anime_id
         src = fetch(f'/ajax/bolumler&animeId={anime_id}')
         return re.findall(r'\/video\/(.*?)\\?".*?title=.*?"(.*?)\\?"',src)
-    
+
+    # Eski get_anime_listesi methodu, geriye dönük uyumluluk için bırakıldı.
+    @staticmethod
+    def get_anime_listesi():
+        """ Anime serilerinin [(slug,isim),] formatında listesi. """
+        warnings.warn(
+            ".get_anime_listesi() methodu sitedeki değişikten düzgün çalışmıyor; arama_yap() kullanın.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        src = fetch("/ajax/tamliste")
+        return re.findall(r'\/anime\/(.*?)".*?animeAdi">(.*?)<',src)
+
     @staticmethod
     def arama_yap(query):
         """ Kullanıcının girdiği kelimeye göre arama yapar ve (slug, isim) döndürür. """
         src = fetch("/arama", data={"arama": query})
-        
+
         sonuclar = re.findall(r'\/anime\/([^"\'\?\&]+)["\'][^>]*>(.*?)<\/a>', src)
-        
+
         temiz_sonuclar = []
         gorulen_sluglar = set() # Aynı seriyi tekrar eklememek için
-        
+
         for slug, isim in sonuclar:
-            isim = re.sub(r'<.*?>', '', isim).strip() 
-            
+            isim = re.sub(r'<.*?>', '', isim).strip()
+
             # Eğer isim sadece rakam ve noktadan oluşuyorsa (puan) atla
             if re.match(r'^\d+(\.\d+)?$', isim):
                 continue
-            
+
             # Eğer isim '...' ile bitiyorsa (kısaltılmış isim) atla
             if isim.endswith('...'):
                 continue
-                
+
             if slug and isim and slug not in gorulen_sluglar:
                 if "bolum" not in slug.lower():
                     gorulen_sluglar.add(slug)
                     temiz_sonuclar.append((slug, isim))
-                    
+
         return temiz_sonuclar
 
     @property
@@ -189,7 +202,7 @@ class Bolum:
         if self._title is None:
             self._title = re.findall(r'<title>(.*?)<\/title>',self.html)[0]
         return self._title
-    
+
     @property
     def videos(self):
         if not self._videos:

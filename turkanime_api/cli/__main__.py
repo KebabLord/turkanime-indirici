@@ -66,18 +66,37 @@ def menu_loop():
                 'Animeyi yazın',
                 style=prompt_tema
             ).ask()
-            
+
             if not arama_metni:
                 continue
-            
+
+            # Anime listesi.json üstünden autocomplete seçim yaptıran eski kod.
+            """
+            try:
+                with CliStatus("Anime listesi getiriliyor.."):
+                    animeler = Anime.get_anime_listesi()
+                seri_ismi = qa.autocomplete(
+                    'Animeyi yazın',
+                    choices = [n for s,n in animeler],
+                    style = prompt_tema
+                ).ask()
+                if seri_ismi is None:
+                    continue
+                seri_slug = [s for s,n in animeler if n==seri_ismi][0]
+                anime = Anime(seri_slug)
+            except (KeyError,IndexError):
+                rprint("[red][strong]Aradığınız anime bulunamadı.[/strong][red]")
+            """
+
+            # Manuel anime araması yap.
             try:
                 with CliStatus(f"'{arama_metni}' için sitede aranıyor.."):
                     animeler = Anime.arama_yap(arama_metni)
-            except Exception as e:
+            except Exception as e: #FIXME: Fazla genel exception.
                 rprint("[red][strong]Arama yapılırken bir hata oluştu.[/strong][/red]")
                 sleep(1.5)
                 continue
-            
+
             if not animeler:
                 rprint("[red][strong]Aradığınız anime bulunamadı.[/strong][/red]")
                 sleep(1.5)
@@ -89,10 +108,10 @@ def menu_loop():
                 style = prompt_tema,
                 instruction="(Ok tuşlarını kullan)"
             ).ask()
-            
+
             if seri_ismi is None:
                 continue
-                
+
             seri_slug = [s for s,n in animeler if n==seri_ismi][0]
             anime = Anime(seri_slug)
 
