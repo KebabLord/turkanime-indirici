@@ -34,17 +34,20 @@ def fetch(path, headers={}, data=None):
         session = requests.Session(impersonate="firefox", allow_redirects=True)
         res = session.get(BASE_URL)
         assert res.status_code == 200, ConnectionError
+        session.headers["X-Requested-With"] = "XMLHttpRequest"
         BASE_URL = res.url
         BASE_URL = BASE_URL[:-1] if BASE_URL.endswith('/') else BASE_URL
     if path is None:
         return ""
-    # Get/Post request'i yolla
-    path = path if path.startswith("/") else "/" + path
-    headers["X-Requested-With"] = "XMLHttpRequest"
     
-    if data:
-        return session.post(BASE_URL + path, headers=headers, data=data).text
-    return session.get(BASE_URL + path, headers=headers).text
+    headers = {**session.headers, **headers}
+    if not path.startswith("http"):
+        path = path if path.startswith("/") else "/" + path
+        path = BASE_URL + path
+    if data: # POST request
+        return session.post(path, headers=headers, data=data).text
+    # GET request
+    return session.get(path, headers=headers).text
 
 """
 Videoların gerçek URL'lerini decryptleyen fonksiyonlar
@@ -209,7 +212,7 @@ def obtain_csrf():
     return next((i for i in decrypted_list if re.search("^[a-zA-Z/\+]+$",i)), None)
 
 
-def unmask_real_url(url_mask):
+def unmask_real_url(url_mask, video=None):
     """ TürkAnime'nin kendi playerlarının url maskesini çözer. """
     global PLAYERJS_CSRF
     assert "turkanime" in url_mask
@@ -222,21 +225,37 @@ def unmask_real_url(url_mask):
             print("ERROR: CSRF bulunamadı.")
             return url_mask
 
+    # PHPSESSID edin
+    if "PHPSESSID" not in session.cookies:
+        fetch(url_mask)
+
     MASK = url_mask.split("/player/")[1]
-    headers = {"Csrf-Token": PLAYERJS_CSRF, "cf_clearance": "dull"}
-    res = fetch(f"/sources/{MASK}/false",headers)
-
+    headers = {"Csrf-Token": PLAYERJS_CSRF}
+    src = fetch(f"/sources/{MASK}/false",headers)
+    res, url = None, None
     try:
-        url = json.loads(res)["response"]["sources"][-1]["file"]
-        if url.startswith("//"):
-            url = "https:" + url
-    except:
+        sources = json.loads(src)["response"]["sources"]
+    except (KeyError, json.JSONDecodeError):
         return url_mask
-    return url
+
+    for target in ["1080p","720p","480p","360p"]:
+        for s in sources:
+            if s.get("label") == target:
+                url = s["file"]
+                res = int(target.replace("p", ""))
+                break
+        if url:
+            break
+    if not url:
+        url = sources[-1]["file"]
+
+    if video and res:
+        video.resolution = res
+    return "https:" + url if url.startswith("//") else url
 
 
-def get_alucard_m3u8(url):
-    """ MPV'nin video'yu oynatabilmesi için en yüksek çözünürlüklü alucard m3u8 stream'i indir"""
+def get_m3u8_stream(url):
+    """ MPV'nin video'yu oynatabilmesi için en yüksek çözünürlüklü m3u8 stream'i indir"""
     res = session.get(url)
     m3u8_url = re.findall("https://.*",res.text)[-1]
     res = session.get(m3u8_url)

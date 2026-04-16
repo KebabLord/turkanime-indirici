@@ -15,7 +15,7 @@ import warnings
 from yt_dlp import YoutubeDL
 from yt_dlp.networking.impersonate import ImpersonateTarget
 
-from .bypass import get_real_url, unmask_real_url, fetch, get_alucard_m3u8
+from .bypass import get_real_url, unmask_real_url, fetch, get_m3u8_stream
 
 # Çalıştığı bilinen playerlar ve öncelikleri
 SUPPORTED = [
@@ -27,8 +27,8 @@ SUPPORTED = [
     "HDVID",
     "ODNOKLASSNIKI",
     "GDRIVE",
-    "MP4UPLOAD",
     "DAILYMOTION",
+    "MP4UPLOAD",
     "SIBNET",
     "VK",
     "VIDMOLY",
@@ -324,10 +324,11 @@ class Video:
                 cipher = self.path
             plaintext = get_real_url(cipher)
             # "\\/\\/fembed.com\\/v\\/0d1e8ilg"  -->  "https://fembed.com/v/0d1e8ilg"
-            self._url = "https:"+json.loads(plaintext)
+            self._url = json.loads(plaintext)
+            self._url = "https:"+ self._url if self._url.startswith("//") else self._url
             self._url = self._url.replace("uqload.io","uqload.com") # .com mirror'unu kullan
             if "turkanime" in self._url: # Alucard, Amaterasu, Bankai, HDVID
-                self._url = unmask_real_url(self._url)
+                self._url = unmask_real_url(self._url, video=self)
                 self.is_working = False if "turkanime" in self._url else True
         return self._url
 
@@ -366,6 +367,10 @@ class Video:
                     res = {"sd":480, "hd":720, "fhd": 1080, "hq":2160}.get(fid)
             self._resolution = res or 0
         return self._resolution
+
+    @resolution.setter
+    def resolution(self, value):
+        self._resolution = value
 
     @property
     def is_working(self):
@@ -413,9 +418,9 @@ class Video:
             "ytdl://" + self.bolum.slug # Kaldığın yerden devam etmenin çalışması için.
         ]
 
-        if self.player == "ALUCARD(BETA)":
+        if self.url.endswith(".m3u8"):
             cmd += ["--demuxer-lavf-o=protocol_whitelist=[file,tcp,tls,https],http_keep_alive=0,http_persistent=0"]
-            cmd += ["--cache=yes", get_alucard_m3u8(self.url) ]
+            cmd += ["--cache=yes", get_m3u8_stream(self.url) ]
             del cmd[4]
 
         if dakika_hatirla:
