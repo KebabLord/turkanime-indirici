@@ -116,6 +116,7 @@ def indirme_task_cli(bolum,table,dosya):
         callback=vid_cli.callback)
     if not best_video:
         # TODO: hata mesajı gösterilmeli
+        print("  (!) Hiçbir çalışan video bulunamadı.")
         return
     down_dir = dosya.ayarlar["indirilenler"]
     if best_video.player != "ALUCARD(BETA)" and dosya.ayarlar.get("aria2c kullan"):

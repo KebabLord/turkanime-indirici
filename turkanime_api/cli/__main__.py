@@ -148,6 +148,7 @@ def menu_loop():
                                 by_fansub=sub,
                                 callback=vid_cli.callback)
                         if not best_video:
+                            print("  (!) Hiçbir çalışan video bulunamadı.")
                             break
                         print("  Video başlatılacak..")
                         proc = best_video.oynat(dakika_hatirla=dosya.ayarlar["dakika hatirla"])

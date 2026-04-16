@@ -186,7 +186,11 @@ class Bolum:
     @property
     def videos(self):
         if not self._videos:
-            self.get_videos()
+            try:
+                self.get_videos()
+            except IndexError:
+                
+                self._videos = []
         return self._videos
 
     @property
