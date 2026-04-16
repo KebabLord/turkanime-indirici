@@ -67,7 +67,7 @@ class Anime:
     """
     def __init__(self,slug,parse_fansubs=True):
         self.slug = slug
-        self.title = None
+        self._title = None
         self.anime_id = 0
         self.info = {
             "Kategori":None,
@@ -91,8 +91,9 @@ class Anime:
         src = fetch(f'/anime/{self.slug}')
         twitmeta = re.findall(r'twitter.image" content="(.*?serilerb/(.*?)\.jpg)"',src)[0]
         self.info["Resim"], self.anime_id = twitmeta
-        if not self.title:
-            self.title = re.findall(r'<title>(.*?)<\/title>',src).pop()
+        if not self._title:
+            self._title = re.findall(r'<title>(.*?)<\/title>',src).pop()
+            self._title = self._title.split(" izle")[0].strip()
 
         # Anime sayfasındaki bilgi tablosunu parse'la
         info_table=re.findall(r'<div id="animedetay">(<table.*?</table>)',src)[0]
@@ -131,8 +132,28 @@ class Anime:
     def arama_yap(query): # FIXME: Çok fazla request'de rate limit'e takılıyor.
         """ Kullanıcının girdiği kelimeye göre arama yapar ve (slug, isim) döndürür. """
         src = fetch("/arama", data={"arama": query})
+        with open("/tmp/debug.html","w",encoding="utf-8") as fp:
+            fp.write(src)
         res = re.findall(r'/anime/([^"\'>]+)["\'] [^>]*?title=["\']([^"]+?) izle', src)
-        return [ (slug, unescape(isim_)) for slug, isim_ in res ]
+        results = [ (slug, unescape(isim_)) for slug, isim_ in res ]
+        if not results and re.search("window.location ?= ?",src):
+            # Tek bir sonuç gelmiş ve direkt anime sayfasına yönlendirilmişse
+            slug = re.findall('window.location ?= ?"anime/(.*?)"',src)
+            if not slug:
+                return []
+            ani = Anime(slug[0])
+            return [(ani.slug, ani.title)]
+        return results
+
+    @property
+    def title(self):
+        if self._title is None:
+            self.fetch_info()
+        return self._title
+
+    @title.setter
+    def title(self, value):
+        self._title = value
 
     @property
     def bolumler(self):
@@ -189,7 +210,7 @@ class Bolum:
             try:
                 self.get_videos()
             except IndexError:
-                
+
                 self._videos = []
         return self._videos
 
