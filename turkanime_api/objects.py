@@ -342,14 +342,21 @@ class Video:
     @property
     def url(self):
         if self._url is None:
+            cipher = None
             if "/" in self.path:
                 src = fetch(self.path)
-                cipher = re.findall(r"\/embed\/#\/url\/(.*?)\?status",src)[0]
+                cipher = re.findall(r"\/embed\/#\/url\/(.*?)\?status",src)
+                cipher = cipher[0] if cipher else None
+                if not cipher: # Bazı videolar eskisi gibi şifreli gelmiyor
+                    tmp = re.findall('<iframe src="(.*?)"',src)
+                    self._url = tmp[0] if tmp else None
+                    self.is_working = True if self._url else False
             else: # Zaten seçili video ise
                 cipher = self.path
-            plaintext = get_real_url(cipher)
-            # "\\/\\/fembed.com\\/v\\/0d1e8ilg"  -->  "https://fembed.com/v/0d1e8ilg"
-            self._url = json.loads(plaintext)
+            if cipher:
+                plaintext = get_real_url(cipher)
+                # "\\/\\/fembed.com\\/v\\/0d1e8ilg"  -->  "https://fembed.com/v/0d1e8ilg"
+                self._url = json.loads(plaintext)
             self._url = "https:"+ self._url if self._url.startswith("//") else self._url
             self._url = self._url.replace("uqload.io","uqload.com") # .com mirror'unu kullan
             if "turkanime" in self._url: # Alucard, Amaterasu, Bankai, HDVID
