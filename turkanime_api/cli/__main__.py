@@ -1,5 +1,5 @@
 """ TürkAnimu Downloader """
-from os import environ,name
+from os import environ,name,path
 from time import sleep
 import sys
 import atexit
@@ -9,6 +9,8 @@ from rich.table import Table
 from rich.live import Live
 import questionary as qa
 from easygui import diropenbox
+import traceback
+from datetime import datetime
 
 from ..bypass import fetch
 from ..objects import Anime, Bolum
@@ -20,6 +22,13 @@ from .version import guncel_surum, update_type
 # Uygulama dizinini sistem PATH'ına ekle.
 SEP = ";" if name=="nt" else ":"
 environ["PATH"] +=  SEP + Dosyalar().ta_path + SEP
+
+
+def log_error(e):
+    """ Hata logunu error.log dosyasına yazar. """
+    error_path = path.join(Dosyalar().ta_path, "error.log")
+    with open(error_path, "a", encoding="utf-8") as f:
+        f.write(f"{datetime.now()}: {str(e)}\n{traceback.format_exc()}\n\n")
 
 
 def eps_to_choices(liste,mark_type):
@@ -93,6 +102,7 @@ def menu_loop():
                 with CliStatus(f"'{arama_metni}' için sitede aranıyor.."):
                     animeler = Anime.arama_yap(arama_metni)
             except Exception as e: #FIXME: Fazla genel exception.
+                log_error(e)
                 rprint("[red][strong]Arama yapılırken bir hata oluştu.[/strong][/red]")
                 sleep(1.5)
                 continue
@@ -247,7 +257,8 @@ def main():
             rprint(f"[yellow]{tip} Güncellemesi mevcut!! v{surum}[/yellow]")
             rprint("[yellow]Yeni özellikler için uygulamayı güncelleyebilirsiniz! [/yellow]")
             sleep(5)
-    except:
+    except Exception as e:
+        log_error(e)
         rprint("[red][strong]Güncelleme kontrol edilemedi.[/strong][red]")
         sleep(3)
 
@@ -265,7 +276,8 @@ def main():
     try:
         with CliStatus("Türkanime'ye bağlanılıyor.."):
             res = fetch(None) # Create Session
-    except (ConnectionError, AssertionError):
+    except (ConnectionError, AssertionError) as e:
+        log_error(e)
         rprint("[red][strong]TürkAnime'ye ulaşılamıyor.[/strong][red]")
         sys.exit(1)
 
@@ -277,4 +289,9 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+    except Exception as e:
+        log_error(e)
+        rprint("[red][strong]Beklenmeyen bir hata oluştu. Detaylar error.log dosyasında.[/strong][red]")
+        sys.exit(1)
