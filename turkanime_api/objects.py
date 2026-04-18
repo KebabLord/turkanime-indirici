@@ -132,8 +132,6 @@ class Anime:
     def arama_yap(query): # FIXME: Çok fazla request'de rate limit'e takılıyor.
         """ Kullanıcının girdiği kelimeye göre arama yapar ve (slug, isim) döndürür. """
         src = fetch("/arama", data={"arama": query})
-        with open("/tmp/debug.html","w",encoding="utf-8") as fp:
-            fp.write(src)
         res = re.findall(r'/anime/([^"\'>]+)["\'] [^>]*?title=["\']([^"]+?) izle', src)
         results = [ (slug, unescape(isim_)) for slug, isim_ in res ]
         if not results and re.search("window.location ?= ?",src):
