@@ -34,8 +34,15 @@ Vidmoly   Dailymotion   Yandisk   Uqload   Drive
 
 
 ## Kurulum
-Önceden derlenmiş EXE sürümü [indirme sayfasından](https://github.com/KebabLord/turkanime-indirici/releases/latest) indirip kullanmaya başlayabilirsiniz.
-Veya `pip` kullanarak `py -m pip install turkanime-cli` kurup, ardından `turkanime` komutunu çalıştırarak da script'i kullanabilirsiniz.
+- İsterseniz Önceden derlenmiş EXE sürümü [indirme sayfasından](https://github.com/KebabLord/turkanime-indirici/releases/latest) indirip kullanmaya başlayabilirsiniz.
+- Veya `pip` kullanarak `py -m pip install turkanime-cli` kurup, ardından `turkanime` komutunu çalıştırarak da script'i kullanabilirsiniz.
+- Veya kaynak kodundan çalıştıracaksanız:
+```bash
+git clone https://github.com/Kebablord/turkanime-indirici
+cd turkanime-indirici
+pip install -r requirements.txt
+py -m turkanime_api.cli 
+```
 
 Kuruluma dair daha fazlası için [wiki sayfasını](https://github.com/KebabLord/turkanime-indirici/wiki/Herhangi-bir-uygulamay%C4%B1-system-path'%C4%B1na-ekleme) ziyaret edebilirsiniz.
 
