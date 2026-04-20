@@ -20,15 +20,14 @@ from .bypass import get_real_url, unmask_real_url, fetch, get_m3u8_stream
 # Çalıştığı bilinen playerlar ve öncelikleri
 SUPPORTED = [
     "YADISK",
-    "MAIL",
     "ALUCARD(BETA)",
+    "GDRIVE",
+    "MAIL",
     "PIXELDRAIN",
     "AMATERASU(BETA)",
     "HDVID",
     "ODNOKLASSNIKI",
-    "GDRIVE",
     "DAILYMOTION",
-    "MP4UPLOAD",
     "SIBNET",
     "VK",
     "VIDMOLY",
@@ -355,17 +354,22 @@ class Video:
                 plaintext = get_real_url(cipher)
                 # "\\/\\/fembed.com\\/v\\/0d1e8ilg"  -->  "https://fembed.com/v/0d1e8ilg"
                 self._url = json.loads(plaintext)
+            if self._url is None:
+                self.is_working = False
+                return None
             self._url = "https:"+ self._url if self._url.startswith("//") else self._url
             self._url = self._url.replace("uqload.io","uqload.com") # .com mirror'unu kullan
             if "turkanime" in self._url: # Alucard, Amaterasu, Bankai, HDVID
                 self._url = unmask_real_url(self._url, video=self)
-                self.is_working = False if "turkanime" in self._url else True
         return self._url
 
     @property
     def info(self):
         if self._info is None:
             assert self.is_supported, "Bu player desteklenmiyor."
+            if self.url is None:
+                self._info = {}
+                return self._info
             with YoutubeDL(self.ydl_opts) as ydl:
                 raw_info = ydl.extract_info(self.url, download=False)
                 info = ydl.sanitize_info(raw_info)
@@ -408,7 +412,8 @@ class Video:
         assert self.is_supported, "Bu player desteklenmiyor."
         if self._is_working is None:
             try:
-                if "turkanime" in self.url:
+                url = self.url
+                if url is None or "turkanime" in url:
                     raise LookupError
                 self._is_working = self.info not in (None, {})
             except:
