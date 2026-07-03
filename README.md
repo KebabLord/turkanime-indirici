@@ -44,7 +44,9 @@ pip install -r requirements.txt
 py -m turkanime_api.cli 
 ```
 
-Kuruluma dair daha fazlası için [wiki sayfasını](https://github.com/KebabLord/turkanime-indirici/wiki/Herhangi-bir-uygulamay%C4%B1-system-path'%C4%B1na-ekleme) ziyaret edebilirsiniz.
+**ÖNEMLİ NOT:** MacOS ve Linux kullanıcılarının `python3-tk` kütüphanesini kurmaları gerekebilir. MacOS için: `brew install python3-tk`, örneğin debian tabanlı bir linux için: `sudo apt install python3-tk` komutuyla bu gereksinim kolaylıkla kurulabilir. 
+
+Kuruluma dair daha fazlası için [wiki sayfasını](https://github.com/KebabLord/turkanime-indirici/wiki/Gereksinimleri-Manuel-Kurmak) ziyaret edebilirsiniz.
 
 <br>
 

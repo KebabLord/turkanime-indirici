@@ -8,9 +8,21 @@ from rich import print as rprint
 from rich.table import Table
 from rich.live import Live
 import questionary as qa
-from easygui import diropenbox
 import traceback
+import platform
 from datetime import datetime
+
+try:
+    from easygui import diropenbox
+except ImportError:
+    os_name = platform.system()
+    rprint("[red][strong]python3-tk paketi sisteminizde eksik![/strong][/red]")
+    if os_name == "Darwin":
+        print("Kurmak için: brew install python-tk")
+    else:
+        print("Debian için örnek kurulum: sudo apt install python-tk")
+    input("(Programı Kapatmak İçin Enter'a Basın)")
+    exit(1)
 
 from ..bypass import fetch
 from ..objects import Anime, Bolum
