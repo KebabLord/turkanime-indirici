@@ -230,7 +230,7 @@ class Bolum:
     def get_videos(self):
         self._videos = []
         # Yalnızca tek bir fansub varsa
-        if not re.search(".*birden fazla grup",self.html):
+        if "birden fazla grup" not in self.html:
             fansub = re.findall(r"</span> ([^\\<>]*)</button>.*?iframe",self.html)[0]
             vids = re.findall(r"/embed/#/url/(.*?)\?status=0\".*?</span> ([^ ]*?) ?</button>", self.html)
             vids += re.findall(r"(ajax\/videosec&b=[A-Za-z0-9]+&v=.*?)'.*?<\/span> ?(.*?)<\/button",self.html)
