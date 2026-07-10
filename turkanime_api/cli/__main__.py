@@ -20,7 +20,7 @@ except ImportError:
     if os_name == "Darwin":
         print("Kurmak için: brew install python-tk")
     else:
-        print("Debian için örnek kurulum: sudo apt install python-tk")
+        print("Debian için örnek kurulum: sudo apt install python3-tk")
     input("(Programı Kapatmak İçin Enter'a Basın)")
     exit(1)
 
