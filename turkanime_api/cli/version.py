@@ -8,7 +8,7 @@ Script çok farklı şekillerde servis edildiğinden
 build çeşiti ve versiyon numarası bu script'e embedlandı.
 """
 import re
-import requests
+from curl_cffi import requests
 __author__ = "https://github.com/Kebablord/turkanime-indirici"
 __version__ = "9.2.3"
 __build__ = "source" # source,exe,pip
