@@ -6,7 +6,7 @@ import re
 import subprocess as sp
 import json
 from zipfile import ZipFile
-import requests
+from curl_cffi import requests
 import questionary as qa
 
 from .dosyalar import Dosyalar
