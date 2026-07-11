@@ -2,7 +2,8 @@ from os import name,system,path,listdir
 from tempfile import NamedTemporaryFile
 import re
 from time import sleep
-from threading import Thread
+from threading import Thread,Lock
+from collections import OrderedDict
 from prompt_toolkit import styles
 
 from rich.panel import Panel
@@ -76,6 +77,34 @@ class DownloadCLI():
             task_id = self.multi_tasks[hook.get("file")]
         self.progress.update(task_id,completed=hook.get("current"))
 
+class DownloadBoard():
+    def __init__(self):
+        self.live = None
+        self.active = OrderedDict()
+        self.lock = Lock()
+
+    def render(self):
+        return Group(*self.active.values())
+
+    def refresh(self):
+        if self.live:
+            self.live.update(self.render())
+
+    def add(self, slug, renderable):
+        with self.lock:
+            self.active[slug] = Panel.fit(renderable,title=slug,border_style="green")
+            self.refresh()
+
+    def finish(self, slug, status="indirildi"):
+        with self.lock:
+            self.active.pop(slug,None)
+            self.refresh()
+            if self.live:
+                if status == "indirildi":
+                    self.live.console.print(f"[green]+[/green] [white]{slug}[/white] [green]{status}[/green]")
+                else:
+                    self.live.console.print(f"[red]![/red] [white]{slug}[/white] [red]{status}[/red]")
+
 class VidSearchCLI():
     def __init__(self):
         columns = (
@@ -101,31 +130,33 @@ class VidSearchCLI():
         self.progress.update(task_id, completed=completed, description=msg)
 
 
-def indirme_task_cli(bolum,table,dosya):
+def indirme_task_cli(bolum,board,dosya):
     """ Progress barı dinamik olarak güncellerken indirme yapar. """
     vid_cli = VidSearchCLI()
     dl_cli = DownloadCLI()
-    table.add_row(Panel.fit(
-            Group(vid_cli.progress, dl_cli.progress),
-            title=bolum.slug,
-            border_style="green"))
-    table.add_row("")
-    # En iyi çalışan videoyu bul.
-    best_video = bolum.best_video(
-        by_res=dosya.ayarlar["max resolution"],
-        callback=vid_cli.callback)
-    if not best_video:
-        # TODO: hata mesajı gösterilmeli
-        print("  (!) Hiçbir çalışan video bulunamadı.")
-        return
-    down_dir = dosya.ayarlar["indirilenler"]
-    if best_video.player != "ALUCARD(BETA)" and dosya.ayarlar.get("aria2c kullan"):
-        # Aria2C Hızlandırıcı İle Videoyu indir
-        indir_aria2c(best_video, callback=dl_cli.ytdl_callback, output=down_dir)
-    else:
-        # Yt-dlp ile Videoyu indir
-        best_video.indir(callback=dl_cli.ytdl_callback, output=down_dir)
-    dosya.set_gecmis(bolum.anime.slug, bolum.slug, "indirildi")
+    board.add(bolum.slug,Group(vid_cli.progress,dl_cli.progress))
+    try:
+        # En iyi çalışan videoyu bul.
+        best_video = bolum.best_video(
+            by_res=dosya.ayarlar["max resolution"],
+            callback=vid_cli.callback)
+        if not best_video:
+            # TODO: hata mesajı gösterilmeli
+            print("  (!) Hiçbir çalışan video bulunamadı.")
+            board.finish(bolum.slug,"indirilemedi")
+            return
+        down_dir = dosya.ayarlar["indirilenler"]
+        if best_video.player != "ALUCARD(BETA)" and dosya.ayarlar.get("aria2c kullan"):
+            # Aria2C Hızlandırıcı İle Videoyu indir
+            indir_aria2c(best_video, callback=dl_cli.ytdl_callback, output=down_dir)
+        else:
+            # Yt-dlp ile Videoyu indir
+            best_video.indir(callback=dl_cli.ytdl_callback, output=down_dir)
+        dosya.set_gecmis(bolum.anime.slug, bolum.slug, "indirildi")
+        board.finish(bolum.slug)
+    except Exception:
+        board.finish(bolum.slug,"indirilemedi")
+        raise
 
 
 def indir_aria2c(video, callback, output):
