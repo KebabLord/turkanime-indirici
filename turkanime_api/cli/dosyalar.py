@@ -33,7 +33,7 @@ class Dosyalar:
         "dakika hatirla" : True,
         "aria2c kullan" : False
     }
-    default_gecmis = {"izlendi":{},"indirildi":{}}
+    default_gecmis = {"izlendi":{},"indirildi":{},"last":None}
 
     def __init__(self):
         self.ta_path = path.join(path.expanduser("~"), "TurkAnimu" )
@@ -94,6 +94,11 @@ class Dosyalar:
         islem_gecmisi[seri].append(bolum)
         self._write_json(self.gecmis_path,gecmis)
 
+    def set_last_anime(self, slug, title):
+        gecmis = self.gecmis
+        gecmis["last"] = {"slug":slug,"title":title}
+        self._write_json(self.gecmis_path,gecmis)
+
     def set_ayar(self, ayar = None, deger = None, ayar_list = None):
         assert (ayar != None and deger != None) or ayar_list != None
         ayarlar = self.ayarlar
@@ -113,5 +118,10 @@ class Dosyalar:
         gecmis = self._read_json(self.gecmis_path,self.default_gecmis)
         for islem in self.default_gecmis:
             if not islem in gecmis:
-                gecmis[islem] = {}
+                gecmis[islem] = deepcopy(self.default_gecmis[islem])
         return gecmis
+
+    @property
+    def last_anime(self):
+        last = self.gecmis.get("last")
+        return last if isinstance(last,dict) else None
