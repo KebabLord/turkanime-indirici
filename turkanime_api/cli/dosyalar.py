@@ -4,10 +4,11 @@ DosyaManager()
 DownloadGereksinimler()
     - Gereksinimlerin indirilmesini ve paketten çıkarılmasını sağlar.
 """
-from os import path,mkdir,getcwd
+from os import path,mkdir,getcwd,replace,fsync
 from tempfile import NamedTemporaryFile
-from shutil import move
+from copy import deepcopy
 import json
+from json import JSONDecodeError
 
 # yt-dlp, mpv gibi gereksinimlerin indirme linklerinin bulunduğu dosya.
 DL_URL="https://raw.githubusercontent.com/KebabLord/turkanime-indirici/master/gereksinimler.json"
@@ -22,6 +23,17 @@ class Dosyalar:
         Dosyalar.gecmis_path: İzlenme ve indirme log'unun dizini
     """
     # Defaults to C:/User/xxx/TurkAnimu veya ~/TurkAnimu dizini.
+    default_ayarlar = {
+        "manuel fansub" : False,
+        "izlerken kaydet" : False,
+        "indirilenler" : ".",
+        "izlendi ikonu" : True,
+        "paralel indirme sayisi" : 3,
+        "max resolution" : True,
+        "dakika hatirla" : True,
+        "aria2c kullan" : False
+    }
+    default_gecmis = {"izlendi":{},"indirildi":{}}
 
     def __init__(self):
         self.ta_path = path.join(path.expanduser("~"), "TurkAnimu" )
@@ -29,47 +41,58 @@ class Dosyalar:
             self.ta_path = getcwd()
         self.ayar_path = path.join(self.ta_path, "ayarlar.json")
         self.gecmis_path = path.join(self.ta_path, "gecmis.json")
-        # Ayar isimleri ascii karakterlerden oluşmalı.
-        default_ayarlar = {
-            "manuel fansub" : False,
-            "izlerken kaydet" : False,
-            "indirilenler" : ".",
-            "izlendi ikonu" : True,
-            "paralel indirme sayisi" : 3,
-            "max resolution" : True,
-            "dakika hatirla" : True,
-            "aria2c kullan" : False
-        }
         # Gerekli dosyalar eğer daha önce yaratılmadıysa yarat.
         if not path.isdir(".git") and not path.isdir(self.ta_path):
             mkdir(self.ta_path)
         # Yeni ayarlar varsa sistemdekine ekle.
         if path.isfile(self.ayar_path):
             ayarlar = self.ayarlar
-            for ayar,value in default_ayarlar.items():
+            for ayar,value in self.default_ayarlar.items():
                 if not ayar in ayarlar:
                     self.set_ayar(ayar,value)
         else:
-            with open(self.ayar_path,"w",encoding="utf-8") as fp:
-                fp.write('{}')
-            self.set_ayar(ayar_list=default_ayarlar)
+            self._write_json(self.ayar_path,self.default_ayarlar)
         if not path.isfile(self.gecmis_path):
-            with open(self.gecmis_path,"w",encoding="utf-8") as fp:
-                fp.write('{"izlendi":{},"indirildi":{}}\n')
+            self._write_json(self.gecmis_path,self.default_gecmis)
+
+    def _backup_bozuk(self, file_path):
+        backup_path = file_path + ".bozuk"
+        i = 1
+        while path.exists(backup_path):
+            backup_path = f"{file_path}.bozuk.{i}"
+            i += 1
+        replace(file_path,backup_path)
+
+    def _read_json(self, file_path, default): # JSON bozuksa yedekle, default'u restore et.
+        try:
+            with open(file_path,encoding="utf-8") as fp:
+                return json.load(fp)
+        except (JSONDecodeError, OSError):
+            if path.exists(file_path):
+                self._backup_bozuk(file_path)
+            data = deepcopy(default)
+            self._write_json(file_path,data)
+            return data
+
+    def _write_json(self, file_path, data): # JSON'u tmp dosyaya yazıp orjinali ile replace.
+        folder = path.dirname(file_path)
+        with NamedTemporaryFile("w",encoding="utf-8",delete=False,dir=folder) as fp:
+            tmp_path = fp.name
+            json.dump(data,fp,indent=2)
+            fp.write("\n")
+            fp.flush()
+            fsync(fp.fileno())
+        replace(tmp_path,file_path)
 
     def set_gecmis(self, seri,bolum,islem):
-        with open(self.gecmis_path,"r",encoding="utf-8") as fp:
-            gecmis = json.load(fp)
-        if not seri in gecmis[islem]:
-            gecmis[islem][seri] = []
-        if bolum in gecmis[islem][seri]:
+        gecmis = self.gecmis
+        islem_gecmisi = gecmis.setdefault(islem,{})
+        if not seri in islem_gecmisi:
+            islem_gecmisi[seri] = []
+        if bolum in islem_gecmisi[seri]:
             return
-        gecmis[islem][seri].append(bolum)
-        # Geçmiş dosyasını /tmp'de güncelle, sonra taşı.
-        with NamedTemporaryFile("w",encoding="utf-8",delete=False) as tmp:
-            with tmp.file as fp:
-                json.dump(gecmis,fp,indent=2)
-        move(tmp.name,self.gecmis_path)
+        islem_gecmisi[seri].append(bolum)
+        self._write_json(self.gecmis_path,gecmis)
 
     def set_ayar(self, ayar = None, deger = None, ayar_list = None):
         assert (ayar != None and deger != None) or ayar_list != None
@@ -79,15 +102,16 @@ class Dosyalar:
                 ayarlar[n] = v
         else:
             ayarlar[ayar] = deger
-        with open(self.ayar_path,"w",encoding="utf-8") as fp:
-            json.dump(ayarlar,fp,indent=2)
+        self._write_json(self.ayar_path,ayarlar)
 
     @property
     def ayarlar(self):
-        with open(self.ayar_path,encoding="utf-8") as fp:
-            return json.load(fp)
+        return self._read_json(self.ayar_path,self.default_ayarlar)
 
     @property
     def gecmis(self):
-        with open(self.gecmis_path,encoding="utf-8") as fp:
-            return json.load(fp)
+        gecmis = self._read_json(self.gecmis_path,self.default_gecmis)
+        for islem in self.default_gecmis:
+            if not islem in gecmis:
+                gecmis[islem] = {}
+        return gecmis
