@@ -276,28 +276,30 @@ class Bolum:
             "object": self
         }
 
-        # Kaliteli player'a göre sırala
-        vids = sorted(vids, key = lambda x: SUPPORTED.index(x.player))
-        # Seçilmiş fansub'un videolarını öncelikli tut
-        if by_fansub:
-            vids = sorted(vids, key = lambda x: x.fansub != by_fansub)
+        # Kaliteli player'a ve seçilmiş fansub'a göre sırala.
+        vids = sorted(vids, key = lambda x: (
+            by_fansub and x.fansub != by_fansub,
+            SUPPORTED.index(x.player)
+        ))
 
-        for i,vid in enumerate(vids.copy(),start=1):
+        working_vids = []
+        for i,vid in enumerate(vids,start=1):
             hook_dict = {**hook_dict, "current": i, "player": vid.player}
             callback({**hook_dict, "status": "üstbilgi çekiliyor"})
             if not vid.is_working:
                 callback({**hook_dict, "status": "çalışmıyor"})
-                vids.remove(vid)
                 continue
+            working_vids.append(vid)
             # Çözünürlük önemli değilse ya da max çözünürlük bulunduysa videoyu döndür.
-            if not by_res or (vid.resolution or default_res) >= 1080:
+            resolution = vid.resolution or default_res
+            if not by_res or resolution >= 1080:
                 callback({**hook_dict, "current":len(vids), "status": "çalışıyor"})
                 return vid
-        if vids == []:
+        if working_vids == []:
             callback({**hook_dict, "player": None, "status": "hiçbiri çalışmıyor"})
             return None
         # 1080+ bulunamadıysa, en yüksek çözünürlüğü seç.
-        vid = max(vids, key = lambda x:x.resolution or default_res)
+        vid = max(working_vids, key = lambda x:x.resolution or default_res)
         callback({**hook_dict, "player": vid.player , "status": "çalışıyor"})
         return vid
 
