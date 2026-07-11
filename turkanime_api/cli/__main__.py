@@ -5,7 +5,6 @@ import sys
 import atexit
 import concurrent.futures as cf
 from rich import print as rprint
-from rich.table import Table
 from rich.live import Live
 import questionary as qa
 import traceback
@@ -28,7 +27,7 @@ from ..bypass import fetch
 from ..objects import Anime, Bolum
 from .dosyalar import Dosyalar
 from .gereksinimler import gereksinim_kontrol_cli
-from .cli_tools import prompt_tema,clear,indirme_task_cli,VidSearchCLI,CliStatus
+from .cli_tools import prompt_tema,clear,indirme_task_cli,VidSearchCLI,CliStatus,DownloadBoard
 from .version import guncel_surum, update_type
 
 # Uygulama dizinini sistem PATH'ına ekle.
@@ -193,15 +192,16 @@ def menu_loop():
                     if not bolumler:
                         break
 
-                    # İndirme tablosu yarat ve başlat.
-                    table = Table.grid(expand=False)
-                    with Live(table, refresh_per_second=10, vertical_overflow="visible"):
+                    # İndirme ekranını yarat ve başlat.
+                    board = DownloadBoard()
+                    with Live(board.render(), refresh_per_second=10, vertical_overflow="visible") as live:
+                        board.live = live
                         futures = []
                         paralel = dosya.ayarlar.get("paralel indirme sayisi")
                         with cf.ThreadPoolExecutor(max_workers=paralel) as executor:
                             for bolum in bolumler:
                                 futures.append(executor.submit(
-                                    indirme_task_cli, bolum, table, dosya))
+                                    indirme_task_cli, bolum, board, dosya))
                             cf.wait(futures)
 
         elif islem == "Ayarlar":
