@@ -29,7 +29,7 @@ class Dosyalar:
         "indirilenler" : ".",
         "izlendi ikonu" : True,
         "paralel indirme sayisi" : 3,
-        "max resolution" : True,
+        "max resolution" : False,
         "dakika hatirla" : True,
         "aria2c kullan" : False
     }
