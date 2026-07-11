@@ -10,6 +10,7 @@ import questionary as qa
 import traceback
 import platform
 from datetime import datetime
+from curl_cffi import requests
 
 try:
     from easygui import diropenbox
@@ -33,6 +34,7 @@ from .version import guncel_surum, update_type
 # Uygulama dizinini sistem PATH'ına ekle.
 SEP = ";" if name=="nt" else ":"
 environ["PATH"] +=  SEP + Dosyalar().ta_path + SEP
+ANIMEDEPO_INFO_URL = "https://raw.githubusercontent.com/AnimeDepo/AnimeDepo/refs/heads/master/animeler/{anime_slug}/info.json"
 
 
 def log_error(e):
@@ -62,6 +64,31 @@ def eps_to_choices(liste,mark_type):
             recent = choice
         choices.append(choice)
     return choices, recent
+
+
+def fansub_sec(anime):
+    """ AnimeDepo bilgisinden tek seferlik fansub seçtirir. """
+    try:
+        url = ANIMEDEPO_INFO_URL.format(anime_slug=anime.slug)
+        with CliStatus("Fansub listesi getiriliyor.."):
+            response = requests.get(url,timeout=5)
+        if response.status_code != 200:
+            return True,None
+        fansubs = response.json().get("fansubs") or []
+    except Exception:
+        return True,None
+    if len(fansubs) <= 1:
+        return True,None
+    sub = qa.select(
+        message='Fansub seç',
+        choices=["(Fark etmez)"] + fansubs,
+        style=prompt_tema,
+    ).ask(kbi_msg="")
+    if sub is None:
+        return False,None
+    if sub == "(Fark etmez)":
+        return True,None
+    return True,sub
 
 
 def menu_loop():
@@ -154,11 +181,13 @@ def menu_loop():
                     if dosya.ayarlar["manuel fansub"] and len(fansubs) > 1:
                         sub = qa.select(
                             message='Fansub seç',
-                            choices= fansubs,
+                            choices=["(Fark etmez)"] + fansubs,
                             style=prompt_tema,
                         ).ask(kbi_msg="")
-                        if not sub:
+                        if sub is None:
                             break
+                        if sub == "(Fark etmez)":
+                            sub = None
                     # En iyi videoyu bul ve oynat, 3 şansı var.
                     success = False
                     for _ in range(3):
@@ -181,6 +210,11 @@ def menu_loop():
                     if success:
                         dosya.set_gecmis(anime.slug, bolum.slug, "izlendi")
                 else:
+                    sub = None
+                    if dosya.ayarlar["manuel fansub"]:
+                        devam, sub = fansub_sec(anime)
+                        if not devam:
+                            break
                     choices, recent = eps_to_choices(anime.bolumler, mark_type="indirildi")
                     bolumler = qa.checkbox(
                         message = "Bölüm seç",
@@ -201,7 +235,7 @@ def menu_loop():
                         with cf.ThreadPoolExecutor(max_workers=paralel) as executor:
                             for bolum in bolumler:
                                 futures.append(executor.submit(
-                                    indirme_task_cli, bolum, board, dosya))
+                                    indirme_task_cli, bolum, board, dosya, sub))
                             cf.wait(futures)
 
         elif islem == "Ayarlar":

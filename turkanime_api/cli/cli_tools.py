@@ -130,7 +130,7 @@ class VidSearchCLI():
         self.progress.update(task_id, completed=completed, description=msg)
 
 
-def indirme_task_cli(bolum,board,dosya):
+def indirme_task_cli(bolum,board,dosya,by_fansub=None):
     """ Progress barı dinamik olarak güncellerken indirme yapar. """
     vid_cli = VidSearchCLI()
     dl_cli = DownloadCLI()
@@ -139,6 +139,7 @@ def indirme_task_cli(bolum,board,dosya):
         # En iyi çalışan videoyu bul.
         best_video = bolum.best_video(
             by_res=dosya.ayarlar["max resolution"],
+            by_fansub=by_fansub,
             callback=vid_cli.callback)
         if not best_video:
             # TODO: hata mesajı gösterilmeli
