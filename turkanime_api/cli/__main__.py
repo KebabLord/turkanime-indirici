@@ -91,6 +91,28 @@ def fansub_sec(anime):
     return True,sub
 
 
+def son_anime_sec(dosya):
+    """ Kayıtlı son anime varsa devam etme seçeneği gösterir. """
+    son_anime = dosya.last_anime
+    if not isinstance(son_anime,dict):
+        return "ara",None
+    title = son_anime.get("title")
+    slug = son_anime.get("slug")
+    if not title or not slug:
+        return "ara",None
+    secim = qa.select(
+        "Anime seç",
+        choices=[
+            qa.Choice(f"Devam et: {title}",("devam",slug)),
+            qa.Choice("Anime ara",("ara",None)),
+            qa.Choice("Geri dön",("geri",None)),
+        ],
+        style=prompt_tema,
+        instruction=" "
+    ).ask()
+    return secim or ("geri",None)
+
+
 def menu_loop():
     """ Ana menü interaktif navigasyonu """
     while True:
@@ -108,59 +130,65 @@ def menu_loop():
             break
         # Anime izle veya indir seçildiyse.
         if "Anime" in islem:
-            # Seriyi seç.
-            arama_metni = qa.text(
-                'Animeyi yazın',
-                style=prompt_tema
-            ).ask()
-
-            if not arama_metni:
+            dosya = Dosyalar()
+            secim, seri_slug = son_anime_sec(dosya)
+            if secim == "geri":
                 continue
-
-            # Anime listesi.json üstünden autocomplete seçim yaptıran eski kod.
-            """
-            try:
-                with CliStatus("Anime listesi getiriliyor.."):
-                    animeler = Anime.get_anime_listesi()
-                seri_ismi = qa.autocomplete(
+            if secim == "ara":
+                # Seriyi seç.
+                arama_metni = qa.text(
                     'Animeyi yazın',
-                    choices = [n for s,n in animeler],
-                    style = prompt_tema
+                    style=prompt_tema
                 ).ask()
+
+                if not arama_metni:
+                    continue
+
+                # Anime listesi.json üstünden autocomplete seçim yaptıran eski kod.
+                """
+                try:
+                    with CliStatus("Anime listesi getiriliyor.."):
+                        animeler = Anime.get_anime_listesi()
+                    seri_ismi = qa.autocomplete(
+                        'Animeyi yazın',
+                        choices = [n for s,n in animeler],
+                        style = prompt_tema
+                    ).ask()
+                    if seri_ismi is None:
+                        continue
+                    seri_slug = [s for s,n in animeler if n==seri_ismi][0]
+                    anime = Anime(seri_slug)
+                except (KeyError,IndexError):
+                    rprint("[red][strong]Aradığınız anime bulunamadı.[/strong][red]")
+                """
+
+                # Manuel anime araması yap.
+                try:
+                    with CliStatus(f"'{arama_metni}' için sitede aranıyor.."):
+                        animeler = Anime.arama_yap(arama_metni)
+                except Exception as e: #FIXME: Fazla genel exception.
+                    log_error(e)
+                    rprint("[red][strong]Arama yapılırken bir hata oluştu.[/strong][/red]")
+                    sleep(1.5)
+                    continue
+
+                if not animeler:
+                    rprint("[red][strong]Aradığınız anime bulunamadı.[/strong][/red]")
+                    sleep(1.5)
+                    continue
+
+                seri_ismi = qa.select(
+                    'Bulunan sonuçlardan birini seçin:',
+                    choices = [n for s, n in animeler],
+                    style = prompt_tema,
+                    instruction="(Ok tuşlarını kullan)"
+                ).ask()
+
                 if seri_ismi is None:
                     continue
+
                 seri_slug = [s for s,n in animeler if n==seri_ismi][0]
-                anime = Anime(seri_slug)
-            except (KeyError,IndexError):
-                rprint("[red][strong]Aradığınız anime bulunamadı.[/strong][red]")
-            """
-
-            # Manuel anime araması yap.
-            try:
-                with CliStatus(f"'{arama_metni}' için sitede aranıyor.."):
-                    animeler = Anime.arama_yap(arama_metni)
-            except Exception as e: #FIXME: Fazla genel exception.
-                log_error(e)
-                rprint("[red][strong]Arama yapılırken bir hata oluştu.[/strong][/red]")
-                sleep(1.5)
-                continue
-
-            if not animeler:
-                rprint("[red][strong]Aradığınız anime bulunamadı.[/strong][/red]")
-                sleep(1.5)
-                continue
-
-            seri_ismi = qa.select(
-                'Bulunan sonuçlardan birini seçin:',
-                choices = [n for s, n in animeler],
-                style = prompt_tema,
-                instruction="(Ok tuşlarını kullan)"
-            ).ask()
-
-            if seri_ismi is None:
-                continue
-
-            seri_slug = [s for s,n in animeler if n==seri_ismi][0]
+                dosya.set_last_anime(seri_slug,seri_ismi)
             anime = Anime(seri_slug)
 
             while True:
