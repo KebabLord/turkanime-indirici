@@ -113,7 +113,7 @@ class Anime:
         """ Anime bölümlerinin [(slug,isim),] formatında listesi. """
         anime_id = self.anime_id
         src = fetch(f'/ajax/bolumler&animeId={anime_id}')
-        return re.findall(r'\/video\/(.*?)\\?".*?title=.*?"(.*?)\\?"',src)
+        return re.findall(r'\/video\/(.*?)\\?".*?title=\\?"(.*?)\\?" style=', src)
 
     # Eski get_anime_listesi methodu, geriye dönük uyumluluk için bırakıldı.
     @staticmethod
