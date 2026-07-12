@@ -10,6 +10,7 @@ import questionary as qa
 import traceback
 import platform
 from datetime import datetime
+from curl_cffi import requests
 
 try:
     from easygui import diropenbox
@@ -24,15 +25,15 @@ except ImportError:
     exit(1)
 
 from ..bypass import fetch
-from .. import animedepo
+from .. import bypass, animedepo
 from .. import objects as turkanime
 from .dosyalar import Dosyalar
 from .gereksinimler import gereksinim_kontrol_cli
 from .cli_tools import prompt_tema,clear,indirme_task_cli,VidSearchCLI,CliStatus,DownloadBoard,player_onceligi,player_onceligi_duzenle,player_onceligi_uygula
-from .version import guncel_surum, update_type
+from .version import guncel_surum, update_type, __version__
 
+MANIFEST_URL = "https://raw.githubusercontent.com/KebabLord/turkanime-indirici/refs/heads/master/manifest.json"
 USE_ANIMEDEPO = False
-TURKANIME_OFFLINE = False
 SEARCH_FALLBACK = False
 provider = None
 Anime, Bolum = None, None
@@ -44,7 +45,7 @@ def provider_sec(yeni_provider):
     Anime, Bolum = provider.Anime, provider.Bolum
 
 
-provider_sec(animedepo if USE_ANIMEDEPO or TURKANIME_OFFLINE else turkanime)
+provider_sec(animedepo if USE_ANIMEDEPO else turkanime)
 
 # Uygulama dizinini sistem PATH'ına ekle.
 SEP = ";" if name=="nt" else ":"
@@ -326,7 +327,30 @@ def menu_loop():
 
 
 def main():
+    global SEARCH_FALLBACK
     player_onceligi_uygula(Dosyalar().ayarlar)
+
+    # Manifest kararlarını uygula.
+    manifest = {}
+    try:
+        with CliStatus("Manifest kontrol ediliyor.."):
+            manifest = requests.get(MANIFEST_URL,timeout=5).json()
+    except Exception:
+        pass
+    if manifest.get("turkanime_url"):
+        bypass.BASE_URL = manifest["turkanime_url"]
+    if manifest.get("animedepo_url"):
+        animedepo.BASE_URL = manifest["animedepo_url"]
+    current_version = tuple(int(i) for i in __version__.split("."))
+    aktifler = [
+        (name,conf) for name,conf in (manifest.get("providers") or {}).items()
+        if conf.get("enabled",True)
+        and current_version >= tuple(int(i) for i in conf.get("min_client_version","0.0.0").replace("v","").replace("V","").split("."))
+    ]
+    SEARCH_FALLBACK = (manifest.get("features") or {}).get("search",{}).get("force_fallback",False)
+    if not USE_ANIMEDEPO:
+        provider_name = max(aktifler,key=lambda item:item[1].get("priority",0))[0] if aktifler else "turkanime"
+        provider_sec(animedepo if provider_name == "animedepo" else turkanime)
 
     # Güncelleme kontrolü
     try:
@@ -360,7 +384,8 @@ def main():
         except Exception as e:
             log_error(e)
             provider_sec(animedepo)
-            rprint("[yellow]TürkAnime'ye ulaşılamıyor, AnimeDepo kullanılacak.[/yellow]")
+            msg = (manifest.get("messages") or {}).get("turkanime_offline") or "TürkAnime'ye ulaşılamıyor, AnimeDepo kullanılacak."
+            rprint(f"[yellow]{msg}[/yellow]")
             sleep(2)
 
     # Navigasyon menüsünü başlat.
