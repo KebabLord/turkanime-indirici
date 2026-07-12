@@ -16,6 +16,7 @@ from . import bypass
 
 
 BASE_URL = "https://gitlab.com/AnimeDepo/animedepo/-/raw/master"
+USE_TURKANIME = False
 _dizin = None
 
 
@@ -110,6 +111,8 @@ class Bolum(BaseBolum):
         data = fetch_json(f"animeler/{self.anime.slug}/{self.slug}.json")
         for item in data:
             if item.get("alive") is False:
+                continue
+            if not USE_TURKANIME and not item.get("url"):
                 continue
             video_path = item.get("mask") or item.get("path") or item.get("url")
             if not video_path:

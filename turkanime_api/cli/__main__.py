@@ -358,6 +358,8 @@ def main():
         and current_version >= tuple(int(i) for i in conf.get("min_client_version","0.0.0").replace("v","").replace("V","").split("."))
     ]
     SEARCH_FALLBACK = (manifest.get("features") or {}).get("search",{}).get("force_fallback",False)
+    turkanime_enabled = any(name == "turkanime" for name,_conf in aktifler)
+    animedepo.USE_TURKANIME = turkanime_enabled
     if not USE_ANIMEDEPO:
         provider_name = max(aktifler,key=lambda item:item[1].get("priority",0))[0] if aktifler else "turkanime"
         provider_sec(animedepo if provider_name == "animedepo" else turkanime)
@@ -394,6 +396,7 @@ def main():
         except Exception as e:
             log_error(e)
             provider_sec(animedepo)
+            animedepo.USE_TURKANIME = False
             msg = (manifest.get("messages") or {}).get("turkanime_offline") or "TürkAnime'ye ulaşılamıyor, AnimeDepo kullanılacak."
             rprint(f"[yellow]{msg}[/yellow]")
             sleep(2)
