@@ -17,13 +17,10 @@
  - Fansub seç, en yüksek çözünürlüğe sahip videoyu bul
  - Cross platform: Linux, Windows, MacOS, Android.
 
-
- ### İzleme ekranı
- ![izleme.gif](https://i.imgur.com/s04Dnox.gif)
-
- ### İndirme ekranı
- ![indirme.gif](https://i.imgur.com/k7Y3LYA.gif)
- 
+### Önizleme
+<a href="https://github.com/KebabLord/turkanime-indirici/releases/download/v3/demo.mp4">
+  <img src="https://github.com/KebabLord/turkanime-indirici/releases/download/v3/demo.webp" alt="TurkAnimu v10 onizleme" width="640">
+</a>
 
 #### Desteklenen kaynaklar:
 ```
