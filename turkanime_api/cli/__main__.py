@@ -194,7 +194,12 @@ def menu_loop():
                 dosya = Dosyalar()
                 if "izle" in islem:
                     with CliStatus("Bölümler getiriliyor.."):
-                        choices, recent = eps_to_choices(anime.bolumler, mark_type="izlendi")
+                        bolumler = anime.bolumler
+                    if not bolumler:
+                        rprint("[red][strong]Bu anime için bölüm bulunamadı.[/strong][/red]")
+                        sleep(1.5)
+                        break
+                    choices, recent = eps_to_choices(bolumler, mark_type="izlendi")
                     bolum = qa.select(
                         message='Bölüm seç',
                         choices=choices,
@@ -242,7 +247,12 @@ def menu_loop():
                         devam, sub = fansub_sec(anime)
                         if not devam:
                             break
-                    choices, recent = eps_to_choices(anime.bolumler, mark_type="indirildi")
+                    bolumler = anime.bolumler
+                    if not bolumler:
+                        rprint("[red][strong]Bu anime için bölüm bulunamadı.[/strong][/red]")
+                        sleep(1.5)
+                        break
+                    choices, recent = eps_to_choices(bolumler, mark_type="indirildi")
                     bolumler = qa.checkbox(
                         message = "Bölüm seç",
                         choices=choices,
