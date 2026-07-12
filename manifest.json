@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "turkanime_url": "https://turkanime.tv",
-  "animedepo_url": "https://raw.githubusercontent.com/AnimeDepo/AnimeDepo/refs/heads/master",
+  "animedepo_url": "https://gitlab.com/AnimeDepo/animedepo/-/raw/master",
   "providers": {
     "turkanime": {
       "enabled": true,

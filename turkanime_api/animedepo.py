@@ -1,11 +1,10 @@
 """
-AnimeDepo provider template.
+AnimeDepo sağlayıcı.
 
-This module intentionally exports Anime, Bolum and Video names so callers can
-use it interchangeably with turkanime_api.objects:
-
+Bu modül AnimeDepo kullanarak script'in kullanabileceği Anime, Bolum, Video formatlarını
+expose eder. Bu sayede kolaylıkla turkanime_api.Bolum yerine animedepo.Bolum kullanılabilir.
     from turkanime_api import animedepo
-    anime = animedepo.Anime("yakusoku-no-neverland")
+    anime = animedepo.Anime("inferno-cop")
 """
 from curl_cffi import requests
 
@@ -16,7 +15,7 @@ from .objects import LogHandler
 from . import bypass
 
 
-BASE_URL = "https://raw.githubusercontent.com/AnimeDepo/AnimeDepo/refs/heads/master"
+BASE_URL = "https://gitlab.com/AnimeDepo/animedepo/-/raw/master"
 _dizin = None
 
 
