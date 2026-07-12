@@ -10,7 +10,6 @@ import questionary as qa
 import traceback
 import platform
 from datetime import datetime
-from curl_cffi import requests
 
 try:
     from easygui import diropenbox
@@ -25,6 +24,7 @@ except ImportError:
     exit(1)
 
 from ..bypass import fetch
+from .. import animedepo
 from ..objects import Anime, Bolum
 from .dosyalar import Dosyalar
 from .gereksinimler import gereksinim_kontrol_cli
@@ -34,7 +34,6 @@ from .version import guncel_surum, update_type
 # Uygulama dizinini sistem PATH'ına ekle.
 SEP = ";" if name=="nt" else ":"
 environ["PATH"] +=  SEP + Dosyalar().ta_path + SEP
-ANIMEDEPO_INFO_URL = "https://raw.githubusercontent.com/AnimeDepo/AnimeDepo/refs/heads/master/animeler/{anime_slug}/info.json"
 
 
 def log_error(e):
@@ -69,12 +68,8 @@ def eps_to_choices(liste,mark_type):
 def fansub_sec(anime):
     """ AnimeDepo bilgisinden tek seferlik fansub seçtirir. """
     try:
-        url = ANIMEDEPO_INFO_URL.format(anime_slug=anime.slug)
         with CliStatus("Fansub listesi getiriliyor.."):
-            response = requests.get(url,timeout=5)
-        if response.status_code != 200:
-            return True,None
-        fansubs = response.json().get("fansubs") or []
+            fansubs = animedepo.Anime(anime.slug).info.get("fansubs") or []
     except Exception:
         return True,None
     if len(fansubs) <= 1:
