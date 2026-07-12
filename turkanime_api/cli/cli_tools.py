@@ -5,9 +5,14 @@ from time import sleep
 from threading import Thread,Lock
 from collections import OrderedDict
 from prompt_toolkit import styles
+from prompt_toolkit.application import Application
+from prompt_toolkit.key_binding import KeyBindings
+from prompt_toolkit.layout import Layout
+from prompt_toolkit.layout.containers import Window
+from prompt_toolkit.layout.controls import FormattedTextControl
 
 from rich.panel import Panel
-from rich.console import Group
+from rich.console import Console,Group
 from rich.progress import (
     Progress,
     TextColumn,
@@ -18,6 +23,8 @@ from rich.progress import (
     TaskProgressColumn,
     TransferSpeedColumn
 )
+
+from ..objects import SUPPORTED
 
 def clear():
     """ Daha kompakt görüntü için her prompt sonrası clear
@@ -33,6 +40,79 @@ def CliStatus(msg,hide=True):
         transient=hide)
     prg.add_task(msg, total=None)
     return prg
+
+def player_onceligi(ayarlar):
+    """ Kayıtlı player sırasını desteklenen player listesine göre temizler. """
+    kayitli = ayarlar.get("player önceliği") if isinstance(ayarlar,dict) else None
+    sirali = [p for p in (kayitli or []) if p in SUPPORTED]
+    for i,player in enumerate(SUPPORTED):
+        if player not in sirali:
+            sirali.insert(min(i,len(sirali)),player)
+    return sirali
+
+def player_onceligi_uygula(ayarlar):
+    """ Kayıtlı player önceliğini runtime'daki SUPPORTED listesine uygular. """
+    SUPPORTED[:] = player_onceligi(ayarlar)
+
+def player_onceligi_duzenle(players):
+    """ Player önceliğini tek ekranda klavye ile sıralatır. """
+    players, cursor, saved = players.copy(), 0, False
+    def text():
+        lines = [
+            ("class:help", "↑/↓: seç   w/s: taşı   Enter: kaydet   Esc/q: çık\n\n"),
+        ]
+        for i,p in enumerate(players):
+            style = "class:selected" if i == cursor else ""
+            lines.append((style,f"{'>' if i == cursor else ' '} {i + 1:02}. {p}\n"))
+        return lines
+    def move_cursor(delta):
+        nonlocal cursor
+        cursor = max(0,min(len(players) - 1,cursor + delta))
+    def move_item(delta):
+        nonlocal cursor
+        new = max(0,min(len(players) - 1,cursor + delta))
+        if new != cursor:
+            players[cursor],players[new] = players[new],players[cursor]
+            cursor = new
+    kb = KeyBindings()
+    @kb.add("up")
+    @kb.add("k")
+    def _(event):
+        move_cursor(-1)
+    @kb.add("down")
+    @kb.add("j")
+    def _(event):
+        move_cursor(1)
+    @kb.add("w")
+    @kb.add("u")
+    def _(event):
+        move_item(-1)
+    @kb.add("s")
+    @kb.add("d")
+    def _(event):
+        move_item(1)
+    @kb.add("enter")
+    def _(event):
+        nonlocal saved
+        saved = True
+        event.app.exit()
+    @kb.add("escape")
+    @kb.add("q")
+    def _(event):
+        event.app.exit()
+    Console().print(
+        '[bold red]UYARI:[/bold red] "Max çözünürlüğe ulaş" ayarı etkinse ve '
+        "öncelik verdiğiniz oynatıcı 1080p çözünürlüğü desteklemiyorsa, player göz ardı edilebilir."
+    )
+    print()
+    app = Application(
+        layout=Layout(Window(FormattedTextControl(text),always_hide_cursor=True)),
+        key_bindings=kb,
+        style=prompt_tema,
+        full_screen=False,
+        mouse_support=False)
+    app.run()
+    return players if saved else None
 
 class DownloadCLI():
     def __init__(self):

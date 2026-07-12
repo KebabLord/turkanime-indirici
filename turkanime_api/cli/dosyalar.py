@@ -31,7 +31,8 @@ class Dosyalar:
         "paralel indirme sayisi" : 3,
         "max resolution" : False,
         "dakika hatirla" : True,
-        "aria2c kullan" : False
+        "aria2c kullan" : False,
+        "player önceliği" : None
     }
     default_gecmis = {"izlendi":{},"indirildi":{},"last":None}
 
@@ -100,7 +101,7 @@ class Dosyalar:
         self._write_json(self.gecmis_path,gecmis)
 
     def set_ayar(self, ayar = None, deger = None, ayar_list = None):
-        assert (ayar != None and deger != None) or ayar_list != None
+        assert ayar != None or ayar_list != None
         ayarlar = self.ayarlar
         if ayar_list:
             for n,v in ayar_list.items():
