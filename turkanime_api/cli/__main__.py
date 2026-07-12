@@ -25,11 +25,26 @@ except ImportError:
 
 from ..bypass import fetch
 from .. import animedepo
-from ..objects import Anime, Bolum
+from .. import objects as turkanime
 from .dosyalar import Dosyalar
 from .gereksinimler import gereksinim_kontrol_cli
 from .cli_tools import prompt_tema,clear,indirme_task_cli,VidSearchCLI,CliStatus,DownloadBoard,player_onceligi,player_onceligi_duzenle,player_onceligi_uygula
 from .version import guncel_surum, update_type
+
+USE_ANIMEDEPO = False
+TURKANIME_OFFLINE = False
+SEARCH_FALLBACK = False
+provider = None
+Anime, Bolum = None, None
+
+
+def provider_sec(yeni_provider):
+    global provider, Anime, Bolum
+    provider = yeni_provider
+    Anime, Bolum = provider.Anime, provider.Bolum
+
+
+provider_sec(animedepo if USE_ANIMEDEPO or TURKANIME_OFFLINE else turkanime)
 
 # Uygulama dizinini sistem PATH'ına ekle.
 SEP = ";" if name=="nt" else ":"
@@ -130,59 +145,47 @@ def menu_loop():
             if secim == "geri":
                 continue
             if secim == "ara":
-                # Seriyi seç.
-                arama_metni = qa.text(
-                    'Animeyi yazın',
-                    style=prompt_tema
-                ).ask()
-
-                if not arama_metni:
-                    continue
-
-                # Anime listesi.json üstünden autocomplete seçim yaptıran eski kod.
-                """
                 try:
-                    with CliStatus("Anime listesi getiriliyor.."):
-                        animeler = Anime.get_anime_listesi()
-                    seri_ismi = qa.autocomplete(
-                        'Animeyi yazın',
-                        choices = [n for s,n in animeler],
-                        style = prompt_tema
-                    ).ask()
+                    if provider is animedepo or SEARCH_FALLBACK:
+                        # Anime listesi.json üstünden autocomplete seçim yaptıran eski kod.
+                        with CliStatus("Anime listesi getiriliyor.."):
+                            animeler = animedepo.Anime.get_anime_listesi()
+                        seri_ismi = qa.autocomplete(
+                            'Animeyi yazın',
+                            choices = [n for s,n in animeler],
+                            style = prompt_tema
+                        ).ask()
+                    else:
+                        # Seriyi seç.
+                        arama_metni = qa.text(
+                            'Animeyi yazın',
+                            style=prompt_tema
+                        ).ask()
+                        if not arama_metni:
+                            continue
+                        # Manuel anime araması yap.
+                        with CliStatus(f"'{arama_metni}' için sitede aranıyor.."):
+                            animeler = Anime.arama_yap(arama_metni)
+                        if not animeler:
+                            raise IndexError
+                        seri_ismi = qa.select(
+                            'Bulunan sonuçlardan birini seçin:',
+                            choices = [n for s, n in animeler],
+                            style = prompt_tema,
+                            instruction="(Ok tuşlarını kullan)"
+                        ).ask()
                     if seri_ismi is None:
                         continue
                     seri_slug = [s for s,n in animeler if n==seri_ismi][0]
-                    anime = Anime(seri_slug)
                 except (KeyError,IndexError):
-                    rprint("[red][strong]Aradığınız anime bulunamadı.[/strong][red]")
-                """
-
-                # Manuel anime araması yap.
-                try:
-                    with CliStatus(f"'{arama_metni}' için sitede aranıyor.."):
-                        animeler = Anime.arama_yap(arama_metni)
+                    rprint("[red][strong]Aradığınız anime bulunamadı.[/strong][/red]")
+                    sleep(1.5)
+                    continue
                 except Exception as e: #FIXME: Fazla genel exception.
                     log_error(e)
                     rprint("[red][strong]Arama yapılırken bir hata oluştu.[/strong][/red]")
                     sleep(1.5)
                     continue
-
-                if not animeler:
-                    rprint("[red][strong]Aradığınız anime bulunamadı.[/strong][/red]")
-                    sleep(1.5)
-                    continue
-
-                seri_ismi = qa.select(
-                    'Bulunan sonuçlardan birini seçin:',
-                    choices = [n for s, n in animeler],
-                    style = prompt_tema,
-                    instruction="(Ok tuşlarını kullan)"
-                ).ask()
-
-                if seri_ismi is None:
-                    continue
-
-                seri_slug = [s for s,n in animeler if n==seri_ismi][0]
                 dosya.set_last_anime(seri_slug,seri_ismi)
             anime = Anime(seri_slug)
 
@@ -349,14 +352,16 @@ def main():
             sleep(1.5) # Şimdilik placeholder
     atexit.register(kapat)
 
-    # Türkanime'ye bağlan.
-    try:
-        with CliStatus("Türkanime'ye bağlanılıyor.."):
-            res = fetch(None) # Create Session
-    except (ConnectionError, AssertionError) as e:
-        log_error(e)
-        rprint("[red][strong]TürkAnime'ye ulaşılamıyor.[/strong][red]")
-        sys.exit(1)
+    # Türkanime'ye bağlan veya AnimeDepo fallback kullan.
+    if provider is turkanime:
+        try:
+            with CliStatus("Türkanime'ye bağlanılıyor.."):
+                fetch(None) # Create Session
+        except Exception as e:
+            log_error(e)
+            provider_sec(animedepo)
+            rprint("[yellow]TürkAnime'ye ulaşılamıyor, AnimeDepo kullanılacak.[/yellow]")
+            sleep(2)
 
     # Navigasyon menüsünü başlat.
     clear()
