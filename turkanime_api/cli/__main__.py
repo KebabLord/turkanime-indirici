@@ -28,7 +28,7 @@ from ..bypass import fetch
 from ..objects import Anime, Bolum
 from .dosyalar import Dosyalar
 from .gereksinimler import gereksinim_kontrol_cli
-from .cli_tools import prompt_tema,clear,indirme_task_cli,VidSearchCLI,CliStatus,DownloadBoard
+from .cli_tools import prompt_tema,clear,indirme_task_cli,VidSearchCLI,CliStatus,DownloadBoard,player_onceligi,player_onceligi_duzenle,player_onceligi_uygula
 from .version import guncel_surum, update_type
 
 # Uygulama dizinini sistem PATH'ına ekle.
@@ -274,12 +274,13 @@ def menu_loop():
                 tr = lambda opt: "AÇIK" if opt else "KAPALI" # Bool to Türkçe
                 ayarlar_options = [
                     'İndirilenler klasörünü seç',
-                    'İzlerken kaydet: '+tr(ayarlar['izlerken kaydet']),
+                    'Player önceliğini düzenle',
                     'Manuel fansub seç: '+tr(ayarlar['manuel fansub']),
-                    'İzlendi/İndirildi ikonu: '+tr(ayarlar["izlendi ikonu"]),
-                    'Paralel indirme sayisi: '+str(ayarlar["paralel indirme sayisi"]),
                     'Maksimum çözünürlüğe ulaş: '+tr(ayarlar["max resolution"]),
                     'Kaldığın dakikayı hatirla: '+tr(ayarlar["dakika hatirla"]),
+                    'İzlerken kaydet: '+tr(ayarlar['izlerken kaydet']),
+                    'Paralel indirme sayisi: '+str(ayarlar["paralel indirme sayisi"]),
+                    'İzlendi/İndirildi ikonu: '+tr(ayarlar["izlendi ikonu"]),
                     'Aria2c ile hızlandır (deneysel): '+tr(ayarlar["aria2c kullan"]),
                     'Geri dön'
                 ]
@@ -295,12 +296,19 @@ def menu_loop():
                     if indirilenler_dizin:
                         dosyalar.set_ayar("indirilenler",indirilenler_dizin)
                 elif ayar_islem == ayarlar_options[1]:
-                    dosyalar.set_ayar("izlerken kaydet", not ayarlar['izlerken kaydet'])
+                    yeni_sira = player_onceligi_duzenle(player_onceligi(ayarlar))
+                    if yeni_sira:
+                        dosyalar.set_ayar("player önceliği",yeni_sira)
+                        player_onceligi_uygula(dosyalar.ayarlar)
                 elif ayar_islem == ayarlar_options[2]:
                     dosyalar.set_ayar('manuel fansub', not ayarlar['manuel fansub'])
                 elif ayar_islem == ayarlar_options[3]:
-                    dosyalar.set_ayar('izlendi ikonu', not ayarlar['izlendi ikonu'])
+                    dosyalar.set_ayar('max resolution', not ayarlar['max resolution'])
                 elif ayar_islem == ayarlar_options[4]:
+                    dosyalar.set_ayar('dakika hatirla', not ayarlar['dakika hatirla'])
+                elif ayar_islem == ayarlar_options[5]:
+                    dosyalar.set_ayar("izlerken kaydet", not ayarlar['izlerken kaydet'])
+                elif ayar_islem == ayarlar_options[6]:
                     max_dl = qa.text(
                         message = 'Maksimum eş zamanlı kaç bölüm indirilsin?',
                         default = str(ayarlar["paralel indirme sayisi"]),
@@ -308,11 +316,9 @@ def menu_loop():
                     ).ask(kbi_msg="")
                     if isinstance(max_dl,str) and max_dl.isdigit():
                         dosyalar.set_ayar("paralel indirme sayisi", int(max_dl))
-                elif ayar_islem == ayarlar_options[5]:
-                    dosyalar.set_ayar('max resolution', not ayarlar['max resolution'])
-                elif ayar_islem == ayarlar_options[6]:
-                    dosyalar.set_ayar('dakika hatirla', not ayarlar['dakika hatirla'])
                 elif ayar_islem == ayarlar_options[7]:
+                    dosyalar.set_ayar('izlendi ikonu', not ayarlar['izlendi ikonu'])
+                elif ayar_islem == ayarlar_options[8]:
                     dosyalar.set_ayar('aria2c kullan', not ayarlar['aria2c kullan'])
                 else:
                     break
@@ -322,6 +328,8 @@ def menu_loop():
 
 
 def main():
+    player_onceligi_uygula(Dosyalar().ayarlar)
+
     # Güncelleme kontrolü
     try:
         with CliStatus("Güncelleme kontrol ediliyor.."):
