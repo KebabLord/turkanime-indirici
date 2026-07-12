@@ -32,6 +32,7 @@ class Dosyalar:
         "max resolution" : False,
         "dakika hatirla" : True,
         "aria2c kullan" : False,
+        "AnimeDepo kullanmaya zorla" : False,
         "player önceliği" : None
     }
     default_gecmis = {"izlendi":{},"indirildi":{},"last":None}

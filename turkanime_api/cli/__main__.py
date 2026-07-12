@@ -291,6 +291,7 @@ def menu_loop():
                     'Paralel indirme sayisi: '+str(ayarlar["paralel indirme sayisi"]),
                     'İzlendi/İndirildi ikonu: '+tr(ayarlar["izlendi ikonu"]),
                     'Aria2c ile hızlandır (deneysel): '+tr(ayarlar["aria2c kullan"]),
+                    'AnimeDepo kullanmaya zorla: '+tr(ayarlar["AnimeDepo kullanmaya zorla"]),
                     'Geri dön'
                 ]
                 ayar_islem = qa.select(
@@ -329,6 +330,8 @@ def menu_loop():
                     dosyalar.set_ayar('izlendi ikonu', not ayarlar['izlendi ikonu'])
                 elif ayar_islem == ayarlar_options[8]:
                     dosyalar.set_ayar('aria2c kullan', not ayarlar['aria2c kullan'])
+                elif ayar_islem == ayarlar_options[9]:
+                    dosyalar.set_ayar("AnimeDepo kullanmaya zorla", not ayarlar["AnimeDepo kullanmaya zorla"])
                 else:
                     break
 
@@ -338,7 +341,8 @@ def menu_loop():
 
 def main():
     global SEARCH_FALLBACK
-    player_onceligi_uygula(Dosyalar().ayarlar)
+    ayarlar = Dosyalar().ayarlar
+    player_onceligi_uygula(ayarlar)
 
     # Manifest kararlarını uygula.
     manifest = {}
@@ -360,7 +364,9 @@ def main():
     SEARCH_FALLBACK = (manifest.get("features") or {}).get("search",{}).get("force_fallback",False)
     turkanime_enabled = any(name == "turkanime" for name,_conf in aktifler)
     animedepo.USE_TURKANIME = turkanime_enabled
-    if not USE_ANIMEDEPO:
+    if USE_ANIMEDEPO or ayarlar["AnimeDepo kullanmaya zorla"]:
+        provider_sec(animedepo)
+    else:
         provider_name = max(aktifler,key=lambda item:item[1].get("priority",0))[0] if aktifler else "turkanime"
         provider_sec(animedepo if provider_name == "animedepo" else turkanime)
 
