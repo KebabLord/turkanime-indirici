@@ -5,12 +5,12 @@
   "providers": {
     "turkanime": {
       "enabled": true,
-      "min_client_version": "0.0.0",
+      "min_client_version": "9.2.2",
       "priority": 20
     },
     "animedepo": {
       "enabled": true,
-      "min_client_version": "9.2.3",
+      "min_client_version": "10.0.0",
       "priority": 10
     }
   },
@@ -19,14 +19,6 @@
       "provider": "turkanime",
       "fallback_provider": "animedepo",
       "force_fallback": false
-    },
-    "watch": {
-      "provider": "turkanime",
-      "fallback_provider": "animedepo"
-    },
-    "download": {
-      "provider": "turkanime",
-      "fallback_provider": "animedepo"
     }
   },
   "messages": {
