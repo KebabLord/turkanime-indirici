@@ -1,3 +1,9 @@
+> [!NOTE]
+> TurkAnime 19.09.2026 tarihiyle kullanıcılarına veda etmiş olsa da<sup>[[1]](https://web.archive.org/web/20260919201311/https://www.turkanime.tv/)</sup>, bu script "B planı" olarak TurkAnime metadata arşivini kullandığından çalışmaya devam etmektedir. <br>Ancak bu durum, artık bu script ile güncel animelerin <ins>yeni bölümlerine erişemeyeceğiniz</ins>, yalnızca bu zamana kadarki TürkAnime tarafından 3. parti sitelere yüklenmiş videolara / eski animelere erişebileceğiniz anlamına geliyor (yani Eylül 2026 öncesi). Artık ortada silinen videoları tekrar yükleyen bir yönetim de olmadığına göre kimi animelere ait bölümlerin zamanla yok olması muhtemel.<br><br>
+Anlaşılan 2019'dan bu yana TürkAnime yönetimiyle aramdaki bu Web-Scraping kedi fare oyunumuz da burada noktalanmış bulunuyor. Script'i kullanmış, katkıda bulunmuş herkese çok teşekkürler, umarım bir süre daha sorunsuz olarak çalışır. <br>Benden de bu kadar o7
+
+
+
 
 <div align="center">
 
@@ -24,9 +30,8 @@
 
 #### Desteklenen kaynaklar:
 ```
-Sibnet  Odnoklassinki  HDVID  Myvi Sendvid  Mail
-Amaterasu   Alucard   PixelDrain   VK  MP4upload
-Vidmoly   Dailymotion   Yandisk   Uqload   Drive
+Sibnet  Odnoklassinki   Myvi Sendvid  Mail  MP4upload
+Vidmoly   Dailymotion   Yandisk   Uqload   Drive   VK
 ```
 
 
@@ -74,10 +79,9 @@ Tüm metodları görmek için [dökümantasyona](https://github.com/KebabLord/tu
 
 
 ## Diğer Türkçe Anime Projeleri
-Aşağıdaki projeler de farklı sitelerden anime indirmeyi ve izlemeyi mümkün kılıyor, her birinin kendi avantajları var, göz atmanızı öneririm.
-- [Turkanime-GUI](https://github.com/barkeser2002/turkanime-gui/): Bu script'e GUI eklenmiş versiyon, başka onlarca özellik de barındırıyor
-- [AniTR-cli](https://github.com/xeyossr/anitr-cli): Go ile yazılmış terminal tabanlı anime oynatıcı, Arch linux AUR reposunda da mevcut 
 - [AnimeciX-Desktop](https://github.com/CaptainSP/animecix-desktop): AnimeciX üstünden anime indirici ve oynatıcı, electron ile yaratılmış güzel bir gui sunuyor
+- ~~[Turkanime-GUI](https://github.com/barkeser2002/turkanime-gui/)~~: Bu script'e GUI eklenmiş versiyon, artık çalışmıyor.
+- ~~[AniTR-cli](https://github.com/xeyossr/anitr-cli)~~: Go ile yazılmış terminal tabanlı türkçe anime oynatıcı, artık çalışmıyor.
 
 ## Yapılacaklar:
  - [x] ~~Selenium'dan kurtulma~~
@@ -93,6 +97,7 @@ Aşağıdaki projeler de farklı sitelerden anime indirmeyi ve izlemeyi mümkün
  - [x] ~~Prompt kütüphanesi olarak berbat durumda olan PyInquirer'den Questionary'e geçilecek.~~
  - [x] ~~Arama sonuçları da http talepleriyle getirilecek.~~
  - [x] ~~Fansub seçme özelliği tekrar eklenecek.~~
+
 
 
 

@@ -1,27 +1,27 @@
 {
   "schema_version": 1,
-  "turkanime_url": "https://turkanime.tv",
+  "turkanime_url": "https://",
   "animedepo_url": "https://gitlab.com/AnimeDepo/animedepo/-/raw/master",
   "providers": {
     "turkanime": {
       "enabled": true,
       "min_client_version": "9.2.2",
-      "priority": 20
+      "priority": 40
     },
     "animedepo": {
       "enabled": true,
       "min_client_version": "10.0.0",
-      "priority": 10
+      "priority": 30
     }
   },
   "features": {
     "search": {
       "provider": "turkanime",
       "fallback_provider": "animedepo",
-      "force_fallback": false
+      "force_fallback": true
     }
   },
   "messages": {
-    "turkanime_offline": "TürkAnime şu anda kullanılamıyor, AnimeDepo kullanılacak."
+    "turkanime_offline": "TürkAnime kapatıldı, AnimeDepo'ya bağlanılıyor.."
   }
 }
