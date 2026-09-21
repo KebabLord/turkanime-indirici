@@ -37,6 +37,13 @@ SUPPORTED = [
     "UQLOAD",
 ]
 
+def clean_html(text):
+    if not text:
+        return ""
+    text = re.sub(r"<.*?>", " ", text)
+    text = unescape(text)
+    return re.sub(r"\s+", " ", text).strip()
+
 class LogHandler:
     """ TODO: ytdlp log handler prototipi """
     @staticmethod
@@ -218,41 +225,69 @@ class Bolum:
             ...
         return self._anime
 
+    def _get_single_fansub(self):
+        """ Yalnızca tek bir fansub var ise fansub ismini ayrıştır. """
+        m = re.search(r'class="[^\"]*pull-right[^\"]*".*?<button[^>]*>(.*?)</button>', self.html, re.DOTALL)
+        if m:
+            res = clean_html(m.group(1))
+            if res:
+                return res
+        m2 = re.search(r'fa-heart[^>]*></span>(.*?)</button>', self.html, re.DOTALL)
+        if m2:
+            res = clean_html(m2.group(1))
+            if res:
+                return res
+        return None
+
     @property
     def fansubs(self):
         """ Bölüm sayfasından fansub listesini ayrıştır. """
         if not self._fansubs:
-            self._fansubs = re.findall(r"</span> ([^<>/]*?)</a></button>",self.html)
-            if not self._fansubs:
-                self._fansubs = re.findall(r"</span> ([^\\<>]*)</button>.*?iframe",self.html)
+            if "birden fazla grup" in self.html:
+                matches = re.findall(
+                    r"IndexIcerik\('([^']*ajax/videosec[^']*)'[^>]*>(.*?)(?:</button>|</a>)",
+                    self.html,
+                    re.DOTALL
+                )
+                self._fansubs = [clean_html(raw_f) for _, raw_f in matches if clean_html(raw_f)]
+            else:
+                fansub = self._get_single_fansub()
+                self._fansubs = [fansub] if fansub else []
         return self._fansubs
 
     def get_videos(self):
         self._videos = []
         # Yalnızca tek bir fansub varsa
         if "birden fazla grup" not in self.html:
-            fansub = re.findall(r"</span> ([^\\<>]*)</button>.*?iframe",self.html)[0]
+            fansub = self._get_single_fansub()
             vids = re.findall(r"/embed/#/url/(.*?)\?status=0\".*?</span> ([^ ]*?) ?</button>", self.html)
-            vids += re.findall(r"(ajax\/videosec&b=[A-Za-z0-9]+&v=.*?)'.*?<\/span> ?(.*?)<\/button",self.html)
-            for vpath,player in vids:
-                self._videos.append(Video(self,vpath,player,fansub))
+            vids += re.findall(r"(ajax\/videosec&b=[A-Za-z0-9]+&v=.*?)'.*?<\/span> ?(.*?)<\/button", self.html)
+            for vpath, player in vids:
+                self._videos.append(Video(self, vpath, clean_html(player), fansub))
         # Fansublar da parse'lanacaksa
         elif self.parse_fansubs:
-            fansubs = re.findall(r"(ajax\/videosec&.*?)'.*?<\/span> ?(.*?)<\/a>",self.html)
-            for path,fansub in fansubs:
+            matches = re.findall(
+                r"IndexIcerik\('([^']*ajax/videosec[^']*)'[^>]*>(.*?)(?:</button>|</a>)",
+                self.html,
+                re.DOTALL
+            )
+            for path, raw_fansub in matches:
+                fansub = clean_html(raw_fansub)
                 src = fetch(path)
                 vids = re.findall(r"/embed/#/url/(.*?)\?status=0\".*?</span> ([^ ]*?) ?</button>", src)
-                vids += re.findall(r"(ajax\/videosec&b=[A-Za-z0-9]+&v=.*?)'.*?<\/span> ?(.*?)<\/button",src)
-                for vpath,player in vids:
-                    self._videos.append(Video(self,vpath,player,fansub))
+                vids += re.findall(r"(ajax\/videosec&b=[A-Za-z0-9]+&v=.*?)'.*?<\/span> ?(.*?)<\/button", src)
+                for vpath, player in vids:
+                    self._videos.append(Video(self, vpath, clean_html(player), fansub))
         # Fansubları parselamaksızın tüm videoları getir
         else:
-            allpath = re.findall(r"(ajax\/videosec&b=[A-Za-z0-9]+.*?)&[fv]=.*?'.*?<\/span>",self.html)[0]
-            src = fetch(allpath)
-            vids = re.findall(r"/embed/#/url/(.*?)\?status=0\".*?</span> ([^ ]*?) ?</button>", src)
-            vids += re.findall(r"(ajax\/videosec&b=[A-Za-z0-9]+&v=.*?)'.*?<\/span> ?(.*?)<\/button",src)
-            for vpath,player in vids:
-                self._videos.append(Video(self,vpath,player))
+            allpath_match = re.findall(r"(ajax\/videosec&b=[A-Za-z0-9]+.*?)&[fv]=.*?'.*?<\/span>", self.html)
+            if allpath_match:
+                allpath = allpath_match[0]
+                src = fetch(allpath)
+                vids = re.findall(r"/embed/#/url/(.*?)\?status=0\".*?</span> ([^ ]*?) ?</button>", src)
+                vids += re.findall(r"(ajax\/videosec&b=[A-Za-z0-9]+&v=.*?)'.*?<\/span> ?(.*?)<\/button", src)
+                for vpath, player in vids:
+                    self._videos.append(Video(self, vpath, clean_html(player)))
         return self._videos
 
     def best_video(self, by_res=True, by_fansub=None, default_res=600, callback=lambda x:None):
