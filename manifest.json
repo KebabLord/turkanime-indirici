@@ -1,12 +1,12 @@
 {
   "schema_version": 1,
-  "turkanime_url": "https://turkanime.tv",
+  "turkanime_url": "https://",
   "animedepo_url": "https://gitlab.com/AnimeDepo/animedepo/-/raw/master",
   "providers": {
     "turkanime": {
-      "enabled": false,
+      "enabled": true,
       "min_client_version": "9.2.2",
-      "priority": 20
+      "priority": 40
     },
     "animedepo": {
       "enabled": true,
